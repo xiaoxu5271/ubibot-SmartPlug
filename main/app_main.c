@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+
 #include "nvs_flash.h"
 
 #include "freertos/FreeRTOS.h"
@@ -77,7 +79,7 @@ static void Uart0_Task(void *arg)
 void app_main(void)
 {
     // nvs_flash_erase();
-    ESP_ERROR_CHECK(nvs_flash_init());
+    nvs_flash_init();
 
     Led_Init();
     Wind_Init();
@@ -91,7 +93,7 @@ void app_main(void)
     /*step1 判断是否有序列号和product id****/
     E2prom_Read(0x30, (uint8_t *)SerialNum, 16);
     printf("SerialNum=%s\n", SerialNum);
-    printf("SerialNum_size=%d\n", strlen(SerialNum));
+    printf("SerialNum_size=%d\n", sizeof(SerialNum));
 
     E2prom_Read(0x40, (uint8_t *)ProductId, 32);
     printf("ProductId=%s\n", ProductId);
@@ -127,22 +129,22 @@ void app_main(void)
     init_wifi();
 
     /*step2 判断是否有蓝牙配置信息****/
-    if (read_bluetooth() == 0) //未获取到蓝牙配置信息
-    {
-        printf("no Ble message!waiting for ble message\n");
-        Ble_mes_status = BLEERR;
-        while (1)
-        {
-            //故障灯闪烁
-            Led_Status = LED_STA_TOUCH;
-            vTaskDelay(500 / portTICK_RATE_MS);
-            //待蓝牙配置正常后，退出
-            if (Ble_mes_status == BLEOK)
-            {
-                break;
-            }
-        }
-    }
+    // if (read_bluetooth() == 0) //未获取到蓝牙配置信息
+    // {
+    //     printf("no Ble message!waiting for ble message\n");
+    //     Ble_mes_status = BLEERR;
+    //     while (1)
+    //     {
+    //         //故障灯闪烁
+    //         Led_Status = LED_STA_TOUCH;
+    //         vTaskDelay(500 / portTICK_RATE_MS);
+    //         //待蓝牙配置正常后，退出
+    //         if (Ble_mes_status == BLEOK)
+    //         {
+    //             break;
+    //         }
+    //     }
+    // }
 
     /*step3 判断是否有API-KEY和channel-id****/
     E2prom_Read(0x00, (uint8_t *)ApiKey, 32);

@@ -34,12 +34,12 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
     int msg_id;
     // your_context_t *context = event->context;
     char topic[100];
-    sprintf(topic,"%s%s%s%s%s%c","/product/",ProductId,"/channel/",ChannelId,"/control",'\0');
+    sprintf(topic, "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/control", '\0');
     //printf("!!!!!!!!!!!!!!!!!topic=%s\n",topic);
     switch (event->event_id)
     {
 
-case MQTT_EVENT_BEFORE_CONNECT:
+    case MQTT_EVENT_BEFORE_CONNECT:
         break;
 
     case MQTT_EVENT_CONNECTED:
@@ -71,12 +71,11 @@ case MQTT_EVENT_BEFORE_CONNECT:
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        Led_Status=LED_STA_RECVDATA;
         //printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         //printf("DATA=%.*s\r\n", event->data_len, event->data);
         //printf("strchr --> %s", strchr(event->data, "{"));
         //parse_objects_mqtt(strchr(event->data, "{"));
-        parse_objects_mqtt(event->data);//收到平台MQTT数据并解析
+        parse_objects_mqtt(event->data); //收到平台MQTT数据并解析
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -90,8 +89,8 @@ void initialise_mqtt(void)
     char mqtt_pwd[41];
     char mqtt_usr[17];
 
-    sprintf(mqtt_pwd,"%s%s%c","api_key=",ApiKey,'\0');
-    sprintf(mqtt_usr,"%s%s%c","c_id=",ChannelId,'\0');
+    sprintf(mqtt_pwd, "%s%s%c", "api_key=", ApiKey, '\0');
+    sprintf(mqtt_usr, "%s%s%c", "c_id=", ChannelId, '\0');
 
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = "mqtt://api.ubibot.cn",
@@ -100,8 +99,7 @@ void initialise_mqtt(void)
         .username = mqtt_usr,
         //.password = "api_key=00000000000000000000000000000000"
         .password = mqtt_pwd,
-        .client_id = BleName
-    };
+        .client_id = BleName};
 
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
