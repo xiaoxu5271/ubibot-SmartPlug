@@ -161,6 +161,7 @@ static void after_key_decounce_cb(void *arg)
  */
 static void gpio_intr_handler(void *arg)
 {
+
     /* 获取触发中断的gpio口 */
     uint32_t key_num = (uint32_t)arg;
     /* 从中断处理函数中发出消息到队列 */
@@ -183,10 +184,12 @@ static void gpio_intr_task_thread(void *arg)
         /* 不断从队列中查询是否有消息 */
         if (xQueueReceive(gpio_evt_queue, &key_num, portMAX_DELAY))
         {
+
             key_mask = 1ULL << key_num;
             /* 判断引起中断的GPIO口是不是已经发生过电平转移,如果发生了则不处理 */
             if (!(gs_key_transition & key_mask))
             {
+                printf("key_isr\n");
                 switch (gpio_get_level(key_num))
                 {
                 case 0:

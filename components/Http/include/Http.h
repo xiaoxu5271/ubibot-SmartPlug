@@ -33,6 +33,7 @@ uint8_t human_status;
 TaskHandle_t httpHandle;
 esp_timer_handle_t http_timer_suspend_p;
 extern uint8_t Last_Led_Status;
-extern uint8_t need_send;
+extern bool need_send;
+extern bool need_reactivate;
 
 #endif

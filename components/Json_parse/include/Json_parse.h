@@ -7,7 +7,6 @@ esp_err_t parse_objects_http_active(char *http_json_data);
 esp_err_t parse_objects_bluetooth(char *blu_json_data);
 esp_err_t parse_objects_mqtt(char *json_data);
 esp_err_t parse_objects_heart(char *json_data);
-esp_err_t parse_Uart0(char *json_data);
 esp_err_t parse_objects_http_respond(char *http_json_data);
 
 esp_err_t creat_object(void);
@@ -42,6 +41,7 @@ struct
     char mqtt_command_id[32];
     char mqtt_string[256];
     char mqtt_Rssi[8];
+    char mqtt_ota_url[128]; //OTA升级地址
 } mqtt_json_s;
 
 struct
@@ -96,14 +96,15 @@ struct
 } ob_blu_json;
 
 /************metadata 参数***********/
-extern uint32_t fn_dp;      //数据发送频率
-extern uint32_t fn_th;      //温湿度频率
+extern unsigned long fn_dp; //数据发送频率
+extern unsigned long fn_th; //温湿度频率
 extern uint8_t cg_data_led; //发送数据 LED状态 0关闭，1打开
-// extern uint8_t net_mode;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+extern uint8_t net_mode;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 /************************************/
 
 int read_bluetooth(void);
 //creat_json *create_http_json(uint8_t post_status);
 void create_http_json(creat_json *pCreat_json);
+esp_err_t ParseTcpUartCmd(char *pcCmdBuffer);
 
 #endif

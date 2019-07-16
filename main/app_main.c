@@ -8,6 +8,7 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+#include "esp_system.h"
 
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -28,16 +29,14 @@
 #include "Switch.h"
 #include "ota.h"
 #include "ds18b20.h"
-
-#include "esp_system.h"
+#include "user_app.h"
 
 void timer_periodic_cb(void *arg);
 
 esp_timer_handle_t timer_periodic_handle = 0; //定时器句柄
 
 esp_timer_create_args_t timer_periodic_arg = {
-    .callback =
-        &timer_periodic_cb,
+    .callback = &timer_periodic_cb,
     .arg = NULL,
     .name = "PeriodicTimer"};
 
@@ -48,11 +47,9 @@ void timer_periodic_cb(void *arg) //1ms中断一次
     if (timer_count >= 1000) //1s
     {
         timer_count = 0;
-
-        ESP_LOGI("", "free Heap:%d,%d", esp_get_free_heap_size(), heap_caps_get_free_size(MALLOC_CAP_8BIT));
         float temp = 0;
         ds18b20_get_temp(&temp);
-        printf("temp2=%f\n", temp);
+        // printf("temp2=%f\n", temp);
     }
 }
 
@@ -87,8 +84,9 @@ void app_main(void)
     E2prom_Init();
     Uart0_Init();
     Switch_Init();
+    user_app_key_init();
 
-    xTaskCreate(Uart0_Task, "Uart0_Task", 4096, NULL, 10, NULL);
+    xTaskCreate(Uart0_Task, "Uart0_Task", 4096, NULL, 9, NULL);
 
     /*step1 判断是否有序列号和product id****/
     E2prom_Read(0x30, (uint8_t *)SerialNum, 16);
@@ -168,12 +166,12 @@ void app_main(void)
     }
 
     /*******************************timer 1s init**********************************************/
-    esp_err_t err = esp_timer_create(&timer_periodic_arg, &timer_periodic_handle);
-    err = esp_timer_start_periodic(timer_periodic_handle, 1000); //创建定时器，单位us，定时1ms
-    if (err != ESP_OK)
-    {
-        printf("timer periodic create err code:%d\n", err);
-    }
+    // esp_err_t err = esp_timer_create(&timer_periodic_arg, &timer_periodic_handle);
+    // err = esp_timer_start_periodic(timer_periodic_handle, 100 * 1000); //创建定时器，单位us，定时1ms
+    // if (err != ESP_OK)
+    // {
+    //     printf("timer periodic create err code:%d\n", err);
+    // }
 
     initialise_http();
     initialise_mqtt();

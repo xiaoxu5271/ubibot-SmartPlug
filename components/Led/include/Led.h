@@ -23,6 +23,9 @@ extern void Led_Init(void);
 extern void Led_Y_On(void);
 extern void Led_Off(void);
 
+extern void Turn_Off_LED(void);
+extern void Turn_ON_LED(void);
+
 uint8_t Led_Status;
 
 #define LED_STA_INIT 0x00    //初始化

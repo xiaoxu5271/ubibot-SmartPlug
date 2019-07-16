@@ -29,7 +29,8 @@ char current_net_ip[20]; //当前内网IP，用于上传
 static char *TAG = "HTTP";
 uint8_t six_time_count = 4;
 uint8_t post_status = POST_NOCOMMAND;
-uint8_t need_send = 1;
+bool need_send = 1;
+bool need_reactivate = 0;
 
 struct HTTP_STA
 {
@@ -219,9 +220,15 @@ void http_get_task(void *pvParameters)
             six_time_count = 0;
         }
 
+        if (need_reactivate == 1)
+        {
+            need_reactivate = 0;
+            http_activate();
+        }
+
         if (fn_dp > 0)
         {
-            if (six_time_count++ >= fn_dp)
+            if (six_time_count++ >= fn_dp - 1)
             {
                 six_time_count = 0;
 
@@ -297,8 +304,6 @@ void http_send_mes(void)
 
     creat_json *pCreat_json1 = malloc(sizeof(creat_json)); //为 pCreat_json1 分配内存  动态内存分配，与free() 配合使用
     //pCreat_json1->creat_json_b=malloc(1024);
-
-    //ESP_LOGI("wifi", "1free Heap:%d,%d", esp_get_free_heap_size(), heap_caps_get_free_size(MALLOC_CAP_8BIT));
     //创建POST的json格式
     create_http_json(pCreat_json1);
 

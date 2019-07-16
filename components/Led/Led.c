@@ -6,6 +6,8 @@
 #include "Led.h"
 
 //#define GPIO_LED_B    (GPIO_NUM_32)
+TaskHandle_t Led_Task_Handle = NULL;
+
 #define GPIO_LED_Y (GPIO_NUM_33)
 
 static void Led_Task(void *arg)
@@ -72,7 +74,7 @@ void Led_Init(void)
     Led_Status = LED_STA_INIT;
 
     Led_Off();
-    // xTaskCreate(Led_Task, "Led_Task", 4096, NULL, 5, NULL);
+    xTaskCreate(Led_Task, "Led_Task", 4096, NULL, 2, &Led_Task_Handle);
 }
 
 void Led_Y_On(void)
@@ -83,4 +85,15 @@ void Led_Y_On(void)
 void Led_Off(void)
 {
     gpio_set_level(GPIO_LED_Y, 0);
+}
+
+void Turn_Off_LED(void)
+{
+    vTaskSuspend(Led_Task_Handle);
+    Led_Off();
+}
+
+void Turn_ON_LED(void)
+{
+    vTaskResume(Led_Task_Handle);
 }

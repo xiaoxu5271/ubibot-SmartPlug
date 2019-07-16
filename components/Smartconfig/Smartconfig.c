@@ -90,9 +90,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
 void initialise_wifi(void) //(char *wifi_ssid, char *wifi_password)
 {
-    // printf("WIFI Reconnect,SSID=%s,PWD=%s\r\n", wifi_ssid, wifi_password);
-    // bzero(wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
-    // strcpy(wifi_data.wifi_ssid, wifi_ssid);
+    Led_Status = LED_STA_WIFIERR; //断网
+    xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+    esp_wifi_connect();
 
     ESP_ERROR_CHECK(esp_wifi_stop());
     ESP_ERROR_CHECK(esp_wifi_get_config(ESP_IF_WIFI_STA, &s_staconf));

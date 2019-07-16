@@ -84,7 +84,7 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
     case BOARD_BUTTON:
         ESP_LOGI("long_pressed_cb", "long press!!!\n");
 
-        Task_key_num = 5;
+        // Task_key_num = 5;
 
         break;
     default:
@@ -99,14 +99,14 @@ void user_key_cd_task(void *arg)
         switch (Task_key_num)
         {
         case 1:
-            Task_key_num = 0;
+            // Task_key_num = 0;
             // lan_ota();
             break;
 
         case 5:
-            Task_key_num = 0;
+            // Task_key_num = 0;
             printf("AP START....\r\n");
-            wifi_init_softap();
+            // wifi_init_softap();
             break;
 
         default:
@@ -129,14 +129,14 @@ static void vTask_view_Work(void *pvParameters)
             printf("free Heap:%d\n", esp_get_free_heap_size());
             // /* K1键按下 打印任务执行情况 */
 
-            // printf("=======================================================\r\n");
-            // printf("任务名           任务状态   优先级      剩余栈   任务序号\r\n");
-            // vTaskList((char *)&pcWriteBuffer);
-            // printf("%s\r\n", pcWriteBuffer);
+            printf("=======================================================\r\n");
+            printf("任务名           任务状态   优先级      剩余栈   任务序号\r\n");
+            vTaskList((char *)&pcWriteBuffer);
+            printf("%s\r\n", pcWriteBuffer);
 
-            // printf("\r\n任务名            运行计数              使用率\r\n");
-            // vTaskGetRunTimeStats((char *)&pcWriteBuffer);
-            // printf("%s\r\n", pcWriteBuffer);
+            printf("\r\n任务名            运行计数              使用率\r\n");
+            vTaskGetRunTimeStats((char *)&pcWriteBuffer);
+            printf("%s\r\n", pcWriteBuffer);
 
             /* 其他的键值不处理 */
         }
@@ -157,6 +157,6 @@ void user_app_key_init(void)
     int32_t err_code;
     err_code = user_key_init(gs_m_key_config, BOARD_BUTTON_COUNT, DECOUNE_TIMER, long_pressed_cb, short_pressed_cb);
     ESP_LOGI("user_app_key_init", "user_key_init is %d\n", err_code);
-    xTaskCreate(user_key_cd_task, "user_key_cd_task", 4096, NULL, 8, NULL);
+    // xTaskCreate(user_key_cd_task, "user_key_cd_task", 4096, NULL, 8, NULL);
     // xTaskCreate(vTask_view_Work, "vTask_view_Work", 10240, NULL, 5, NULL);
 }
