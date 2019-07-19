@@ -77,7 +77,7 @@ static void short_pressed_cb(uint8_t pin_no, uint8_t key_action)
         ESP_LOGI("short_pressed_cb", "APP_KEY_RELEASE\n");
         esp_timer_stop(gs_m_key_time_params.long_press_time_handle);
         /* 如果按键的按下与释放的时间小于MULTI_PRESSED_TIMER则认为是整个短按按键动作完成 */
-        // ESP_LOGI("short_pressed_cb", "current_time - last_time is %lld\n", current_time - last_time);
+        ESP_LOGI("short_pressed_cb", "current_time - last_time is %lld\n", current_time - last_time);
         if ((current_time - last_time) < MULTI_PRESSED_TIMER)
         {
             s_m_key_config->short_pressed_counts++;
@@ -184,25 +184,24 @@ static void gpio_intr_task_thread(void *arg)
         /* 不断从队列中查询是否有消息 */
         if (xQueueReceive(gpio_evt_queue, &key_num, portMAX_DELAY))
         {
-
             key_mask = 1ULL << key_num;
             /* 判断引起中断的GPIO口是不是已经发生过电平转移,如果发生了则不处理 */
-            if (!(gs_key_transition & key_mask))
+            // if (!(gs_key_transition & key_mask))
+            // {
+            // printf("key_isr\n");
+            switch (gpio_get_level(key_num))
             {
-                printf("key_isr\n");
-                switch (gpio_get_level(key_num))
-                {
-                case 0:
-                    gs_key_state &= ~(key_mask);
-                    break;
-                case 1:
-                    gs_key_state |= (key_mask);
-                    break;
-                }
-                gs_key_transition |= key_mask;
-                /* 开启消抖计时定时器 */
-                esp_timer_start_once(gs_m_key_time_params.key_decounce_time_handle, gs_m_key_param.decounce_time);
+            case 0:
+                gs_key_state &= ~(key_mask);
+                break;
+            case 1:
+                gs_key_state |= (key_mask);
+                break;
             }
+            gs_key_transition |= key_mask;
+            /* 开启消抖计时定时器 */
+            esp_timer_start_once(gs_m_key_time_params.key_decounce_time_handle, gs_m_key_param.decounce_time);
+            // }
         }
     }
 }

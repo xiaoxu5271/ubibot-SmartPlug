@@ -6,6 +6,7 @@
 #include "esp_timer.h"
 #include "rom/ets_sys.h"
 #include "ds18b20.h"
+#include "RS485_Read.h"
 
 #define ds18b20_gpio GPIO_NUM_4
 
@@ -217,8 +218,24 @@ void ds18b20_get_temp(float *temp_value1)
     }
     else
     {
-        //   printf("eeeeee\n");
+        printf("18b20 err\n");
     }
+}
+
+void get_ds18b20_task(void *org)
+{
+    float temp = 0;
+    while (1)
+    {
+        RS485_Read();
+        ds18b20_get_temp(&temp);
+        vTaskDelay(2000 / portTICK_RATE_MS);
+    }
+}
+
+void start_ds18b20(void)
+{
+    xTaskCreate(get_ds18b20_task, "get_ds18b20_task", 4096, NULL, 3, NULL);
 }
 
 /*******************************************************************************

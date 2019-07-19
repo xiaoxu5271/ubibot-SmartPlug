@@ -87,7 +87,6 @@ http =
 };
 
 TaskHandle_t httpHandle = NULL;
-esp_timer_handle_t http_timer_suspend_p = NULL;
 
 int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)
 {
@@ -188,11 +187,6 @@ void http_suspends(void *arg)
     // ESP_LOGI(TAG, "HTTP_任务恢复");
     xTaskResumeFromISR(httpHandle);
 }
-
-esp_timer_create_args_t http_suspend = {
-    .callback = &http_suspends,
-    .arg = NULL,
-    .name = "http_suspend"};
 
 void http_get_task(void *pvParameters)
 {

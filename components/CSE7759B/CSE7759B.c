@@ -12,7 +12,7 @@
 #define UART1_RTS (UART_PIN_NO_CHANGE)
 #define UART1_CTS (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE 100
+#define BUF_SIZE 128
 //static const char *TAG = "CSE7759b";
 
 #define SAMPLE_RESISTANCE_MR 1 //使用的采样锰铜电阻mR值
@@ -236,6 +236,10 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
             power_k = ((inDataBuffer[UART_IND_PK] << 16) | (inDataBuffer[UART_IND_PK + 1] << 8) | (inDataBuffer[UART_IND_PK + 2])); //功率系数
             power_t = ((inDataBuffer[UART_IND_PT] << 16) | (inDataBuffer[UART_IND_PT + 1] << 8) | (inDataBuffer[UART_IND_PT + 2])); //功率周期
 
+            //防止 0 做除数
+            if (power_k == 0 || power_t == 0)
+                return -1;
+
             if (isUpdataNewData(power_a, power_t))
             {
                 updataVIPvalue(power_a, power_t);
@@ -328,7 +332,10 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         runingInf.energy += (energy_cnt * 10); //电能个数累加时扩大10倍，计算电能是除数扩大10倍，保证计算精度
 
         runingInf.energyUnit = 0xD693A400 >> 1;
+        if (power_k == 0)
+            return -1;
         runingInf.energyUnit /= (power_k >> 1); //1mR采样电阻0.001度电对应的脉冲个数
+
 #if (SAMPLE_RESISTANCE_MR == 1)
 //1mR锰铜电阻对应的脉冲个数
 #elif (SAMPLE_RESISTANCE_MR == 2)
@@ -359,7 +366,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         {                        //功率异常
             runingInf.power = 0; //获取到的功率是以0.1W为单位
             power = 0;
-            //printf("Power Error\r\n");
+            printf("Power Error\r\n");
         }
         else
         {
@@ -488,6 +495,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 #endif
                 }
                 printf("22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
+                mqtt_json_s.mqtt_Current = electricity / 1000.0;
             }
             else
             {
@@ -534,6 +542,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     voltage = voltage * 10;                //电压mV值
                 }
                 printf("22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
+                mqtt_json_s.mqtt_Voltage = voltage / 1000;
             }
             else
             {
@@ -581,7 +590,7 @@ void CSE7759B_Init(void)
     uart_set_pin(UART_NUM_1, UART1_TXD, UART1_RXD, UART1_RTS, UART1_CTS);
     uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
 
-    xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 2048, NULL, 5, NULL);
+    xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 4096, NULL, 5, NULL);
 }
 
 int8_t CSE7759B_Read(void)
@@ -591,9 +600,10 @@ int8_t CSE7759B_Read(void)
 
     int len_7759_start = 0;
 
-    int len1 = uart_read_bytes(UART_NUM_1, data_u1, BUF_SIZE, 1 / portTICK_RATE_MS);
+    int len1 = uart_read_bytes(UART_NUM_1, data_u1, BUF_SIZE, 10 / portTICK_RATE_MS);
     if (len1 != 0) //读取到数据
     {
+        printf("CSE7759B_Read len1 = %d\n", len1);
         //查找数据头
         for (int i = 0; i < len1; i++)
         {
@@ -610,14 +620,19 @@ int8_t CSE7759B_Read(void)
             data_7759b[i] = data_u1[len_7759_start + i];
         }
 
-        printf("7759b=");
-        for (int i = 0; i < 24; i++)
-        {
-            printf("0x%02x ", data_7759b[i]);
-        }
-        printf("\n");
+        // printf("7759b=");
+        // for (int i = 0; i < 24; i++)
+        // {
+        //     printf("0x%02x ", data_7759b[i]);
+        // }
+        // printf("\n");
         DealUartInf(data_7759b, 24); //处理7759B数据
     }
+    else
+    {
+        // printf("No CSE7759B Date！\n");
+    }
+
     len1 = 0;
     len_7759_start = 0;
     bzero(data_u1, sizeof(data_u1));

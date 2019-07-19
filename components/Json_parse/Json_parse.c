@@ -14,7 +14,7 @@
 #include "Smartconfig.h"
 #include "E2prom.h"
 #include "Http.h"
-#include "Wind.h"
+#include "RS485_Read.h"
 #include "Bluetooth.h"
 #include "Switch.h"
 #include "Led.h"
@@ -390,6 +390,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     cJSON *json_data_action = NULL;
     cJSON *json_data_url = NULL;
     cJSON *json_data_vesion = NULL;
+    cJSON *json_data_set_state = NULL;
 
     json_data_parse = cJSON_Parse(mqtt_json_data);
     // printf("%s", cJSON_Print(json_data_parse));
@@ -424,30 +425,39 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
         {
             // printf("MQTT-command_string  = %s\r\n", cJSON_Print(json_data_string_parse));
 
-            //收到OTA相关指令
-            if ((json_data_action = cJSON_GetObjectItem(json_data_string_parse, "action")) != NULL &&
-                (json_data_vesion = cJSON_GetObjectItem(json_data_string_parse, "version")) != NULL &&
-                (json_data_url = cJSON_GetObjectItem(json_data_string_parse, "url")) != NULL)
+            if ((json_data_action = cJSON_GetObjectItem(json_data_string_parse, "action")) != NULL)
             {
-                printf("OTA命令进入\r\n");
                 //如果命令是OTA
                 if (strcmp(json_data_action->valuestring, "ota") == 0)
                 {
-                    if (strcmp(json_data_vesion->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
+                    printf("OTA命令进入\r\n");
+                    if ((json_data_vesion = cJSON_GetObjectItem(json_data_string_parse, "version")) != NULL &&
+                        (json_data_url = cJSON_GetObjectItem(json_data_string_parse, "url")) != NULL)
                     {
-                        strcpy(mqtt_json_s.mqtt_ota_url, json_data_url->valuestring);
-                        // E2prom_page_Write(ota_url_add, (uint8_t *)mqtt_json_s.mqtt_ota_url, 128);
-                        printf("OTA_URL=%s\r\n OTA_VERSION=%s\r\n", mqtt_json_s.mqtt_ota_url, json_data_vesion->valuestring);
-                        ota_start(); //启动OTA
+                        if (strcmp(json_data_vesion->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
+                        {
+                            strcpy(mqtt_json_s.mqtt_ota_url, json_data_url->valuestring);
+                            // E2prom_page_Write(ota_url_add, (uint8_t *)mqtt_json_s.mqtt_ota_url, 128);
+                            printf("OTA_URL=%s\r\n OTA_VERSION=%s\r\n", mqtt_json_s.mqtt_ota_url, json_data_vesion->valuestring);
+                            ota_start(); //启动OTA
+                        }
+                        else
+                        {
+                            printf("当前版本无需升级 \r\n");
+                        }
                     }
-                    else
+                }
+
+                else if (strcmp(json_data_action->valuestring, "command") == 0)
+                {
+                    if ((json_data_set_state = cJSON_GetObjectItem(json_data_string_parse, "set_state")) != NULL)
                     {
-                        printf("当前版本无需升级 \r\n");
+                        Mqtt_Switch_Relay(json_data_set_state->valueint);
                     }
                 }
                 else
                 {
-                    printf("Action非ota \r\n");
+                    printf("Action 非许可 \r\n");
                 }
             }
             else if ((json_data_action = cJSON_GetObjectItem(json_data_string_parse, "command")) != NULL)

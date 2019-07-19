@@ -15,11 +15,10 @@ float Wind_Read(void);
 风速读取函数，返回风速数值，单位M/S，float类型，小数点后1位
 
 */
-#ifndef _WIND_H_
-#define _WIND_H_
+#ifndef _RS485_READ_H_
+#define _RS485_READ_H_
 
 extern void Wind_Init(void);
-extern float Wind_Read(void);
+float RS485_Read(void);
 
 #endif
-

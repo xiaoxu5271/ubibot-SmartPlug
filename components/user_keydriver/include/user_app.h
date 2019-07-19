@@ -21,6 +21,6 @@
                      Helon_Chan, 2018/06/16, 初始化版本\n 
  */
 void user_app_key_init(void);
+void vTask_view_Work(void);
 
-
-#endif/* USER_APP_H_ */
+#endif /* USER_APP_H_ */

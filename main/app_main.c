@@ -21,7 +21,7 @@
 #include "esp_log.h"
 
 #include "Uart0.h"
-#include "Wind.h"
+#include "RS485_Read.h"
 #include "CSE7759B.h"
 #include "Led.h"
 #include "E2prom.h"
@@ -30,28 +30,6 @@
 #include "ota.h"
 #include "ds18b20.h"
 #include "user_app.h"
-
-void timer_periodic_cb(void *arg);
-
-esp_timer_handle_t timer_periodic_handle = 0; //定时器句柄
-
-esp_timer_create_args_t timer_periodic_arg = {
-    .callback = &timer_periodic_cb,
-    .arg = NULL,
-    .name = "PeriodicTimer"};
-
-void timer_periodic_cb(void *arg) //1ms中断一次
-{
-    static int64_t timer_count = 0;
-    timer_count++;
-    if (timer_count >= 1000) //1s
-    {
-        timer_count = 0;
-        float temp = 0;
-        ds18b20_get_temp(&temp);
-        // printf("temp2=%f\n", temp);
-    }
-}
 
 static void Uart0_Task(void *arg)
 {
@@ -173,6 +151,7 @@ void app_main(void)
     //     printf("timer periodic create err code:%d\n", err);
     // }
 
+    start_ds18b20();
     initialise_http();
     initialise_mqtt();
 

@@ -12,33 +12,6 @@
 
 static const char *TAG = "switch";
 
-// void Switch_interrupt_callBack(void *arg);
-// static xQueueHandle gpio_evt_queue = NULL; //定义一个队列返回变量
-
-// void Switch_interrupt_callBack(void *arg)
-// {
-//     uint32_t io_num;
-//     while (1)
-//     {
-//         //不断读取gpio队列，读取完后将删除队列
-//         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) //队列阻塞等待
-//         {
-//             vTaskDelay(5 / portTICK_RATE_MS);
-//             ESP_LOGW(TAG, "key_interrupt,gpio[%d]=%d\n", io_num, gpio_get_level(io_num));
-//             if (gpio_get_level(io_num) == 0) //按下
-//             {
-//                 printf("key down!\n");
-//                 mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
-//                 gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
-//                 http_send_mes();
-//             }
-//             else //抬起
-//             {
-//             }
-//         }
-//     }
-// }
-
 void Switch_Init(void)
 {
     gpio_config_t io_conf;
@@ -52,9 +25,23 @@ void Switch_Init(void)
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
 }
 
-void Switch_Relay(void)
+void Key_Switch_Relay(void)
 {
     mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
-    http_send_mes();
+    need_send = 1;
+}
+
+void Mqtt_Switch_Relay(uint8_t set_value)
+{
+    if (set_value >= 1 && set_value < 100)
+    {
+        mqtt_json_s.mqtt_switch_status = 1;
+    }
+    else if (set_value == 0)
+    {
+        mqtt_json_s.mqtt_switch_status = 0;
+    }
+    gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
+    need_send = 1;
 }
