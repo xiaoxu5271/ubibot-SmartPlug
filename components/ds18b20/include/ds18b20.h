@@ -4,7 +4,9 @@
 
 #include "freertos/FreeRTOS.h"
 
-void ds18b20_get_temp(float *temp_value1);
+int8_t ds18b20_get_temp(void);
 void start_ds18b20(void);
+
+extern float DS18B20_TEM;
 
 #endif

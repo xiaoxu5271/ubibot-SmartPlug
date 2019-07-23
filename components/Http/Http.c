@@ -20,6 +20,8 @@
 #include "lwip/dns.h"
 #include "freertos/event_groups.h"
 #include "Http.h"
+#include "ds18b20.h"
+#include "RS485_Read.h"
 
 SemaphoreHandle_t xMutex_Http_Send;
 
@@ -174,24 +176,24 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
                         false, true, portMAX_DELAY); //等网络连接
 
     xSemaphoreTake(xMutex_Http_Send, portMAX_DELAY);
-    int32_t ret;
 
+    int32_t ret;
     printf("wifi send!!!\n");
     ret = wifi_http_send(send_buff, send_size, recv_buff, recv_size);
     xSemaphoreGive(xMutex_Http_Send);
+
     return ret;
 }
 
-void http_suspends(void *arg)
-{
-    // ESP_LOGI(TAG, "HTTP_任务恢复");
-    xTaskResumeFromISR(httpHandle);
-}
+// void http_suspends(void *arg)
+// {
+//     // ESP_LOGI(TAG, "HTTP_任务恢复");
+//     xTaskResumeFromISR(httpHandle);
+// }
 
 void http_get_task(void *pvParameters)
 {
     char recv_buf[1024];
-
     char build_heart_url[256];
 
     sprintf(build_heart_url, "%s%s%s%s%s%s%s", http.GET, http.HEART_BEAT, ApiKey,
@@ -272,10 +274,14 @@ int32_t http_activate(void)
     // return parse_objects_http_active(strchr(recv_buf, '{'));
 }
 
-uint8_t Last_Led_Status;
+// uint8_t Last_Led_Status;
 
 void http_send_mes(void)
 {
+
+    RS485_Read();
+    ds18b20_get_temp();
+
     int ret = 0;
 
     if (Led_Status != LED_STA_SEND) //解决两次发送间隔过短，导致LED一直闪烁
@@ -344,8 +350,8 @@ void initialise_http(void)
 
     while (http_activate() < 0) //激活
     {
-        printf("激活失败，重试\n");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        ESP_LOGE(TAG, "activate fail\n");
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
 
     xTaskCreate(&http_get_task, "http_get_task", 8192, NULL, 6, &httpHandle);

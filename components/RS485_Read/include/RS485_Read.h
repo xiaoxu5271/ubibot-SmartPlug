@@ -18,7 +18,9 @@ float Wind_Read(void);
 #ifndef _RS485_READ_H_
 #define _RS485_READ_H_
 
-extern void Wind_Init(void);
-float RS485_Read(void);
+extern float ext_tem, ext_hum;
+
+void RS485_Init(void);
+void RS485_Read(void);
 
 #endif

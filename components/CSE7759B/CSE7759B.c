@@ -7,6 +7,8 @@
 #include "Json_parse.h"
 #include "CSE7759B.h"
 
+#define TAG "CSE7759B"
+
 #define UART1_TXD (UART_PIN_NO_CHANGE)
 #define UART1_RXD (GPIO_NUM_26)
 #define UART1_RTS (UART_PIN_NO_CHANGE)
@@ -34,6 +36,8 @@
 
 //7759B电能计数脉冲溢出时的数据
 #define ENERGY_FLOW_NUM 65536 //电量采集，电能溢出时的脉冲计数值
+
+TaskHandle_t CSE7759_Handle = NULL;
 
 typedef struct RuningInf_s
 {
@@ -165,7 +169,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(voltage_a, voltage_t);
                 }
             }
-            printf("voltage:%ld,%ld,%ld\r\n", voltage_a[0], voltage_a[1], voltage_a[2]);
+            ESP_LOGD(TAG, "voltage:%ld,%ld,%ld\r\n", voltage_a[0], voltage_a[1], voltage_a[2]);
             voltage_t = getVIPvalue(voltage_a);
 
             if (voltage_t == 0)
@@ -177,12 +181,12 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 voltage = voltage_k * 100 / voltage_t; //电压10mV值，避免溢出
                 voltage = voltage * 10;                //电压mV值
             }
-            printf("11Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
+            ESP_LOGD(TAG, "11Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
             mqtt_json_s.mqtt_Voltage = voltage / 1000;
         }
         else
         {
-            printf("%s(%d):V Flag Error\r\n", __func__, __LINE__);
+            ESP_LOGD(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
         }
 
         if ((inDataBuffer[UART_IND_FG] & 0x20) == 0x20)
@@ -204,7 +208,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(electricity_a, electricity_t);
                 }
             }
-            printf("electricity:%ld,%ld,%ld\r\n", electricity_a[0], electricity_a[1], electricity_a[2]);
+            ESP_LOGD(TAG, "electricity:%ld,%ld,%ld\r\n", electricity_a[0], electricity_a[1], electricity_a[2]);
             electricity_t = getVIPvalue(electricity_a);
 
             if (electricity_t == 0)
@@ -222,12 +226,12 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 electricity >>= 1;
 #endif
             }
-            printf("11Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
+            ESP_LOGD(TAG, "11Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
             mqtt_json_s.mqtt_Current = electricity / 1000.0;
         }
         else
         {
-            printf("%s(%d):I Flag Error\r\n", __func__, __LINE__);
+            ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
         }
 
         if ((inDataBuffer[UART_IND_FG] & 0x10) == 0x10)
@@ -254,7 +258,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(power_a, power_t);
                 }
             }
-            printf("power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
+            ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
             power_t = getVIPvalue(power_a);
 
             if (power_t == 0)
@@ -272,7 +276,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 power >>= 1;
 #endif
             }
-            printf("11Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+            ESP_LOGD(TAG, "11Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
             mqtt_json_s.mqtt_Power = power / 1000.0;
         }
         else if (powerNewFlag == 0)
@@ -291,7 +295,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     }
                 }
             }
-            printf("power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
+            ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
             power_t = getVIPvalue(power_a);
 
             if (power_t == 0)
@@ -309,7 +313,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 power >>= 1;
 #endif
             }
-            printf("22Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+            ESP_LOGD(TAG, "22Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
             mqtt_json_s.mqtt_Power = power / 1000.0;
         }
 
@@ -347,26 +351,26 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         //电能使用量
         energy = runingInf.energy / runingInf.energyUnit; //单位是0.001度
         mqtt_json_s.mqtt_Energy = energy / 1000.0;        //单位是度
-        printf("energy=%ld\n", energy);
+        ESP_LOGD(TAG, "energy=%ld\n", energy);
         break;
 
     case 0xAA:
         //芯片未校准
-        printf("CSE7759B not check\r\n");
+        ESP_LOGD(TAG, "CSE7759B not check\r\n");
         break;
 
     default:
         if ((startFlag & 0xF1) == 0xF1)
         { //存储区异常，芯片坏了
             //芯片坏掉，反馈服务器
-            printf("CSE7759B broken\r\n");
+            ESP_LOGD(TAG, "CSE7759B broken\r\n");
         }
 
         if ((startFlag & 0xF2) == 0xF2)
         {                        //功率异常
             runingInf.power = 0; //获取到的功率是以0.1W为单位
             power = 0;
-            printf("Power Error\r\n");
+            ESP_LOGD(TAG, "Power Error\r\n");
         }
         else
         {
@@ -390,7 +394,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                         updataVIPvalue(power_a, power_t);
                     }
                 }
-                //printf("power:%ld,%ld,%ld\r\n",power_a[0],power_a[1],power_a[2]);
+                //ESP_LOGD(TAG,"power:%ld,%ld,%ld\r\n",power_a[0],power_a[1],power_a[2]);
                 power_t = getVIPvalue(power_a);
 
                 if (power_t == 0)
@@ -408,7 +412,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     power >>= 1;
 #endif
                 }
-                printf("33Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+                ESP_LOGD(TAG, "33Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
                 mqtt_json_s.mqtt_Power = power / 1000.0;
             }
             else if (powerNewFlag == 0)
@@ -427,7 +431,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                         }
                     }
                 }
-                //printf("power:%ld,%ld,%ld\r\n",power_a[0],power_a[1],power_a[2]);
+                //ESP_LOGD(TAG,"power:%ld,%ld,%ld\r\n",power_a[0],power_a[1],power_a[2]);
                 power_t = getVIPvalue(power_a);
 
                 if (power_t == 0)
@@ -445,7 +449,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     power >>= 1;
 #endif
                 }
-                printf("44Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+                ESP_LOGD(TAG, "44Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
                 mqtt_json_s.mqtt_Power = power / 1000.0;
             }
         }
@@ -476,7 +480,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                         updataVIPvalue(electricity_a, electricity_t);
                     }
                 }
-                //printf("electricity:%ld,%ld,%ld\r\n",electricity_a[0],electricity_a[1],electricity_a[2]);
+                //ESP_LOGD(TAG,"electricity:%ld,%ld,%ld\r\n",electricity_a[0],electricity_a[1],electricity_a[2]);
                 electricity_t = getVIPvalue(electricity_a);
 
                 if (electricity_t == 0)
@@ -494,12 +498,12 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     electricity >>= 1;
 #endif
                 }
-                printf("22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
+                ESP_LOGD(TAG, "22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
                 mqtt_json_s.mqtt_Current = electricity / 1000.0;
             }
             else
             {
-                printf("%s(%d):I Flag Error\r\n", __func__, __LINE__);
+                ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
             }
         }
 
@@ -529,7 +533,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                         updataVIPvalue(voltage_a, voltage_t);
                     }
                 }
-                //printf("voltage:%ld,%ld,%ld\r\n",voltage_a[0],voltage_a[1],voltage_a[2]);
+                //ESP_LOGD(TAG,"voltage:%ld,%ld,%ld\r\n",voltage_a[0],voltage_a[1],voltage_a[2]);
                 voltage_t = getVIPvalue(voltage_a);
 
                 if (voltage_t == 0)
@@ -541,15 +545,15 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     voltage = voltage_k * 100 / voltage_t; //电压10mV值，避免溢出
                     voltage = voltage * 10;                //电压mV值
                 }
-                printf("22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
+                ESP_LOGD(TAG, "22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
                 mqtt_json_s.mqtt_Voltage = voltage / 1000;
             }
             else
             {
-                printf("%s(%d):V Flag Error\r\n", __func__, __LINE__);
+                ESP_LOGD(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
             }
         }
-        printf("0x%x:V = %ld;I = %ld;P = %ld;\r\n", startFlag, voltage, electricity, power);
+        ESP_LOGD(TAG, "0x%x:V = %ld;I = %ld;P = %ld;\r\n", startFlag, voltage, electricity, power);
         mqtt_json_s.mqtt_Voltage = voltage / 1000;
         mqtt_json_s.mqtt_Current = 0;
         mqtt_json_s.mqtt_Power = power / 1000.0;
@@ -603,7 +607,7 @@ int8_t CSE7759B_Read(void)
     int len1 = uart_read_bytes(UART_NUM_1, data_u1, BUF_SIZE, 10 / portTICK_RATE_MS);
     if (len1 != 0) //读取到数据
     {
-        printf("CSE7759B_Read len1 = %d\n", len1);
+        // ESP_LOGD(TAG,"CSE7759B_Read len1 = %d\n", len1);
         //查找数据头
         for (int i = 0; i < len1; i++)
         {
@@ -620,17 +624,17 @@ int8_t CSE7759B_Read(void)
             data_7759b[i] = data_u1[len_7759_start + i];
         }
 
-        // printf("7759b=");
+        // ESP_LOGD(TAG,"7759b=");
         // for (int i = 0; i < 24; i++)
         // {
-        //     printf("0x%02x ", data_7759b[i]);
+        //     ESP_LOGD(TAG,"0x%02x ", data_7759b[i]);
         // }
-        // printf("\n");
+        // ESP_LOGD(TAG,"\n");
         DealUartInf(data_7759b, 24); //处理7759B数据
     }
     else
     {
-        // printf("No CSE7759B Date！\n");
+        // ESP_LOGE(TAG, "No CSE7759B Date！\n");
     }
 
     len1 = 0;

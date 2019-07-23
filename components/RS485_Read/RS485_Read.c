@@ -2,20 +2,25 @@
 #include "freertos/FreeRTOS.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
+#include "esp_log.h"
 
 #include "RS485_Read.h"
+
+#define TAG "458"
 
 #define UART2_TXD (GPIO_NUM_17)
 #define UART2_RXD (GPIO_NUM_16)
 #define UART2_RTS (UART_PIN_NO_CHANGE)
 #define UART2_CTS (UART_PIN_NO_CHANGE)
 
-#define RS485RD (GPIO_NUM_21)
+#define RS485RD 21
 
-#define BUF_SIZE 100
+#define BUF_SIZE 128
+
+float ext_tem = 0.0, ext_hum = 0.0;
 
 char wind_modbus_send_data[] = {0x20, 0x04, 0x00, 0x06, 0x00, 0x01, 0xd7, 0x7a};    //发送查询风速指令
-char tem_hum_modbus_send_data[] = {0xC1, 0x03, 0x00, 0x00, 0x00, 0x02, 0xD5, 0x0B}; //发送查询风速指令
+char tem_hum_modbus_send_data[] = {0xC1, 0x03, 0x00, 0x00, 0x00, 0x02, 0xD5, 0x0B}; //发送 查询外接空气温湿度探头
 
 /*******************************************************************************
 // CRC16_Modbus Check
@@ -44,64 +49,59 @@ static uint16_t CRC16_ModBus(uint8_t *buf, uint8_t buf_len)
         }
         buf++;
     }
-    //printf("crc16_val=%x\n",crc16_val);
+    // printf("crc16_val=%x\n", ((crc16_val & 0x00ff) << 8) | ((crc16_val & 0xff00) >> 8));
     return ((crc16_val & 0x00ff) << 8) | ((crc16_val & 0xff00) >> 8);
 }
 
-float RS485_Read(void)
+void RS485_Read(void)
 {
-    float WindSpeed = 0;
     uint8_t data_u2[BUF_SIZE];
     gpio_set_level(RS485RD, 1); //RS485输出模式
     uart_write_bytes(UART_NUM_2, tem_hum_modbus_send_data, 8);
-    vTaskDelay(35 / portTICK_PERIOD_MS);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     gpio_set_level(RS485RD, 0); //RS485输入模式
     int len2 = uart_read_bytes(UART_NUM_2, data_u2, BUF_SIZE, 20 / portTICK_RATE_MS);
 
     if (len2 != 0)
     {
-        printf("UART2 recv:");
-        for (int i = 0; i < len2; i++)
-        {
-            printf("%x ", data_u2[i]);
-        }
-        printf("\r\n");
+        // printf("UART2 len2: %d  recv:", len2);
+        // for (int i = 0; i < len2; i++)
+        // {
+        //     printf("%x ", data_u2[i]);
+        // }
+        // printf("\r\n");
 
         //crc_check=CRC16_ModBus(data_u2,5);
         //printf("crc-check=%d\n",crc_check);
         //printf("crc-check2=%d\n",(data_u2[5]*256+data_u2[6]));
         //printf("u25=%x,u26=%x\n",data_u2[5],data_u2[6]);
-        if ((data_u2[5] * 256 + data_u2[6]) == CRC16_ModBus(data_u2, 5))
+        if ((data_u2[7] * 256 + data_u2[8]) == CRC16_ModBus(data_u2, (len2 - 2)))
         {
-
-            if ((data_u2[0] == 0x20) && (data_u2[1] == 0x04))
+            if ((data_u2[0] == 0xC1) && (data_u2[1] == 0x03))
             {
-                WindSpeed = data_u2[4] * 0.1;
-                //printf("Wind Speed=%f\n",WindSpeed);
+                ext_tem = ((data_u2[3] << 8) + data_u2[4]) * 0.1;
+                ext_hum = ((data_u2[5] << 8) + data_u2[6]) * 0.1;
+                ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
             }
             else
             {
-                WindSpeed = -1;
-                printf("wind crc error\n");
+                ESP_LOGE(TAG, "485 add or cmd error\n");
             }
         }
         else
         {
-            WindSpeed = -1;
+            ESP_LOGE(TAG, "485 CRC error\n");
         }
-
         len2 = 0;
     }
-    else //未接风速
+    else
     {
-        WindSpeed = -1;
+        // printf("RS485 NO ARK !!! \n");
     }
-    return WindSpeed;
 }
 
-void Wind_Init(void)
+void RS485_Init(void)
 {
-
     /**********************uart init**********************************************/
     uart_config_t uart_config = {
         .baud_rate = 9600,

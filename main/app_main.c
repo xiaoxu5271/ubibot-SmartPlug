@@ -57,7 +57,7 @@ void app_main(void)
     nvs_flash_init();
 
     Led_Init();
-    Wind_Init();
+    RS485_Init();
     CSE7759B_Init();
     E2prom_Init();
     Uart0_Init();
@@ -91,7 +91,6 @@ void app_main(void)
 
     if ((strlen(SerialNum) == 0) || (strlen(ProductId) == 0)) //未获取到序列号或productid，未烧写序列号
     {
-
         printf("no SerialNum or product id!\n");
         while (1)
         {
@@ -104,44 +103,8 @@ void app_main(void)
     ble_app_start();
     init_wifi();
 
-    /*step2 判断是否有蓝牙配置信息****/
-    // if (read_bluetooth() == 0) //未获取到蓝牙配置信息
-    // {
-    //     printf("no Ble message!waiting for ble message\n");
-    //     Ble_mes_status = BLEERR;
-    //     while (1)
-    //     {
-    //         //故障灯闪烁
-    //         Led_Status = LED_STA_TOUCH;
-    //         vTaskDelay(500 / portTICK_RATE_MS);
-    //         //待蓝牙配置正常后，退出
-    //         if (Ble_mes_status == BLEOK)
-    //         {
-    //             break;
-    //         }
-    //     }
-    // }
-
-    /*step3 判断是否有API-KEY和channel-id****/
-    E2prom_Read(0x00, (uint8_t *)ApiKey, 32);
-    printf("readApiKey=%s\n", ApiKey);
-    E2prom_Read(0x20, (uint8_t *)ChannelId, 16);
-    printf("readChannelId=%s\n", ChannelId);
-    if ((strlen(SerialNum) == 0) || (strlen(ChannelId) == 0)) //未获取到API-KEY，和channelid进行激活流程
-    {
-        printf("no ApiKey or channelId!\n");
-
-        while (http_activate() == 0) //激活失败
-        {
-            vTaskDelay(10000 / portTICK_RATE_MS);
-        }
-
-        //激活成功
-        E2prom_Read(0x00, (uint8_t *)ApiKey, 32);
-        printf("ApiKey=%s\n", ApiKey);
-        E2prom_Read(0x20, (uint8_t *)ChannelId, 16);
-        printf("ChannelId=%s\n", ChannelId);
-    }
+    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+                        false, true, portMAX_DELAY); //等待网络连接、
 
     /*******************************timer 1s init**********************************************/
     // esp_err_t err = esp_timer_create(&timer_periodic_arg, &timer_periodic_handle);
@@ -151,9 +114,6 @@ void app_main(void)
     //     printf("timer periodic create err code:%d\n", err);
     // }
 
-    start_ds18b20();
     initialise_http();
     initialise_mqtt();
-
-    //ota_start();
 }

@@ -20,12 +20,14 @@
 #include "Led.h"
 #include "tcp_bsp.h"
 #include "ota.h"
+#include "RS485_Read.h"
+#include "ds18b20.h"
 
 //metadata 参数
-unsigned long fn_dp = 0; //数据发送频率
-unsigned long fn_th = 0; //温湿度频率
-uint8_t cg_data_led = 1; //发送数据 LED状态 0：不闪烁 1：闪烁
-uint8_t net_mode = 0;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+unsigned long fn_dp = 60; //数据发送频率 默认60s
+unsigned long fn_th = 0;  //温湿度频率
+uint8_t cg_data_led = 1;  //发送数据 LED状态 0：不闪烁 1：闪烁
+uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 
 typedef enum
 {
@@ -71,7 +73,6 @@ static short Parse_metadata(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_dp"); //"fn_dp"
     if (NULL != pSubSubSub)
     {
-
         if ((unsigned long)pSubSubSub->valueint != fn_dp)
         {
             // fn_flag = 1;
@@ -199,7 +200,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
     cJSON *json_data_parse_channel_value = NULL;
     //char *json_print;
 
-    printf("start_parse_active_http_json\r\n");
+    // printf("start_parse_active_http_json\r\n");
 
     if (http_json_data[0] != '{')
     {
@@ -495,15 +496,25 @@ void create_http_json(creat_json *pCreat_json)
     wifi_ap_record_t wifidata;
     esp_wifi_sta_get_ap_info(&wifidata);
 
+    sprintf(mqtt_json_s.mqtt_etx_tem, "%4.2f", ext_tem);
+    sprintf(mqtt_json_s.mqtt_etx_hum, "%4.2f", ext_hum);
+    sprintf(mqtt_json_s.mqtt_DS18B20_TEM, "%4.2f", DS18B20_TEM);
+
     cJSON_AddItemToObject(root, "feeds", fe_body);
     cJSON_AddItemToArray(fe_body, next);
     cJSON_AddItemToObject(next, "created_at", cJSON_CreateString(http_json_c.http_time));
     cJSON_AddItemToObject(next, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-    cJSON_AddItemToObject(next, "field2", cJSON_CreateNumber(mqtt_json_s.mqtt_Voltage));
-    cJSON_AddItemToObject(next, "field3", cJSON_CreateNumber(mqtt_json_s.mqtt_Current));
-    cJSON_AddItemToObject(next, "field4", cJSON_CreateNumber(mqtt_json_s.mqtt_Power));
-    cJSON_AddItemToObject(next, "field5", cJSON_CreateNumber(wifidata.rssi)); //WIFI RSSI
-    cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
+    if (mqtt_json_s.mqtt_switch_status == 1)
+    {
+        cJSON_AddItemToObject(next, "field2", cJSON_CreateNumber(mqtt_json_s.mqtt_Voltage));
+        cJSON_AddItemToObject(next, "field3", cJSON_CreateNumber(mqtt_json_s.mqtt_Current));
+        cJSON_AddItemToObject(next, "field4", cJSON_CreateNumber(mqtt_json_s.mqtt_Power));
+        cJSON_AddItemToObject(next, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
+    }
+    cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(wifidata.rssi));                //WIFI RSSI
+    cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_etx_tem));     //485温度
+    cJSON_AddItemToObject(next, "field8", cJSON_CreateString(mqtt_json_s.mqtt_etx_hum));     //485湿度
+    cJSON_AddItemToObject(next, "field9", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
 
     char *cjson_printunformat;
     cjson_printunformat = cJSON_PrintUnformatted(root);

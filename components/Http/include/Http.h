@@ -5,7 +5,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
-#define FIRMWARE "SP1-V0.1.0"
+#define FIRMWARE "SP1-V0.1.1"
 
 #define POST_NORMAL 0X00
 #define POST_HEIGHT_ADD 0X01
@@ -32,7 +32,7 @@ extern uint8_t post_status;
 uint8_t human_status;
 TaskHandle_t httpHandle;
 esp_timer_handle_t http_timer_suspend_p;
-extern uint8_t Last_Led_Status;
+// extern uint8_t Last_Led_Status;
 extern bool need_send;
 extern bool need_reactivate;
 

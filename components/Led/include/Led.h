@@ -27,6 +27,7 @@ extern void Turn_Off_LED(void);
 extern void Turn_ON_LED(void);
 
 uint8_t Led_Status;
+uint8_t Last_Led_Status;
 
 #define LED_STA_INIT 0x00    //初始化
 #define LED_STA_AP 0x01      //配网
