@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
@@ -18,7 +19,6 @@
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
-#include "freertos/event_groups.h"
 #include "Http.h"
 #include "ds18b20.h"
 #include "RS485_Read.h"
@@ -31,7 +31,7 @@ char current_net_ip[20]; //当前内网IP，用于上传
 static char *TAG = "HTTP";
 uint8_t six_time_count = 4;
 uint8_t post_status = POST_NOCOMMAND;
-bool need_send = 1;
+// bool need_send = 1;
 bool need_reactivate = 0;
 
 struct HTTP_STA
@@ -185,12 +185,6 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
     return ret;
 }
 
-// void http_suspends(void *arg)
-// {
-//     // ESP_LOGI(TAG, "HTTP_任务恢复");
-//     xTaskResumeFromISR(httpHandle);
-// }
-
 void http_get_task(void *pvParameters)
 {
     char recv_buf[1024];
@@ -209,10 +203,10 @@ void http_get_task(void *pvParameters)
 
         // ESP_LOGI("heap_size", "Free Heap:%d,%d", esp_get_free_heap_size(), heap_caps_get_free_size(MALLOC_CAP_8BIT));
         //需要把数据发送到平台
-        if (need_send == 1)
+
+        if (xSemaphoreTake(Binary_Http_Send, 1000 / portTICK_PERIOD_MS) == pdTRUE)
         {
             http_send_mes();
-            need_send = 0;
             six_time_count = 0;
         }
 
@@ -230,6 +224,8 @@ void http_get_task(void *pvParameters)
 
                 if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)
                 {
+                    RS485_Read();
+                    ds18b20_get_temp();
                     parse_objects_heart(strchr(recv_buf, '{'));
                     http_send_mes();
                 }
@@ -239,8 +235,7 @@ void http_get_task(void *pvParameters)
                 }
             }
         }
-
-        vTaskDelay(1000 / portTICK_PERIOD_MS); //1s
+        // vTaskDelay(1000 / portTICK_PERIOD_MS); //1s
     }
 }
 
@@ -278,10 +273,6 @@ int32_t http_activate(void)
 
 void http_send_mes(void)
 {
-
-    RS485_Read();
-    ds18b20_get_temp();
-
     int ret = 0;
 
     if (Led_Status != LED_STA_SEND) //解决两次发送间隔过短，导致LED一直闪烁
@@ -347,6 +338,7 @@ void http_send_mes(void)
 void initialise_http(void)
 {
     xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
+    Binary_Http_Send = xSemaphoreCreateBinary();
 
     while (http_activate() < 0) //激活
     {

@@ -4,13 +4,15 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
+
 #include "Switch.h"
 #include "Http.h"
 #include "Json_parse.h"
 #include "Led.h"
 #include "Bluetooth.h"
+#include "CSE7759B.h"
 
-static const char *TAG = "switch";
+// static const char *TAG = "switch";
 
 void Switch_Init(void)
 {
@@ -28,20 +30,39 @@ void Switch_Init(void)
 void Key_Switch_Relay(void)
 {
     mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
+    if (mqtt_json_s.mqtt_switch_status == 1)
+    {
+        START_7759B_READ();
+    }
+    else
+    {
+        STOP_7759B_READ();
+    }
+
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
-    need_send = 1;
+    // need_send = 1;
+    xSemaphoreGive(Binary_Http_Send);
 }
 
 void Mqtt_Switch_Relay(uint8_t set_value)
 {
     if (set_value >= 1 && set_value < 100)
     {
-        mqtt_json_s.mqtt_switch_status = 1;
+        if (mqtt_json_s.mqtt_switch_status != 1)
+        {
+            mqtt_json_s.mqtt_switch_status = 1;
+            START_7759B_READ();
+        }
     }
     else if (set_value == 0)
     {
-        mqtt_json_s.mqtt_switch_status = 0;
+        if (mqtt_json_s.mqtt_switch_status != 0)
+        {
+            mqtt_json_s.mqtt_switch_status = 0;
+            STOP_7759B_READ();
+        }
     }
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
-    need_send = 1;
+    // need_send = 1;
+    xSemaphoreGive(Binary_Http_Send);
 }

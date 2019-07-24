@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 
 #define FIRMWARE "SP1-V0.1.1"
 
@@ -31,9 +32,13 @@ int32_t http_activate(void);
 extern uint8_t post_status;
 uint8_t human_status;
 TaskHandle_t httpHandle;
+
+//需要发送的二值信号量
+SemaphoreHandle_t Binary_Http_Send;
+
 esp_timer_handle_t http_timer_suspend_p;
 // extern uint8_t Last_Led_Status;
-extern bool need_send;
+// extern bool need_send;
 extern bool need_reactivate;
 
 #endif

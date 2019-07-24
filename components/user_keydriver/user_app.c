@@ -77,6 +77,18 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
         case 3:
             // ESP_LOGI("short_pressed_cb", "trible press!!!\n");
             Task_key_num = 3;
+
+            uint8_t pcWriteBuffer[2048];
+
+            printf("free Heap:%d\n", esp_get_free_heap_size());
+            printf("=======================================================\r\n");
+            printf("任务名           任务状态   优先级      剩余栈   任务序号\r\n");
+            vTaskList((char *)&pcWriteBuffer);
+            printf("%s\r\n", pcWriteBuffer);
+            printf("\r\n任务名            运行计数              使用率\r\n");
+            vTaskGetRunTimeStats((char *)&pcWriteBuffer);
+            printf("%s\r\n", pcWriteBuffer);
+
             break;
 
         case 4:

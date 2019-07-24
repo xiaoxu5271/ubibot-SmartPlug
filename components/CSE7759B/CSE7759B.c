@@ -8,6 +8,7 @@
 #include "CSE7759B.h"
 
 #define TAG "CSE7759B"
+TaskHandle_t CSE7759B_Handle = NULL;
 
 #define UART1_TXD (UART_PIN_NO_CHANGE)
 #define UART1_RXD (GPIO_NUM_26)
@@ -36,8 +37,6 @@
 
 //7759B电能计数脉冲溢出时的数据
 #define ENERGY_FLOW_NUM 65536 //电量采集，电能溢出时的脉冲计数值
-
-TaskHandle_t CSE7759_Handle = NULL;
 
 typedef struct RuningInf_s
 {
@@ -572,31 +571,6 @@ void CSE7759B_Task(void *pvParameters)
     }
 }
 
-void CSE7759B_Init(void)
-{
-    //配置GPIO
-    gpio_config_t io_conf;
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.pin_bit_mask = 1 << UART1_RXD;
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 0;
-    gpio_config(&io_conf);
-
-    uart_config_t uart_config = {
-        .baud_rate = 4800,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
-
-    uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, UART1_TXD, UART1_RXD, UART1_RTS, UART1_CTS);
-    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
-
-    xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 4096, NULL, 5, NULL);
-}
-
 int8_t CSE7759B_Read(void)
 {
     uint8_t data_u1[BUF_SIZE];
@@ -642,4 +616,44 @@ int8_t CSE7759B_Read(void)
     bzero(data_u1, sizeof(data_u1));
     bzero(data_7759b, sizeof(data_7759b));
     return 1;
+}
+
+void CSE7759B_Init(void)
+{
+    //配置GPIO
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.pin_bit_mask = 1 << UART1_RXD;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+
+    uart_config_t uart_config = {
+        .baud_rate = 4800,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
+
+    uart_param_config(UART_NUM_1, &uart_config);
+    uart_set_pin(UART_NUM_1, UART1_TXD, UART1_RXD, UART1_RTS, UART1_CTS);
+    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
+
+    xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 4096, NULL, 5, &CSE7759B_Handle);
+    vTaskSuspend(CSE7759B_Handle);
+    if (mqtt_json_s.mqtt_switch_status == 0)
+    {
+        STOP_7759B_READ();
+    }
+}
+
+void STOP_7759B_READ(void)
+{
+    vTaskSuspend(CSE7759B_Handle);
+}
+
+void START_7759B_READ(void)
+{
+    vTaskResume(CSE7759B_Handle);
 }
