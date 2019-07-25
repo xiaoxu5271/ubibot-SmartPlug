@@ -204,37 +204,38 @@ void http_get_task(void *pvParameters)
         // ESP_LOGI("heap_size", "Free Heap:%d,%d", esp_get_free_heap_size(), heap_caps_get_free_size(MALLOC_CAP_8BIT));
         //需要把数据发送到平台
 
-        if (xSemaphoreTake(Binary_Http_Send, 1000 / portTICK_PERIOD_MS) == pdTRUE)
+        if (xSemaphoreTake(Binary_Http_Send, (fn_dp * 1000) / portTICK_PERIOD_MS) == pdTRUE)
         {
             http_send_mes();
-            six_time_count = 0;
+            continue;
+            // six_time_count = 0;
         }
 
-        if (need_reactivate == 1)
+        // if (need_reactivate == 1)
+        // {
+        //     need_reactivate = 0;
+        //     http_activate();
+        // }
+
+        // if (fn_dp > 0)
+        // {
+        //     if (six_time_count++ >= fn_dp - 1)
+        //     {
+        //         six_time_count = 0;
+
+        if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)
         {
-            need_reactivate = 0;
-            http_activate();
+            RS485_Read();
+            ds18b20_get_temp();
+            parse_objects_heart(strchr(recv_buf, '{'));
+            http_send_mes();
         }
-
-        if (fn_dp > 0)
+        else
         {
-            if (six_time_count++ >= fn_dp - 1)
-            {
-                six_time_count = 0;
-
-                if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)
-                {
-                    RS485_Read();
-                    ds18b20_get_temp();
-                    parse_objects_heart(strchr(recv_buf, '{'));
-                    http_send_mes();
-                }
-                else
-                {
-                    printf("hart recv 0!\r\n");
-                }
-            }
+            printf("hart recv 0!\r\n");
         }
+        //     }
+        // }
         // vTaskDelay(1000 / portTICK_PERIOD_MS); //1s
     }
 }

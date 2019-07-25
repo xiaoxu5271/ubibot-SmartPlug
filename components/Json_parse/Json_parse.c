@@ -178,6 +178,7 @@ esp_err_t parse_objects_bluetooth(char *blu_json_data)
     {
         ble_return = BLU_RESULT_SUCCESS;
         need_reactivate = 1;
+        http_activate();
     }
     else if (wifi_connect_sta == connect_N)
     {
@@ -457,6 +458,10 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
                     {
                         Mqtt_Switch_Relay(json_data_set_state->valueint);
                     }
+                    else if ((json_data_set_state = cJSON_GetObjectItem(json_data_string_parse, "set_state_plug1")) != NULL)
+                    {
+                        Mqtt_Switch_Relay(json_data_set_state->valueint);
+                    }
                 }
                 else
                 {
@@ -498,9 +503,9 @@ void create_http_json(creat_json *pCreat_json)
     wifi_ap_record_t wifidata;
     esp_wifi_sta_get_ap_info(&wifidata);
 
-    sprintf(mqtt_json_s.mqtt_etx_tem, "%4.2f", ext_tem);
-    sprintf(mqtt_json_s.mqtt_etx_hum, "%4.2f", ext_hum);
-    sprintf(mqtt_json_s.mqtt_DS18B20_TEM, "%4.2f", DS18B20_TEM);
+    snprintf(mqtt_json_s.mqtt_etx_tem, sizeof(mqtt_json_s.mqtt_etx_tem) - 1, "%4.2f", ext_tem);
+    snprintf(mqtt_json_s.mqtt_etx_hum, sizeof(mqtt_json_s.mqtt_etx_tem) - 1, "%4.2f", ext_hum);
+    snprintf(mqtt_json_s.mqtt_DS18B20_TEM, sizeof(mqtt_json_s.mqtt_etx_tem) - 1, "%4.2f", DS18B20_TEM);
 
     cJSON_AddItemToObject(root, "feeds", fe_body);
     cJSON_AddItemToArray(fe_body, next);
@@ -514,9 +519,9 @@ void create_http_json(creat_json *pCreat_json)
         cJSON_AddItemToObject(next, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
     }
     cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(wifidata.rssi));                //WIFI RSSI
-    cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_etx_tem));     //485温度
-    cJSON_AddItemToObject(next, "field8", cJSON_CreateString(mqtt_json_s.mqtt_etx_hum));     //485湿度
-    cJSON_AddItemToObject(next, "field9", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
+    cJSON_AddItemToObject(next, "field8", cJSON_CreateString(mqtt_json_s.mqtt_etx_tem));     //485温度
+    cJSON_AddItemToObject(next, "field9", cJSON_CreateString(mqtt_json_s.mqtt_etx_hum));     //485湿度
+    cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
 
     char *cjson_printunformat;
     cjson_printunformat = cJSON_PrintUnformatted(root);
