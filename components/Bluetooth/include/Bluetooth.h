@@ -23,8 +23,8 @@
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
 
-#define BLEOK    0x01
-#define BLEERR   0x00
+#define BLEOK 0x01
+#define BLEERR 0x00
 
 char ble_dev_pwd[16];
 
@@ -49,7 +49,7 @@ typedef struct blufi_beacon_s blufi_beacon_t;
 
 char SerialNum[17];
 char ProductId[33];
-char BleName[20];
+char BleName[64];
 char ApiKey[33];
 char ChannelId[17];
 

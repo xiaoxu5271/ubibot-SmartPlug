@@ -22,6 +22,7 @@
 #include "ota.h"
 #include "RS485_Read.h"
 #include "ds18b20.h"
+#include "RtcUsr.h"
 
 //metadata 参数
 unsigned long fn_dp = 60; //数据发送频率 默认60s
@@ -227,7 +228,8 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             printf("active:success\r\n");
 
             json_data_parse_time_value = cJSON_GetObjectItem(json_data_parse, "server_time");
-            Server_Timer_GET(json_data_parse_time_value->valuestring);
+            // Server_Timer_GET(json_data_parse_time_value->valuestring);
+            Check_Update_UTCtime(json_data_parse_time_value->valuestring);
         }
         else
         {
@@ -347,7 +349,8 @@ esp_err_t parse_objects_heart(char *json_data)
     else
     {
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "server_time");
-        Server_Timer_GET(json_data_parse_value->valuestring);
+        // Server_Timer_GET(json_data_parse_value->valuestring);
+        Check_Update_UTCtime(json_data_parse_value->valuestring);
         json_print = cJSON_Print(json_data_parse_value);
         printf("json_data_parse_value %s\n", json_print);
     }
@@ -499,7 +502,8 @@ void create_http_json(creat_json *pCreat_json)
     cJSON *next = cJSON_CreateObject();
     cJSON *fe_body = cJSON_CreateArray();
 
-    strncpy(http_json_c.http_time, Server_Timer_SEND(), 24);
+    // strncpy(http_json_c.http_time, Server_Timer_SEND(), 24);
+    Read_UTCtime(http_json_c.http_time, sizeof(http_json_c.http_time));
     wifi_ap_record_t wifidata;
     esp_wifi_sta_get_ap_info(&wifidata);
 

@@ -384,7 +384,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 bzero(BleName_N, sizeof(BleName_N));
                 bzero(BleName, sizeof(BleName));
                 strncpy(BleName_N, SerialNum, 5);
-                sprintf(BleName, "%s%s", "Ubibot-SP1-", BleName_N);
+                snprintf(BleName,sizeof(BleName), "%s%s", "Ubibot-SP1-", BleName_N);
                 esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(BleName);
                 if (set_dev_name_ret)
                 {

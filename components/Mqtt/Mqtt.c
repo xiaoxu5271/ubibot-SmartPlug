@@ -86,8 +86,8 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 
 void initialise_mqtt(void)
 {
-    char mqtt_pwd[41];
-    char mqtt_usr[17];
+    char mqtt_pwd[42];
+    char mqtt_usr[23];
 
     sprintf(mqtt_pwd, "%s%s%c", "api_key=", ApiKey, '\0');
     sprintf(mqtt_usr, "%s%s%c", "c_id=", ChannelId, '\0');

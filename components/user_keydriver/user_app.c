@@ -17,6 +17,7 @@
 #include "Mqtt.h"
 #include "ota.h"
 #include "Switch.h"
+#include "RtcUsr.h"
 
 /* 创建用户按键执行消息列队 */
 static xQueueHandle xQueue_user_key_app = NULL;
@@ -64,39 +65,22 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
         case 1:
             // ESP_LOGI("short_pressed_cb", "first press!!!\n");
             Task_key_num = 1;
-            // //切换继电器
-            // Key_Switch_Relay();
             break;
 
         case 2:
             // ESP_LOGI("short_pressed_cb", "double press!!!\n");
             Task_key_num = 2;
-            // vTask_view_Work();
             break;
 
         case 3:
             // ESP_LOGI("short_pressed_cb", "trible press!!!\n");
             Task_key_num = 3;
-
-            uint8_t pcWriteBuffer[2048];
-
-            printf("free Heap:%d\n", esp_get_free_heap_size());
-            printf("=======================================================\r\n");
-            printf("任务名           任务状态   优先级      剩余栈   任务序号\r\n");
-            vTaskList((char *)&pcWriteBuffer);
-            printf("%s\r\n", pcWriteBuffer);
-            printf("\r\n任务名            运行计数              使用率\r\n");
-            vTaskGetRunTimeStats((char *)&pcWriteBuffer);
-            printf("%s\r\n", pcWriteBuffer);
-
             break;
 
         case 4:
             // ESP_LOGI("short_pressed_cb", "quatary press!!!\n");
             Task_key_num = 4;
             break;
-            // case ....:
-            // break;
 
         default:
             break;
@@ -154,10 +138,17 @@ void user_key_cd_task(void *arg)
 
             case 2:
                 printf("2 clikc\n");
+
+                char utctime[21];
+                Read_UTCtime(utctime, sizeof(utctime));
+                printf("Read_UTCtime:%s \n", utctime);
+
                 break;
 
             case 3:
                 printf("3 clikc\n");
+                vTask_view_Work();
+
                 break;
 
             case 4:

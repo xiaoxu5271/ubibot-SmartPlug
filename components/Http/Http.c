@@ -283,7 +283,7 @@ void http_send_mes(void)
     Led_Status = LED_STA_SEND;
 
     char recv_buf[1024];
-    char build_po_url[256];
+    char build_po_url[512];
     char build_po_url_json[1024];
     char NET_NAME[35];
     char NET_MODE[16];
