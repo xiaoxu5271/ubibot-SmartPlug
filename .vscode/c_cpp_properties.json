@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "~/esp32/esp-idf/components/**"
+                "~/esp/esp-idf/components/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
