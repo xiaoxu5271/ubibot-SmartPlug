@@ -578,71 +578,29 @@ void CSE7759B_Task(void *pvParameters)
 
 int8_t CSE7759B_Read(void)
 {
-    uint8_t i = 0;
-    uint8_t data_u1 = 0,
-            last_data_u1 = 0;
     uint8_t data_7759b[24];
-    uint8_t check_ok_flag = 0;
 
-    while (1)
+    xQueueReceive(Soft_uart_evt_queue, &data_7759b, portMAX_DELAY);
+    //关闭串口读取中断
+    dis_uart_recv();
+    ESP_LOGD(TAG, "7759b=");
+    for (int i = 0; i < 24; i++)
     {
-        last_data_u1 = data_u1;
-        xQueueReceive(Soft_uart_evt_queue, &data_u1, portMAX_DELAY);
-        // ESP_LOGI("soft_uart", "%2x", data_u1);
-        if (check_ok_flag == 1)
-        {
-            data_7759b[i++] = data_u1;
-            if (i >= 24)
-            {
-                check_ok_flag = 0;
-                break;
-            }
-            continue;
-        }
-        if ((data_u1 == 0x5a) && (((last_data_u1 & 0xf0) == 0xf0) || (last_data_u1 == 0xaa) || (last_data_u1 == 0x55)))
-        {
-            data_7759b[i] = last_data_u1;
-            data_7759b[i++] = data_u1;
-            check_ok_flag = 1;
-            continue;
-        }
+        ESP_LOGD(TAG, "0x%02x ", data_7759b[i]);
     }
+    ESP_LOGD(TAG, "\n");
 
-    // ESP_LOGD(TAG, "7759b=");
-    // for (int i = 0; i < 24; i++)
-    // {
-    //     ESP_LOGD(TAG, "0x%02x ", data_7759b[i]);
-    // }
-    // ESP_LOGD(TAG, "\n");
-    // DealUartInf(data_7759b, 24); //处理7759B数据
+    if (data_7759b[1] == 0x5a)
+        DealUartInf(data_7759b, 24); //处理7759B数据
 
-    // else
-    // {
-    //     ESP_LOGE(TAG, "No CSE7759B Date！\n");
-    // }
-
-    // len1 = 0;
-    // len_7759_start = 0;
-    // bzero(data_u1, sizeof(data_u1));
     bzero(data_7759b, sizeof(data_7759b));
+    //打开串口读取中断
+    dis_uart_recv();
     return 1;
 }
 
 void CSE7759B_Init(void)
 {
-    // {
-    //     const uart_config_t uart_config = {
-    //         .baud_rate = 4800,
-    //         .data_bits = UART_DATA_8_BITS,
-    //         .parity = UART_PARITY_DISABLE,
-    //         .stop_bits = UART_STOP_BITS_1,
-    //         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
-
-    //     uart_param_config(UART_NUM_2, &uart_config);
-    //     uart_set_pin(UART_NUM_2, UART_PIN_NO_CHANGE, UART2_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    //     uart_driver_install(UART_NUM_2, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
-    // }
-
     soft_uart_init();
     xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 4096, NULL, 5, &CSE7759B_Handle);
     vTaskSuspend(CSE7759B_Handle);
