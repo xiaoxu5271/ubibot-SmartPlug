@@ -41,7 +41,10 @@ void Key_Switch_Relay(void)
 
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
     // need_send = 1;
-    xSemaphoreGive(Binary_Http_Send);
+    if (Binary_Http_Send != NULL)
+    {
+        xSemaphoreGive(Binary_Http_Send);
+    }
 }
 
 void Mqtt_Switch_Relay(uint8_t set_value)
@@ -64,5 +67,8 @@ void Mqtt_Switch_Relay(uint8_t set_value)
     }
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
     // need_send = 1;
-    xSemaphoreGive(Binary_Http_Send);
+    if (Binary_Http_Send != NULL)
+    {
+        xSemaphoreGive(Binary_Http_Send);
+    }
 }

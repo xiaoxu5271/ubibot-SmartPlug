@@ -23,7 +23,8 @@
 #include "ds18b20.h"
 #include "RS485_Read.h"
 
-SemaphoreHandle_t xMutex_Http_Send;
+SemaphoreHandle_t xMutex_Http_Send = NULL;
+SemaphoreHandle_t Binary_Http_Send = NULL;
 
 // extern uint8_t data_read[34];
 char current_net_ip[20]; //当前内网IP，用于上传

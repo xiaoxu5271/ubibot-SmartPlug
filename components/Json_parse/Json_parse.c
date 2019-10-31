@@ -424,8 +424,10 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
         strncpy(mqtt_json_s.mqtt_string, json_data_string_parse->valuestring, strlen(json_data_string_parse->valuestring));
 
         post_status = POST_NORMAL;
-
-        xSemaphoreGive(Binary_Http_Send);
+        if (Binary_Http_Send != NULL)
+        {
+            xSemaphoreGive(Binary_Http_Send);
+        }
         // need_send = 1;
         json_data_string_parse = cJSON_Parse(json_data_string_parse->valuestring); //将command_string再次构建成json格式，以便二次解析
         if (json_data_string_parse != NULL)

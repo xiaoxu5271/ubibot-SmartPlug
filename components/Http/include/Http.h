@@ -34,7 +34,7 @@ uint8_t human_status;
 TaskHandle_t httpHandle;
 
 //需要发送的二值信号量
-SemaphoreHandle_t Binary_Http_Send;
+extern SemaphoreHandle_t Binary_Http_Send;
 
 esp_timer_handle_t http_timer_suspend_p;
 // extern uint8_t Last_Led_Status;
