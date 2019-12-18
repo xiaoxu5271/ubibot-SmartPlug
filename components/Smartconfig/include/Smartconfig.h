@@ -18,14 +18,15 @@ void stop_user_wifi(void);
 extern uint8_t wifi_connect_sta; //wifi连接状态
 extern uint8_t wifi_work_sta;    //wifi开启状态
 extern uint8_t start_AP;
-extern uint8_t Wifi_ErrCode; //7：密码错误8：未找到指定wifi
+extern uint8_t bl_flag; //蓝牙配网模式
+
+extern uint8_t Wifi_ErrCode; //
 
 static const int CONNECTED_BIT = BIT0;
 static const int AP_STACONNECTED_BIT = BIT0;
 extern TaskHandle_t my_tcp_connect_Handle;
 extern EventGroupHandle_t wifi_event_group;
 extern EventGroupHandle_t tcp_event_group;
-
 
 #define WIFISTATUS_CONNET 0X01
 #define WIFISTATUS_DISCONNET 0X00

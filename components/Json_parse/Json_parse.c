@@ -126,7 +126,7 @@ int read_bluetooth(void)
     {
         return 0;
     }
-    uint8_t ret = parse_objects_bluetooth((char *)bluetooth_sta);
+    int32_t ret = parse_objects_bluetooth((char *)bluetooth_sta);
     if ((ret == BLU_PWD_REFUSE) || (ret == BLU_JSON_FORMAT_ERROR))
     {
         return 0;
@@ -134,7 +134,7 @@ int read_bluetooth(void)
     return 1;
 }
 
-esp_err_t parse_objects_bluetooth(char *blu_json_data)
+int32_t parse_objects_bluetooth(char *blu_json_data)
 {
     cJSON *cjson_blu_data_parse = NULL;
     cJSON *cjson_blu_data_parse_command = NULL;
@@ -143,20 +143,11 @@ esp_err_t parse_objects_bluetooth(char *blu_json_data)
     // cJSON *cjson_blu_data_parse_ob = NULL;
     //cJSON *cjson_blu_data_parse_devicepwd = NULL;
 
-    int ble_return = 0;
-
     printf("start_ble_parse_json\r\n");
     if (blu_json_data[0] != '{')
     {
         printf("blu_json_data Json Formatting error\n");
         return 0;
-    }
-
-    //数据包包含NULL则直接返回error
-    if (strstr(blu_json_data, "null") != NULL) //需要解析的字符串内含有null
-    {
-        printf("there is null in blu data\r\n");
-        return BLU_PWD_REFUSE;
     }
 
     cjson_blu_data_parse = cJSON_Parse(blu_json_data);
@@ -173,21 +164,18 @@ esp_err_t parse_objects_bluetooth(char *blu_json_data)
 
         ParseTcpUartCmd(cJSON_Print(cjson_blu_data_parse));
     }
+    cJSON_Delete(cjson_blu_data_parse);
 
-    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, 8000 / portTICK_RATE_MS);
+    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS); //10S后仍然未连接上WIFI
     if (wifi_connect_sta == connect_Y)
     {
-        ble_return = BLU_RESULT_SUCCESS;
         need_reactivate = 1;
-        http_activate();
+        return http_activate();
     }
-    else if (wifi_connect_sta == connect_N)
+    else
     {
-        ble_return = BLU_WIFI_ERR;
+        return BLU_WIFI_ERR;
     }
-
-    cJSON_Delete(cjson_blu_data_parse);
-    return ble_return;
 }
 
 //解析激活返回数据
@@ -214,7 +202,6 @@ esp_err_t parse_objects_http_active(char *http_json_data)
     json_data_parse = cJSON_Parse(http_json_data);
     if (json_data_parse == NULL)
     {
-
         printf("Json Formatting error3\n");
 
         cJSON_Delete(json_data_parse);

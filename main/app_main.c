@@ -100,7 +100,7 @@ void app_main(void)
 		}
 	}
 
-	ble_app_start();
+	// ble_app_start();
 	init_wifi();
 
 	xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,

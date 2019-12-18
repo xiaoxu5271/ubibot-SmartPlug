@@ -29,6 +29,7 @@
 char ble_dev_pwd[16];
 
 void ble_app_start(void);
+void ble_app_stop(void);
 void gap_init(void);
 void gap_start(void);
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);

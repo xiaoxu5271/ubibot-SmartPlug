@@ -254,7 +254,7 @@ int32_t http_activate(void)
 
     if (http_send_buff(build_http, 256, recv_buf, 1024) < 0)
     {
-        return -1;
+        return 101;
     }
     else
     {
@@ -264,7 +264,7 @@ int32_t http_activate(void)
         }
         else
         {
-            return -1;
+            return 102;
         }
     }
 

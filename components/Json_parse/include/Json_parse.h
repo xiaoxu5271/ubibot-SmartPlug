@@ -4,26 +4,26 @@
 #include "esp_err.h"
 
 esp_err_t parse_objects_http_active(char *http_json_data);
-esp_err_t parse_objects_bluetooth(char *blu_json_data);
+int32_t parse_objects_bluetooth(char *blu_json_data);
 esp_err_t parse_objects_mqtt(char *json_data);
 esp_err_t parse_objects_heart(char *json_data);
 esp_err_t parse_objects_http_respond(char *http_json_data);
 
 esp_err_t creat_object(void);
 
-#define WORK_INIT 0X00       //³õÊ¼»¯
-#define WORK_AUTO 0x01       //Æ½Ì¨×Ô¶¯Ä£Ê½
-#define WORK_HAND 0x02       //ÍøÒ³°æÊÖ¶¯Ä£Ê½
-#define WORK_HANDTOAUTO 0x03 //ÓÃÓÚ×Ô¶¯»Ø¸´Ê±Ö´ĞĞÒ»´Î×Ô¶¯¿ØÖÆÖ¸Áî
-#define WORK_LOCAL 0x04      //±¾µØ¼ÆËã¿ØÖÆÄ£Ê½
-#define WORK_WAITLOCAL 0x05  //±¾µØ¼ÆËãµÈ´ıÄ£Ê½£¨ÓÃÓÚ×´Ì¬»ú¿ÕÏĞ×´Ì¬£©
-#define WORK_WALLKEY 0X06    //±¾µØÇ½±Ú¿ª¹Ø¿ØÖÆÄ£Ê½
-#define WORK_PROTECT 0X07    //·çËÙºÍ½áËª±£»¤
-#define WORK_FIREINIT 0X08   //¿ª»ú¾Í»ğÔÖ
-#define WORK_FIRE 0x09       //»ğÔÖ±£»¤×´Ì¬
+#define WORK_INIT 0X00       //åˆå§‹åŒ–
+#define WORK_AUTO 0x01       //å¹³å°è‡ªåŠ¨æ¨¡å¼
+#define WORK_HAND 0x02       //ç½‘é¡µç‰ˆæ‰‹åŠ¨æ¨¡å¼
+#define WORK_HANDTOAUTO 0x03 //ç”¨äºè‡ªåŠ¨å›å¤æ—¶æ‰§è¡Œä¸€æ¬¡è‡ªåŠ¨æ§åˆ¶æŒ‡ä»¤
+#define WORK_LOCAL 0x04      //æœ¬åœ°è®¡ç®—æ§åˆ¶æ¨¡å¼
+#define WORK_WAITLOCAL 0x05  //æœ¬åœ°è®¡ç®—ç­‰å¾…æ¨¡å¼ï¼ˆç”¨äºçŠ¶æ€æœºç©ºé—²çŠ¶æ€ï¼‰
+#define WORK_WALLKEY 0X06    //æœ¬åœ°å¢™å£å¼€å…³æ§åˆ¶æ¨¡å¼
+#define WORK_PROTECT 0X07    //é£é€Ÿå’Œç»“éœœä¿æŠ¤
+#define WORK_FIREINIT 0X08   //å¼€æœºå°±ç«ç¾
+#define WORK_FIRE 0x09       //ç«ç¾ä¿æŠ¤çŠ¶æ€
 
-#define PROTECT_ON 0X01  //µ±Ç°ÓĞ·çËÙµÈÆ½Ì¨±£»¤×´Ì¬
-#define PROTECT_OFF 0X00 //µ±Ç°ÎŞ·çËÙµÈÆ½Ì¨±£»¤×´Ì¬
+#define PROTECT_ON 0X01  //å½“å‰æœ‰é£é€Ÿç­‰å¹³å°ä¿æŠ¤çŠ¶æ€
+#define PROTECT_OFF 0X00 //å½“å‰æ— é£é€Ÿç­‰å¹³å°ä¿æŠ¤çŠ¶æ€
 
 #define MAX_AUTO_CTL_TIME (5 * 60) //5min
 //#define MAX_WALLKEY_TIME    (4*60*60)  //4h
@@ -40,7 +40,7 @@ struct
     char mqtt_command_id[32];
     char mqtt_string[256];
     char mqtt_Rssi[8];
-    char mqtt_ota_url[128]; //OTAÉı¼¶µØÖ·
+    char mqtt_ota_url[128]; //OTAå‡çº§åœ°å€
     char mqtt_etx_tem[8];
     char mqtt_etx_hum[8];
     char mqtt_DS18B20_TEM[8];
@@ -98,11 +98,11 @@ struct
     int8_t Switch;
 } ob_blu_json;
 
-/************metadata ²ÎÊı***********/
-extern unsigned long fn_dp; //Êı¾İ·¢ËÍÆµÂÊ
-extern unsigned long fn_th; //ÎÂÊª¶ÈÆµÂÊ
-extern uint8_t cg_data_led; //·¢ËÍÊı¾İ LED×´Ì¬ 0¹Ø±Õ£¬1´ò¿ª
-extern uint8_t net_mode;    //ÉÏÍøÄ£Ê½Ñ¡Ôñ 0£º×Ô¶¯Ä£Ê½ 1£ºlanÄ£Ê½ 2£ºwifiÄ£Ê½
+/************metadata å‚æ•°***********/
+extern unsigned long fn_dp; //æ•°æ®å‘é€é¢‘ç‡
+extern unsigned long fn_th; //æ¸©æ¹¿åº¦é¢‘ç‡
+extern uint8_t cg_data_led; //å‘é€æ•°æ® LEDçŠ¶æ€ 0å…³é—­ï¼Œ1æ‰“å¼€
+extern uint8_t net_mode;    //ä¸Šç½‘æ¨¡å¼é€‰æ‹© 0ï¼šè‡ªåŠ¨æ¨¡å¼ 1ï¼šlanæ¨¡å¼ 2ï¼šwifiæ¨¡å¼
 /************************************/
 
 int read_bluetooth(void);

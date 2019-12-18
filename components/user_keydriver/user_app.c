@@ -156,7 +156,8 @@ void user_key_cd_task(void *arg)
                 break;
 
             case 5:
-                printf("5 clikc\n");
+                ble_app_start();
+                // printf("5 clikc\n");
                 break;
 
             default:

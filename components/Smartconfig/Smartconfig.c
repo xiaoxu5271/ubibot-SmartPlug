@@ -31,6 +31,7 @@ wifi_config_t s_staconf;
 uint8_t wifi_connect_sta = connect_N;
 uint8_t wifi_work_sta = turn_on;
 uint8_t start_AP = 0;
+uint8_t bl_flag = 0; //蓝牙配网模式
 uint8_t Wifi_ErrCode = 0;
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
@@ -51,16 +52,21 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
         ESP_LOGI(TAG, "断网");
         Wifi_ErrCode = event->event_info.disconnected.reason;
+        if (Wifi_ErrCode >= 1 && Wifi_ErrCode <= 24) //适配APP，
+        {
+            Wifi_ErrCode += 300;
+        }
+
         wifi_connect_sta = connect_N;
-        if (start_AP != 1) //判断是不是要进入AP模式
+        if (start_AP == 1 || bl_flag == 1) //判断是不是要进入配网模式
+        {
+            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        }
+        else
         {
             Led_Status = LED_STA_WIFIERR; //断网
             xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
             esp_wifi_connect();
-        }
-        else
-        {
-            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         }
         break;
 
