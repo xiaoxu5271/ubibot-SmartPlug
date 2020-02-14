@@ -22,6 +22,7 @@
 #include "Http.h"
 #include "ds18b20.h"
 #include "RS485_Read.h"
+#include "Mqtt.h"
 
 SemaphoreHandle_t xMutex_Http_Send = NULL;
 SemaphoreHandle_t Binary_Http_Send = NULL;
@@ -288,6 +289,7 @@ void http_send_mes(void)
     char build_po_url_json[1024];
     char NET_NAME[35];
     char NET_MODE[16];
+    int msg_id;
 
     // bzero(current_net_ip, sizeof(current_net_ip)); //有线网断开，不上传有线网IP
     bzero(NET_NAME, sizeof(NET_NAME));
@@ -299,6 +301,8 @@ void http_send_mes(void)
     //pCreat_json1->creat_json_b=malloc(1024);
     //创建POST的json格式
     create_http_json(pCreat_json1);
+    msg_id = esp_mqtt_client_publish(client, topic_p, pCreat_json1->creat_json_b, 0, 1, 0);
+    ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
     if (post_status == POST_NOCOMMAND) //无commID
     {
