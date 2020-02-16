@@ -55,12 +55,12 @@ void app_main(void)
 {
 	// nvs_flash_erase();
 	nvs_flash_init();
-
+	Uart_Init();
 	Led_Init();
 	RS485_Init();
 	CSE7759B_Init();
 	E2prom_Init();
-	Uart0_Init();
+
 	Switch_Init();
 	user_app_key_init();
 

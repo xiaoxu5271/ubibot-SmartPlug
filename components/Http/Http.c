@@ -227,7 +227,7 @@ void http_get_task(void *pvParameters)
 
         if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)
         {
-            RS485_Read();
+            // RS485_Read();
             ds18b20_get_temp();
             parse_objects_heart(strchr(recv_buf, '{'));
             http_send_mes();

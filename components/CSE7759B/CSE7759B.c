@@ -7,6 +7,7 @@
 #include "Json_parse.h"
 #include "CSE7759B.h"
 #include "soft_uart.h"
+#include "Uart0.h"
 
 #define TAG "CSE7759B"
 TaskHandle_t CSE7759B_Handle = NULL;
@@ -567,41 +568,67 @@ void CSE7759B_Task(void *pvParameters)
 {
     while (1)
     {
-        en_uart_recv();
+        // en_uart_recv();
         ESP_LOGI("TEST", "en_uart_recv");
         CSE7759B_Read();
-        dis_uart_recv();
-        ESP_LOGI("TEST", "dis_uart_recv");
+        // dis_uart_recv();
+        // ESP_LOGI("TEST", "dis_uart_recv");
         vTaskDelay(1000 / portTICK_RATE_MS);
     }
 }
 
 int8_t CSE7759B_Read(void)
 {
+    uint8_t data_u1[BUF_SIZE];
     uint8_t data_7759b[24];
+    int len_7759_start = 0;
 
-    xQueueReceive(Soft_uart_evt_queue, &data_7759b, portMAX_DELAY);
-    //关闭串口读取中断
-    dis_uart_recv();
-    ESP_LOGD(TAG, "7759b=");
-    for (int i = 0; i < 24; i++)
+    sw_uart2(uart2_cse);
+    int len1 = uart_read_bytes(UART_NUM_2, data_u1, BUF_SIZE, 150 / portTICK_RATE_MS);
+    xSemaphoreGive(xMutex_uart2_sw);
+
+    if (len1 != 0) //读取到数据
     {
-        ESP_LOGD(TAG, "0x%02x ", data_7759b[i]);
-    }
-    ESP_LOGD(TAG, "\n");
+        // ESP_LOGD(TAG,"CSE7759B_Read len1 = %d\n", len1);
+        //查找数据头
+        for (int i = 0; i < len1; i++)
+        {
+            if ((data_u1[i] == 0x5a) && (((data_u1[i - 1] & 0xf0) == 0xf0) || (data_u1[i - 1] == 0xaa) || (data_u1[i - 1] == 0x55)))
+            {
+                len_7759_start = i - 1;
+                break;
+            }
+        }
 
-    if (data_7759b[1] == 0x5a)
+        //取得24byte计量数据
+        for (int i = 0; i < 24; i++)
+        {
+            data_7759b[i] = data_u1[len_7759_start + i];
+        }
+
+        ESP_LOGI(TAG, "7759b=");
+        for (int i = 0; i < 24; i++)
+        {
+            ESP_LOGI(TAG, "0x%02x ", data_7759b[i]);
+        }
+        ESP_LOGI(TAG, "\n");
         DealUartInf(data_7759b, 24); //处理7759B数据
+    }
+    else
+    {
+        // ESP_LOGE(TAG, "No CSE7759B Date！\n");
+    }
 
+    len1 = 0;
+    len_7759_start = 0;
+    bzero(data_u1, sizeof(data_u1));
     bzero(data_7759b, sizeof(data_7759b));
-    //打开串口读取中断
-    dis_uart_recv();
     return 1;
 }
 
 void CSE7759B_Init(void)
 {
-    soft_uart_init();
+    // soft_uart_init();
     xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 4096, NULL, 5, &CSE7759B_Handle);
     vTaskSuspend(CSE7759B_Handle);
     if (mqtt_json_s.mqtt_switch_status == 0)
