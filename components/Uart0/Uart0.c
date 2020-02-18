@@ -77,7 +77,7 @@ void sw_uart2(uint8_t uart2_mode)
     }
     else if (uart2_mode == uart2_cse)
     {
-        gpio_set_level(UART2_SW, 1); //RS485输出模式
+        gpio_set_level(UART2_SW, 1); //电能输出模式
         uart_flush(UART_NUM_2);
         uart_flush_input(UART_NUM_2);
         uart_set_baudrate(UART_NUM_2, 4800);

@@ -3,7 +3,11 @@
 #ifndef _7759_H_
 #define _7759_H_
 
-extern int8_t CSE7759B_Read(void);
+extern bool CSE_Status;
+extern bool CSE_Energy_Status;
+
+extern int8_t
+CSE7759B_Read(void);
 
 void STOP_7759B_READ(void);
 void START_7759B_READ(void);

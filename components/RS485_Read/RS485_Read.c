@@ -20,6 +20,7 @@
 #define BUF_SIZE 128
 
 float ext_tem = 0.0, ext_hum = 0.0;
+bool RS485_status = false;
 
 char wind_modbus_send_data[] = {0x20, 0x04, 0x00, 0x06, 0x00, 0x01, 0xd7, 0x7a};    //发送查询风速指令
 char tem_hum_modbus_send_data[] = {0xC1, 0x03, 0x00, 0x00, 0x00, 0x02, 0xD5, 0x0B}; //发送 查询外接空气温湿度探头
@@ -86,20 +87,24 @@ void RS485_Read(void)
                 ext_tem = ((data_u2[3] << 8) + data_u2[4]) * 0.1;
                 ext_hum = ((data_u2[5] << 8) + data_u2[6]) * 0.1;
                 ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
+                RS485_status = true;
             }
             else
             {
+                RS485_status = false;
                 ESP_LOGE(TAG, "485 add or cmd error\n");
             }
         }
         else
         {
+            RS485_status = false;
             ESP_LOGE(TAG, "485 CRC error\n");
         }
         len2 = 0;
     }
     else
     {
+        RS485_status = false;
         ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
     }
 }

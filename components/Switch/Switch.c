@@ -32,11 +32,11 @@ void Key_Switch_Relay(void)
     mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
     if (mqtt_json_s.mqtt_switch_status == 1)
     {
-        START_7759B_READ();
+        // START_7759B_READ();
     }
     else
     {
-        STOP_7759B_READ();
+        // STOP_7759B_READ();
     }
 
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
@@ -54,7 +54,7 @@ void Mqtt_Switch_Relay(uint8_t set_value)
         if (mqtt_json_s.mqtt_switch_status != 1)
         {
             mqtt_json_s.mqtt_switch_status = 1;
-            START_7759B_READ();
+            // START_7759B_READ();
         }
     }
     else if (set_value == 0)
@@ -62,7 +62,7 @@ void Mqtt_Switch_Relay(uint8_t set_value)
         if (mqtt_json_s.mqtt_switch_status != 0)
         {
             mqtt_json_s.mqtt_switch_status = 0;
-            STOP_7759B_READ();
+            // STOP_7759B_READ();
         }
     }
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);

@@ -17,7 +17,7 @@ TaskHandle_t CSE7759B_Handle = NULL;
 #define UART1_RTS (UART_PIN_NO_CHANGE)
 #define UART1_CTS (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE 128
+#define BUF_SIZE 50
 //static const char *TAG = "CSE7759b";
 
 #define SAMPLE_RESISTANCE_MR 1 //使用的采样锰铜电阻mR值
@@ -40,6 +40,9 @@ TaskHandle_t CSE7759B_Handle = NULL;
 //7759B电能计数脉冲溢出时的数据
 #define ENERGY_FLOW_NUM 65536 //电量采集，电能溢出时的脉冲计数值
 
+#define CSE_READ_CYCLE 10   //读取电量信息周期，单位S
+#define CSE_ENERGY_CYCLE 60 //电量统计上传周期，单位min
+
 typedef struct RuningInf_s
 {
     unsigned short voltage;     //当前电压值，单位为0.1V
@@ -55,6 +58,9 @@ typedef struct RuningInf_s
 } RuningInf_t;
 
 RuningInf_t runingInf;
+
+bool CSE_Status = false;
+bool CSE_Energy_Status = false;
 
 //获取电压、电流、功率的有限数据
 unsigned long getVIPvalue(unsigned long *arr) //更新电压、电流、功率的列表
@@ -145,17 +151,24 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 
     unsigned int energy_cnt = 0;
     unsigned char energyFlowFlag = 0;
-    unsigned long energy = 0; //累计用电量
+    // unsigned long energy = 0; //累计用电量
 
     startFlag = inDataBuffer[UART_IND_HD];
+
+    voltage_k = ((inDataBuffer[UART_IND_VK] << 16) | (inDataBuffer[UART_IND_VK + 1] << 8) | (inDataBuffer[UART_IND_VK + 2]));     //电压系数
+    voltage_t = ((inDataBuffer[UART_IND_VT] << 16) | (inDataBuffer[UART_IND_VT + 1] << 8) | (inDataBuffer[UART_IND_VT + 2]));     //电压周期
+    electricity_k = ((inDataBuffer[UART_IND_IK] << 16) | (inDataBuffer[UART_IND_IK + 1] << 8) | (inDataBuffer[UART_IND_IK + 2])); //电流系数
+    electricity_t = ((inDataBuffer[UART_IND_IT] << 16) | (inDataBuffer[UART_IND_IT + 1] << 8) | (inDataBuffer[UART_IND_IT + 2])); //电流周期
+    power_k = ((inDataBuffer[UART_IND_PK] << 16) | (inDataBuffer[UART_IND_PK + 1] << 8) | (inDataBuffer[UART_IND_PK + 2]));       //功率系数
+    power_t = ((inDataBuffer[UART_IND_PT] << 16) | (inDataBuffer[UART_IND_PT + 1] << 8) | (inDataBuffer[UART_IND_PT + 2]));       //功率周期
+    // ESP_LOGI(TAG, "voltage_k=%ld,electricity_k=%ld,power_k=%ld", voltage_k, electricity_k, power_k);
+
     switch (startFlag)
     {
     case 0x55:
         if ((inDataBuffer[UART_IND_FG] & 0x40) == 0x40)
-        {                                                                                                                             //获取当前电压标致，为1时说明电压检测OK
-            voltage_k = ((inDataBuffer[UART_IND_VK] << 16) | (inDataBuffer[UART_IND_VK + 1] << 8) | (inDataBuffer[UART_IND_VK + 2])); //电压系数
-            voltage_t = ((inDataBuffer[UART_IND_VT] << 16) | (inDataBuffer[UART_IND_VT + 1] << 8) | (inDataBuffer[UART_IND_VT + 2])); //电压周期
-
+        {
+            //获取当前电压标致，为1时说明电压检测OK
             if (isUpdataNewData(voltage_a, voltage_t))
             {
                 updataVIPvalue(voltage_a, voltage_t);
@@ -183,18 +196,15 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 voltage = voltage * 10;                //电压mV值
             }
             ESP_LOGD(TAG, "11Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
-            mqtt_json_s.mqtt_Voltage = voltage / 1000;
+            // mqtt_json_s.mqtt_Voltage = voltage / 1000;
         }
         else
         {
-            ESP_LOGD(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
+            ESP_LOGE(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
         }
 
         if ((inDataBuffer[UART_IND_FG] & 0x20) == 0x20)
         {
-            electricity_k = ((inDataBuffer[UART_IND_IK] << 16) | (inDataBuffer[UART_IND_IK + 1] << 8) | (inDataBuffer[UART_IND_IK + 2])); //电流系数
-            electricity_t = ((inDataBuffer[UART_IND_IT] << 16) | (inDataBuffer[UART_IND_IT + 1] << 8) | (inDataBuffer[UART_IND_IT + 2])); //电流周期
-
             if (isUpdataNewData(electricity_a, electricity_t))
             {
                 updataVIPvalue(electricity_a, electricity_t);
@@ -228,22 +238,19 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 #endif
             }
             ESP_LOGD(TAG, "11Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
-            mqtt_json_s.mqtt_Current = electricity / 1000.0;
+            // mqtt_json_s.mqtt_Current = electricity / 1000.0;
         }
         else
         {
-            ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
+            ESP_LOGE(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
         }
 
         if ((inDataBuffer[UART_IND_FG] & 0x10) == 0x10)
         {
             powerNewFlag = 0;
-            power_k = ((inDataBuffer[UART_IND_PK] << 16) | (inDataBuffer[UART_IND_PK + 1] << 8) | (inDataBuffer[UART_IND_PK + 2])); //功率系数
-            power_t = ((inDataBuffer[UART_IND_PT] << 16) | (inDataBuffer[UART_IND_PT + 1] << 8) | (inDataBuffer[UART_IND_PT + 2])); //功率周期
-
             //防止 0 做除数
-            if (power_k == 0 || power_t == 0)
-                return -1;
+            // if (power_k == 0 || power_t == 0)
+            //     return -1;
 
             if (isUpdataNewData(power_a, power_t))
             {
@@ -278,12 +285,10 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 #endif
             }
             ESP_LOGD(TAG, "11Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
-            mqtt_json_s.mqtt_Power = power / 1000.0;
+            // mqtt_json_s.mqtt_Power = power / 1000.0;
         }
         else if (powerNewFlag == 0)
         {
-            power_k = ((inDataBuffer[UART_IND_PK] << 16) | (inDataBuffer[UART_IND_PK + 1] << 8) | (inDataBuffer[UART_IND_PK + 2])); //功率系数
-            power_t = ((inDataBuffer[UART_IND_PT] << 16) | (inDataBuffer[UART_IND_PT + 1] << 8) | (inDataBuffer[UART_IND_PT + 2])); //功率周期
 
             if (isUpdataNewData(power_a, power_t))
             {
@@ -315,7 +320,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 #endif
             }
             ESP_LOGD(TAG, "22Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
-            mqtt_json_s.mqtt_Power = power / 1000.0;
+            // mqtt_json_s.mqtt_Power = power / 1000.0;
         }
 
         energyFlowFlag = (inDataBuffer[UART_IND_FG] >> 7);                                              //获取当前电能计数溢出标致
@@ -337,8 +342,8 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         runingInf.energy += (energy_cnt * 10); //电能个数累加时扩大10倍，计算电能是除数扩大10倍，保证计算精度
 
         runingInf.energyUnit = 0xD693A400 >> 1;
-        if (power_k == 0)
-            return -1;
+        // if (power_k == 0)
+        //     return -1;
         runingInf.energyUnit /= (power_k >> 1); //1mR采样电阻0.001度电对应的脉冲个数
 
 #if (SAMPLE_RESISTANCE_MR == 1)
@@ -350,27 +355,34 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         runingInf.energyUnit = runingInf.energyUnit * 10; //0.001度电对应的脉冲个数(计算个数时放大了10倍，所以在这里也要放大10倍)
 
         //电能使用量
-        energy = runingInf.energy / runingInf.energyUnit; //单位是0.001度
-        mqtt_json_s.mqtt_Energy = energy / 1000.0;        //单位是度
-        ESP_LOGD(TAG, "energy=%ld\n", energy);
+        // energy = runingInf.energy / runingInf.energyUnit; //单位是0.001度
+        // mqtt_json_s.mqtt_Energy = energy / 1000.0;        //单位是度
+        // ESP_LOGD(TAG, "energy=%ld\n", energy);
         break;
 
     case 0xAA:
         //芯片未校准
-        ESP_LOGD(TAG, "CSE7759B not check\r\n");
+        CSE_Status = false;
+        ESP_LOGE(TAG, "CSE7759B not check\r\n");
+        return -1;
         break;
 
     default:
         if ((startFlag & 0xF1) == 0xF1)
-        { //存储区异常，芯片坏了
-            //芯片坏掉，反馈服务器
-            ESP_LOGD(TAG, "CSE7759B broken\r\n");
+        {
+            //存储区异常，芯片坏了
+            CSE_Status = false;
+            ESP_LOGE(TAG, "CSE7759B broken\r\n");
+            return -1;
         }
 
         if ((startFlag & 0xF2) == 0xF2)
-        {                        //功率异常
+        {
+            //功率异常,电流设置为0
             runingInf.power = 0; //获取到的功率是以0.1W为单位
             power = 0;
+            runingInf.electricity = 0; //获取到的电流以0.01A为单位
+            electricity = 0;
             ESP_LOGD(TAG, "Power Error\r\n");
         }
         else
@@ -378,8 +390,6 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
             if ((inDataBuffer[UART_IND_FG] & 0x10) == 0x10)
             {
                 powerNewFlag = 0;
-                power_k = ((inDataBuffer[UART_IND_PK] << 16) | (inDataBuffer[UART_IND_PK + 1] << 8) | (inDataBuffer[UART_IND_PK + 2])); //功率系数
-                power_t = ((inDataBuffer[UART_IND_PT] << 16) | (inDataBuffer[UART_IND_PT + 1] << 8) | (inDataBuffer[UART_IND_PT + 2])); //功率周期
 
                 if (isUpdataNewData(power_a, power_t))
                 {
@@ -414,12 +424,10 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 #endif
                 }
                 ESP_LOGD(TAG, "33Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
-                mqtt_json_s.mqtt_Power = power / 1000.0;
+                // mqtt_json_s.mqtt_Power = power / 1000.0;
             }
             else if (powerNewFlag == 0)
             {
-                power_k = ((inDataBuffer[UART_IND_PK] << 16) | (inDataBuffer[UART_IND_PK + 1] << 8) | (inDataBuffer[UART_IND_PK + 2])); //功率系数
-                power_t = ((inDataBuffer[UART_IND_PT] << 16) | (inDataBuffer[UART_IND_PT + 1] << 8) | (inDataBuffer[UART_IND_PT + 2])); //功率周期
 
                 if (isUpdataNewData(power_a, power_t))
                 {
@@ -451,7 +459,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 #endif
                 }
                 ESP_LOGD(TAG, "44Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
-                mqtt_json_s.mqtt_Power = power / 1000.0;
+                // mqtt_json_s.mqtt_Power = power / 1000.0;
             }
         }
 
@@ -460,12 +468,10 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
             runingInf.electricity = 0; //获取到的电流以0.01A为单位
             electricity = 0;
         }
-        else
+        else if ((startFlag & 0xF2) != 0xF2) //如果功率异常，但电流正常，则判断电流为0
         {
             if ((inDataBuffer[UART_IND_FG] & 0x20) == 0x20)
             {
-                electricity_k = ((inDataBuffer[UART_IND_IK] << 16) | (inDataBuffer[UART_IND_IK + 1] << 8) | (inDataBuffer[UART_IND_IK + 2])); //电流系数
-                electricity_t = ((inDataBuffer[UART_IND_IT] << 16) | (inDataBuffer[UART_IND_IT + 1] << 8) | (inDataBuffer[UART_IND_IT + 2])); //电流周期
 
                 if (isUpdataNewData(electricity_a, electricity_t))
                 {
@@ -500,7 +506,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 #endif
                 }
                 ESP_LOGD(TAG, "22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
-                mqtt_json_s.mqtt_Current = electricity / 1000.0;
+                // mqtt_json_s.mqtt_Current = electricity / 1000.0;
             }
             else
             {
@@ -516,9 +522,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         else
         {
             if ((inDataBuffer[UART_IND_FG] & 0x40) == 0x40)
-            {                                                                                                                             //获取当前电压标致，为1时说明电压检测OK
-                voltage_k = ((inDataBuffer[UART_IND_VK] << 16) | (inDataBuffer[UART_IND_VK + 1] << 8) | (inDataBuffer[UART_IND_VK + 2])); //电压系数
-                voltage_t = ((inDataBuffer[UART_IND_VT] << 16) | (inDataBuffer[UART_IND_VT + 1] << 8) | (inDataBuffer[UART_IND_VT + 2])); //电压周期
+            { //获取当前电压标致，为1时说明电压检测OK
 
                 if (isUpdataNewData(voltage_a, voltage_t))
                 {
@@ -547,40 +551,49 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     voltage = voltage * 10;                //电压mV值
                 }
                 ESP_LOGD(TAG, "22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
-                mqtt_json_s.mqtt_Voltage = voltage / 1000;
+                // mqtt_json_s.mqtt_Voltage = voltage / 1000;
             }
             else
             {
-                ESP_LOGD(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
+                ESP_LOGE(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
             }
         }
-        ESP_LOGD(TAG, "0x%x:V = %ld;I = %ld;P = %ld;\r\n", startFlag, voltage, electricity, power);
-        mqtt_json_s.mqtt_Voltage = voltage / 1000;
-        mqtt_json_s.mqtt_Current = 0;
-        mqtt_json_s.mqtt_Power = power / 1000.0;
 
         break;
     }
+    ESP_LOGI(TAG, "0x%x:V = %ld;I = %ld;P = %ld;\r\n", startFlag, voltage, electricity, power);
+    mqtt_json_s.mqtt_Voltage = voltage / 1000;
+    mqtt_json_s.mqtt_Current = electricity / 1000.0;
+    mqtt_json_s.mqtt_Power = power / 1000.0;
+    CSE_Status = true;
     return 1;
 }
 
 void CSE7759B_Task(void *pvParameters)
 {
+    uint16_t read_num = 0;
     while (1)
     {
-        // en_uart_recv();
         ESP_LOGI("TEST", "en_uart_recv");
         CSE7759B_Read();
-        // dis_uart_recv();
-        // ESP_LOGI("TEST", "dis_uart_recv");
-        vTaskDelay(1000 / portTICK_RATE_MS);
+        vTaskDelay(1000 * CSE_READ_CYCLE / portTICK_RATE_MS);
+        read_num++;
+        if (read_num * CSE_READ_CYCLE > CSE_ENERGY_CYCLE * 60)
+        {
+            read_num = 0;
+            mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit / 1000.0; //单位是度
+            ESP_LOGI(TAG, "energy=%ld\n", runingInf.energy / runingInf.energyUnit);
+            runingInf.energy = 0; //清除本次统计
+            CSE_Energy_Status = true;
+        }
     }
 }
 
 int8_t CSE7759B_Read(void)
 {
-    uint8_t data_u1[BUF_SIZE];
-    uint8_t data_7759b[24];
+    uint8_t data_u1[BUF_SIZE] = {0};
+    uint8_t data_7759b[24] = {0};
+    uint16_t checksum = 0;
     int len_7759_start = 0;
 
     sw_uart2(uart2_cse);
@@ -596,45 +609,60 @@ int8_t CSE7759B_Read(void)
             if ((data_u1[i] == 0x5a) && (((data_u1[i - 1] & 0xf0) == 0xf0) || (data_u1[i - 1] == 0xaa) || (data_u1[i - 1] == 0x55)))
             {
                 len_7759_start = i - 1;
-                break;
+                //取得24byte计量数据
+                for (int i = 0; i < 24; i++)
+                {
+                    data_7759b[i] = data_u1[len_7759_start + i];
+                }
+
+                // ESP_LOGI(TAG, "7759b=");
+                for (int i = 0; i < 24; i++)
+                {
+                    // ESP_LOGI(TAG, "0x%02x ", data_7759b[i]);
+                    if (i >= 2 && i <= 22)
+                    {
+                        checksum += data_7759b[i];
+                    }
+                    else if (i == 23)
+                    {
+                        checksum = checksum & 0xff;
+                        if (checksum == data_7759b[23])
+                        {
+                            ESP_LOGI(TAG, "checksum = 0x%02x ,7759b checksum ok!", checksum);
+                            DealUartInf(data_7759b, 24); //处理7759B数据
+                            return 1;
+                        }
+                        else
+                        {
+                            CSE_Status = false;
+                            ESP_LOGE(TAG, "checksum = 0x%02x ,7759b checksum fail!", checksum);
+                            return 0;
+                        }
+                    }
+                }
             }
         }
-
-        //取得24byte计量数据
-        for (int i = 0; i < 24; i++)
-        {
-            data_7759b[i] = data_u1[len_7759_start + i];
-        }
-
-        ESP_LOGI(TAG, "7759b=");
-        for (int i = 0; i < 24; i++)
-        {
-            ESP_LOGI(TAG, "0x%02x ", data_7759b[i]);
-        }
-        ESP_LOGI(TAG, "\n");
-        DealUartInf(data_7759b, 24); //处理7759B数据
+        ESP_LOGE(TAG, "CSE7759B Date Err！\n");
+        CSE_Status = false;
+        return 0;
     }
     else
     {
-        // ESP_LOGE(TAG, "No CSE7759B Date！\n");
+        ESP_LOGE(TAG, "No CSE7759B Date！\n");
+        CSE_Status = false;
+        return 0;
     }
-
-    len1 = 0;
-    len_7759_start = 0;
-    bzero(data_u1, sizeof(data_u1));
-    bzero(data_7759b, sizeof(data_7759b));
-    return 1;
 }
 
 void CSE7759B_Init(void)
 {
     // soft_uart_init();
     xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 4096, NULL, 5, &CSE7759B_Handle);
-    vTaskSuspend(CSE7759B_Handle);
-    if (mqtt_json_s.mqtt_switch_status == 0)
-    {
-        STOP_7759B_READ();
-    }
+    // vTaskSuspend(CSE7759B_Handle);
+    // if (mqtt_json_s.mqtt_switch_status == 0)
+    // {
+    //     STOP_7759B_READ();
+    // }
 }
 
 void STOP_7759B_READ(void)

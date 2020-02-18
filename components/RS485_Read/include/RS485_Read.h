@@ -19,7 +19,7 @@ float Wind_Read(void);
 #define _RS485_READ_H_
 
 extern float ext_tem, ext_hum;
-
+extern bool RS485_status;
 void RS485_Init(void);
 void RS485_Read(void);
 

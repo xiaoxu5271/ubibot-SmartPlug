@@ -23,6 +23,7 @@
 #include "RS485_Read.h"
 #include "ds18b20.h"
 #include "RtcUsr.h"
+#include "CSE7759B.h"
 
 //metadata 参数
 unsigned long fn_dp = 60; //数据发送频率 默认60s
@@ -504,17 +505,28 @@ void create_http_json(creat_json *pCreat_json)
     cJSON_AddItemToArray(fe_body, next);
     cJSON_AddItemToObject(next, "created_at", cJSON_CreateString(http_json_c.http_time));
     cJSON_AddItemToObject(next, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-    if (mqtt_json_s.mqtt_switch_status == 1)
+    if (mqtt_json_s.mqtt_switch_status == 1 && CSE_Status == true)
     {
         cJSON_AddItemToObject(next, "field2", cJSON_CreateNumber(mqtt_json_s.mqtt_Voltage));
         cJSON_AddItemToObject(next, "field3", cJSON_CreateNumber(mqtt_json_s.mqtt_Current));
         cJSON_AddItemToObject(next, "field4", cJSON_CreateNumber(mqtt_json_s.mqtt_Power));
-        cJSON_AddItemToObject(next, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
+        if (CSE_Energy_Status == true)
+        {
+            CSE_Energy_Status = false;
+            cJSON_AddItemToObject(next, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
+        }
     }
-    cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(wifidata.rssi));                //WIFI RSSI
-    cJSON_AddItemToObject(next, "field8", cJSON_CreateString(mqtt_json_s.mqtt_etx_tem));     //485温度
-    cJSON_AddItemToObject(next, "field9", cJSON_CreateString(mqtt_json_s.mqtt_etx_hum));     //485湿度
-    cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
+    cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(wifidata.rssi)); //WIFI RSSI
+
+    if (RS485_status == true)
+    {
+        cJSON_AddItemToObject(next, "field8", cJSON_CreateString(mqtt_json_s.mqtt_etx_tem)); //485温度
+        cJSON_AddItemToObject(next, "field9", cJSON_CreateString(mqtt_json_s.mqtt_etx_hum)); //485湿度
+    }
+    if (DS18b20_status == true)
+    {
+        cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
+    }
 
     char *cjson_printunformat;
     cjson_printunformat = cJSON_PrintUnformatted(root);

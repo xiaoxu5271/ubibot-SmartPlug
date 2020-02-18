@@ -22,6 +22,7 @@
 #define ds18b20_io_out() gpio_set_direction(ds18b20_gpio, GPIO_MODE_OUTPUT)
 
 float DS18B20_TEM = 0.0;
+bool DS18b20_status = false;
 
 /*******************************************************************************
 //中间值滤波
@@ -236,6 +237,7 @@ int8_t ds18b20_get_temp(void)
         }
         else
         {
+            DS18b20_status = false;
             DS18B20_TEM = 0;
             printf("18b20 err\n");
             return -1;
@@ -243,6 +245,7 @@ int8_t ds18b20_get_temp(void)
     }
     //进行中间滤波处理
     DS18B20_TEM = GetMedianNum(temp_arr, Cla_Num);
+    DS18b20_status = true;
     return 1;
 }
 
