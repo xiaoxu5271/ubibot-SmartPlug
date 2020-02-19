@@ -221,8 +221,9 @@ static prepare_type_env_t b_prepare_write_env;
 void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 
-char buf[512];               // do not free from heap!
+char buf[1024];              // do not free from heap!
 char BleRespond[128] = "\0"; // 蓝牙回复
+bool blere_flag = false;
 
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
@@ -327,6 +328,8 @@ void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare
             memcpy(gatt_rsp->attr_value.value, param->write.value, param->write.len);
             esp_err_t response_err = esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, status, gatt_rsp);
 
+            // printf("send_response 1  \n");
+
             if (response_err != ESP_OK)
             {
                 ESP_LOGE(GATTS_TAG, "Send response error\n");
@@ -344,6 +347,8 @@ void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare
         else
         {
             esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, status, NULL);
+
+            // printf("send_response  2 \n");
         }
     }
 }
@@ -429,12 +434,15 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         //蓝牙回复
         rsp.attr_value.len = strlen(BleRespond);
         strncpy((char *)(rsp.attr_value.value), BleRespond, strlen(BleRespond));
-        printf("ble respond=%s\n", BleRespond);
+        ESP_LOGI(GATTS_TAG, "ble respond=%s\n", BleRespond);
 
         esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id,
                                     ESP_GATT_OK, &rsp);
-        ble_app_stop(); //关闭蓝牙
+        blere_flag = true;
+        // ble_app_stop(); //关闭蓝牙
+        // http_activate();
 
+        // printf("send_response  3 \n");
         break;
     }
     case ESP_GATTS_WRITE_EVT:
@@ -444,7 +452,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         {
             ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, value :", param->write.len);
             //esp_log_buffer_char(GATTS_TAG, param->write.value, param->write.len);
-            printf("%s\r\n", param->write.value);
+            // printf("%s\r\n", param->write.value);
 
             /*for(int a=0;a<param->write.len;a++)
             {
@@ -455,56 +463,16 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
             if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2)
             {
                 /*测试 */
-                bzero(buf, sizeof(buf));
-                memcpy(buf, param->write.value, param->write.len);
-                printf("handle 43 buf : %d  \n", (int)buf);
+                // bzero(buf, sizeof(buf));
+                // memcpy(buf, param->write.value, param->write.len);
+                // printf("handle 43 buf : %d  \n", (int)buf);
 
                 /*测试结束 */
-
-                // uint16_t descr_value = param->write.value[1] << 8 | param->write.value[0];
-                // if (descr_value == 0x0001)
-                // {
-                //         if (a_property & ESP_GATT_CHAR_PROP_BIT_NOTIFY)
-                //         {
-                //                 ESP_LOGI(GATTS_TAG, "notify enable");
-                //                 uint8_t notify_data[15];
-                //                 for (int i = 0; i < sizeof(notify_data); ++i)
-                //                 {
-                //                         notify_data[i] = i % 0xff;
-                //                 }
-                //                 //the size of notify_data[] need less than MTU size
-                //                 esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
-                //                                             sizeof(notify_data), notify_data, false);
-                //         }
-                // }
-                // else if (descr_value == 0x0002)
-                // {
-                //         if (a_property & ESP_GATT_CHAR_PROP_BIT_INDICATE)
-                //         {
-                //                 ESP_LOGI(GATTS_TAG, "indicate enable");
-                //                 uint8_t indicate_data[15];
-                //                 for (int i = 0; i < sizeof(indicate_data); ++i)
-                //                 {
-                //                         indicate_data[i] = i % 0xff;
-                //                 }
-                //                 //the size of indicate_data[] need less than MTU size
-                //                 esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
-                //                                             sizeof(indicate_data), indicate_data, true);
-                //         }
-                // }
-                // else if (descr_value == 0x0000)
-                // {
-                //         ESP_LOGI(GATTS_TAG, "notify/indicate disable ");
-                // }
-                // else
-                // {
-                //         ESP_LOGE(GATTS_TAG, "unknown descr value");
-                //         esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
-                // }
             }
 
             else
             {
+
                 bzero(buf, sizeof(buf));
                 memcpy(buf, param->write.value, param->write.len);
                 int32_t ret = parse_objects_bluetooth(buf);
@@ -528,12 +496,6 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                     E2prom_BluWrite(0x00, (uint8_t *)zerobuf, 256);
                     E2prom_BluWrite(0x00, (uint8_t *)buf, param->write.len);
                     Ble_mes_status = BLEOK;
-                }
-                else if (ret == BLU_WIFI_ERR) //WIFI连接失败
-                {
-                    ESP_LOGI("BLE", "Wifi_ErrCode=%d", Wifi_ErrCode);
-                    bzero(BleRespond, sizeof(BleRespond));
-                    sprintf(BleRespond, "{\"result\":\"error\",\"code\":%d}", Wifi_ErrCode);
                 }
                 else //激活失败
                 {
@@ -609,6 +571,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         gl_profile_tab[PROFILE_A_APP_ID].descr_handle = param->add_char_descr.attr_handle;
         ESP_LOGI(GATTS_TAG, "ADD_DESCR_EVT, status %d, attr_handle %d, service_handle %d\n",
                  param->add_char_descr.status, param->add_char_descr.attr_handle, param->add_char_descr.service_handle);
+        ble_app_stop(); //关闭蓝牙广播
         break;
     case ESP_GATTS_DELETE_EVT:
         break;
@@ -638,7 +601,15 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     }
     case ESP_GATTS_DISCONNECT_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT");
-        esp_ble_gap_start_advertising(&adv_params);
+        if (blere_flag == true)
+        {
+            blere_flag = false;
+            ble_app_stop(); //关闭蓝牙广播
+        }
+        else
+        {
+            esp_ble_gap_start_advertising(&adv_params); //开启蓝牙广播
+        }
         break;
     case ESP_GATTS_CONF_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONF_EVT, status %d", param->conf.status);
@@ -854,13 +825,15 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     } while (0);
 }
 
-void ble_app_start(void)
+void ble_app_init(void)
 {
-    bl_flag = 1;
-    Led_Status = LED_STA_AP;
     esp_err_t ret;
-    stop_user_wifi(); //停止网络连接
-    ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
+    ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "Bluetooth controller release classic bt memory failed: %s", esp_err_to_name(ret));
+        return;
+    }
 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ret = esp_bt_controller_init(&bt_cfg);
@@ -922,22 +895,19 @@ void ble_app_start(void)
     return;
 }
 
+void ble_app_start(void)
+{
+    esp_ble_gap_start_advertising(&adv_params);
+    //开启成功
+    bl_flag = 1;
+    Led_Status = LED_STA_AP;
+    stop_user_wifi(); //停止网络连接
+}
+
 void ble_app_stop(void)
 {
+    esp_ble_gap_stop_advertising();
+
     bl_flag = 0;
     ESP_LOGI(GATTS_TAG, "turn off ble！");
-    esp_err_t ret;
-    // ret = esp_bluedroid_deinit();
-    // if (ret)
-    // {
-    //         ESP_LOGE(GATTS_TAG, "esp_bluedroid_deinit, error code = %x", ret);
-    //         return;
-    // }
-
-    ret = esp_bluedroid_disable();
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "esp_bluedroid_disable, error code = %x", ret);
-        return;
-    }
 }

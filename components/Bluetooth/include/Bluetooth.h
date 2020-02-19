@@ -28,6 +28,7 @@
 
 char ble_dev_pwd[16];
 
+void ble_app_init(void);
 void ble_app_start(void);
 void ble_app_stop(void);
 void gap_init(void);
@@ -45,14 +46,6 @@ typedef enum
     BLU_NO_WIFI_PWD,
     BLU_WIFI_ERR
 } BLU_error_info;
-
-typedef struct blufi_beacon_s blufi_beacon_t;
-
-char SerialNum[17];
-char ProductId[33];
-char BleName[64];
-char ApiKey[33];
-char ChannelId[17];
 
 uint8_t Ble_mes_status;
 

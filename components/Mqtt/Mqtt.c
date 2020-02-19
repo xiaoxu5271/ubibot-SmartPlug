@@ -5,7 +5,7 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
-#include "esp_event_loop.h"
+#include "esp_event.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -23,6 +23,7 @@
 #include "Smartconfig.h"
 #include "Bluetooth.h"
 #include "Led.h"
+#include "Http.h"
 
 static const char *TAG = "MQTT";
 

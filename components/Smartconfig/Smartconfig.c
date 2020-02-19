@@ -7,7 +7,7 @@
 
 #include "esp_wifi.h"
 #include "esp_wpa2.h"
-#include "esp_event_loop.h"
+#include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
 
@@ -19,6 +19,7 @@
 #include "esp_log.h"
 #include "Led.h"
 #include "tcp_bsp.h"
+// #include "w5500_driver.h"
 #include "Json_parse.h"
 #include "Bluetooth.h"
 
@@ -32,7 +33,7 @@ uint8_t wifi_connect_sta = connect_N;
 uint8_t wifi_work_sta = turn_on;
 uint8_t start_AP = 0;
 uint8_t bl_flag = 0; //蓝牙配网模式
-uint8_t Wifi_ErrCode = 0;
+uint16_t Wifi_ErrCode = 0;
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
@@ -44,14 +45,12 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
     case SYSTEM_EVENT_STA_GOT_IP:
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-        Led_Status = LED_STA_WORK; //联网工作
         wifi_connect_sta = connect_Y;
         break;
 
     case SYSTEM_EVENT_STA_DISCONNECTED:
-
-        ESP_LOGI(TAG, "断网");
         Wifi_ErrCode = event->event_info.disconnected.reason;
+        ESP_LOGI(TAG, "断网,Wifi_ErrCode:%d", Wifi_ErrCode);
         if (Wifi_ErrCode >= 1 && Wifi_ErrCode <= 24) //适配APP，
         {
             Wifi_ErrCode += 300;
@@ -64,10 +63,33 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         }
         else
         {
-            Led_Status = LED_STA_WIFIERR; //断网
-            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-            esp_wifi_connect();
+            switch (net_mode) //选择网络模式
+            {
+            case NET_AUTO:
+                // if (LAN_DNS_STATUS == 0)
+                {
+                    Led_Status = LED_STA_WIFIERR; //断网
+                    xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+                }
+                esp_wifi_connect();
+                ESP_LOGI(TAG, "reconnect! ");
+                break;
+
+            case NET_LAN:
+                break;
+
+            case NET_WIFI:
+                Led_Status = LED_STA_WIFIERR; //断网
+                xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+                esp_wifi_connect();
+                ESP_LOGI(TAG, "reconnect! ");
+                break;
+
+            default:
+                break;
+            }
         }
+
         break;
 
     case SYSTEM_EVENT_AP_STACONNECTED: //AP模式-有STA连接成功
@@ -87,6 +109,14 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         xEventGroupClearBits(tcp_event_group, AP_STACONNECTED_BIT);
         break;
 
+    case SYSTEM_EVENT_STA_LOST_IP:
+        if (net_mode == NET_WIFI)
+        {
+            ESP_LOGI(TAG, "SYSTEM_EVENT_STA_LOST_IP,reconnect! ");
+            esp_restart();
+        }
+        break;
+
     default:
         ESP_LOGI(TAG, "event->event_id:%d", event->event_id);
         break;
@@ -96,29 +126,55 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
 void initialise_wifi(void) //(char *wifi_ssid, char *wifi_password)
 {
-    Led_Status = LED_STA_WIFIERR; //断网
+    // printf("WIFI Reconnect,SSID=%s,PWD=%s\r\n", wifi_ssid, wifi_password);
+    // bzero(wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
+    // strcpy(wifi_data.wifi_ssid, wifi_ssid);
+
+    // Led_Status = LED_STA_WIFIERR; //断网
     xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-    esp_wifi_connect();
+    // esp_wifi_connect();
 
-    ESP_ERROR_CHECK(esp_wifi_stop());
-    ESP_ERROR_CHECK(esp_wifi_get_config(ESP_IF_WIFI_STA, &s_staconf));
+    // ESP_ERROR_CHECK(esp_wifi_stop());
+    // ESP_ERROR_CHECK(esp_wifi_get_config(ESP_IF_WIFI_STA, &s_staconf));
 
-    if (s_staconf.sta.ssid[0] != '\0') //判断当前系统中是否有WIFI信息,
-    {
-        memset(&s_staconf.sta, 0, sizeof(s_staconf)); //清空原有数据
-    }
+    // if (s_staconf.sta.ssid[0] != '\0') //判断当前系统中是否有WIFI信息,
+    // {
+    //     memset(&s_staconf.sta, 0, sizeof(s_staconf)); //清空原有数据
+    // }
+    // strcpy((char *)s_staconf.sta.ssid, wifi_data.wifi_ssid);
+    // strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
+
+    // if (start_AP == 1) //如果是从AP模式进入，则需要重新设置为STA模式
+    // {
+    //     start_AP = 0;
+    //     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    // }
+
+    // ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
+    // ESP_ERROR_CHECK(esp_wifi_start());
+    // esp_wifi_connect();
+
+    esp_wifi_deinit();
+
+    tcpip_adapter_init();
+
+    // ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); //实验，测试解决wifi中断问题
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    // ESP_ERROR_CHECK(esp_wifi_get_config(ESP_IF_WIFI_STA, &s_staconf));
+
+    memset(&s_staconf.sta, 0, sizeof(s_staconf));
     strcpy((char *)s_staconf.sta.ssid, wifi_data.wifi_ssid);
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
-
-    if (start_AP == 1) //如果是从AP模式进入，则需要重新设置为STA模式
-    {
-        start_AP = 0;
-        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    }
 
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
     ESP_ERROR_CHECK(esp_wifi_start());
     esp_wifi_connect();
+
+    bl_flag = 0; //重初始化后置位
 }
 
 void reconnect_wifi_usr(void)
@@ -146,7 +202,7 @@ void init_wifi(void) //
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); //实验，测试解决wifi中断问题
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_get_config(ESP_IF_WIFI_STA, &s_staconf));
-    if (s_staconf.sta.ssid[0] != '\0')
+    // if (s_staconf.sta.ssid[0] != '\0')
     {
         printf("wifi_init_sta finished.");
         printf("connect to ap SSID:%s password:%s\r\n",
@@ -160,12 +216,12 @@ void init_wifi(void) //
         esp_wifi_connect();
         //Led_Status = LED_STA_TOUCH;
     }
-    else
-    {
-        // printf("Waiting for SetupWifi ....\r\n");
-        // wifi_init_softap();
-        // my_tcp_connect();
-    }
+    // else
+    // {
+    //     // printf("Waiting for SetupWifi ....\r\n");
+    //     // wifi_init_softap();
+    //     // my_tcp_connect();
+    // }
 }
 
 /*
@@ -252,7 +308,7 @@ void stop_user_wifi(void)
 
 void start_user_wifi(void)
 {
-    if (wifi_work_sta == turn_off)
+    if (wifi_work_sta == turn_off && bl_flag == 0)
     {
         ESP_ERROR_CHECK(esp_wifi_start());
         esp_wifi_connect();
