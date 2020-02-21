@@ -146,29 +146,11 @@ static short Parse_metadata(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != net_mode)
         {
             net_mode = (uint8_t)pSubSubSub->valueint;
-            EE_byte_Write(ADDR_PAGE2, net_mode_add, net_mode); //写入net_mode
+            AT24CXX_WriteOneByte(net_mode_add, net_mode); //写入net_mode
             printf("net_mode = %d\n", net_mode);
         }
     }
     cJSON_Delete(pJsonJson);
-    return 1;
-}
-
-int read_bluetooth(void)
-{
-    uint8_t bluetooth_sta[256];
-
-    E2prom_BluRead(0x00, bluetooth_sta, 256);
-    printf("bluetooth_sta=%s\n", bluetooth_sta);
-    if (strlen((char *)bluetooth_sta) == 0) //未读到蓝牙配置信息
-    {
-        return 0;
-    }
-    int32_t ret = parse_objects_bluetooth((char *)bluetooth_sta);
-    if ((ret == BLU_PWD_REFUSE) || (ret == BLU_JSON_FORMAT_ERROR))
-    {
-        return 0;
-    }
     return 1;
 }
 
@@ -290,10 +272,10 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             sprintf(ApiKey, "%s%c", json_data_parse_channel_channel_write_key->valuestring, '\0');
             //写入channelid
             sprintf(ChannelId, "%s%c", json_data_parse_channel_channel_id_value->valuestring, '\0');
-            E2prom_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+            AT24CXX_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
             //写入user_id
             sprintf(USER_ID, "%s%c", json_data_parse_channel_user_id->valuestring, '\0');
-            E2prom_Write(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
+            AT24CXX_Write(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
         }
     }
     cJSON_Delete(json_data_parse);
@@ -621,21 +603,21 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                     if (NULL != pSub)
                     {
                         printf("ProductID= %s, len= %d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        E2prom_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save ProductID
+                        AT24CXX_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save ProductID
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "SeriesNumber"); //"SeriesNumber"
                     if (NULL != pSub)
                     {
                         printf("SeriesNumber= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        E2prom_Write(SERISE_NUM_ADDR, (uint8_t *)pSub->valuestring, SERISE_NUM_LEN); //save SeriesNumber
+                        AT24CXX_Write(SERISE_NUM_ADDR, (uint8_t *)pSub->valuestring, SERISE_NUM_LEN); //save SeriesNumber
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "Host"); //"Host"
                     if (NULL != pSub)
                     {
                         printf("Host= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        E2prom_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save SeriesNumber
+                        AT24CXX_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save SeriesNumber
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "apn"); //"apn"
@@ -784,7 +766,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 strcpy(wifi_data.wifi_pwd, pSub->valuestring);
                 printf("WIFI_PWD = %s\r\n", pSub->valuestring);
             }
-            EE_byte_Write(ADDR_PAGE2, net_mode_add, NET_WIFI); //写入net_mode
+            AT24CXX_WriteOneByte(net_mode_add, NET_WIFI); //写入net_mode
             net_mode = NET_WIFI;
             // initialise_wifi(wifi_data.wifi_ssid, wifi_data.wifi_pwd);
             initialise_wifi();
@@ -799,11 +781,11 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             uint8_t mac_sys[6] = {0};
             cJSON *root = cJSON_CreateObject();
 
-            E2prom_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
-            E2prom_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
-            E2prom_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
-            E2prom_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
-            E2prom_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
+            AT24CXX_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+            AT24CXX_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+            AT24CXX_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+            AT24CXX_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+            AT24CXX_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
 
             esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
             sprintf(mac_buff,

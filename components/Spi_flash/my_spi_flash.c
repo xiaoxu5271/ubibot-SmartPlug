@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <cJSON.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -422,6 +423,35 @@ void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 	W25QXX_CS_H;
 }
 
+//读取数据缓存，返回一组数据的大小，失败返回0
+//一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
+uint16_t W25QXX_Read_Data(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
+{
+	uint16_t i;
+	uint8_t Temp = 0;
+	W25QXX_CS_L; //使能器件
+
+	VprocHALWrite(W25X_ReadData);				//发送读取命令
+	VprocHALWrite((uint8_t)((ReadAddr) >> 16)); //发送24bit地址
+	VprocHALWrite((uint8_t)((ReadAddr) >> 8));
+	VprocHALWrite((uint8_t)ReadAddr);
+	for (i = 0; i < NumByteToRead; i++)
+	{
+		VprocHALRead(&Temp);
+		pBuffer[i] = Temp;	 //循环读数
+		if (pBuffer[i] == '}') //一组数据读取完成
+		{
+			if (pBuffer[0] == '{') //数据完整
+			{
+				W25QXX_CS_H;
+				return i; //读取到的字节数
+			}
+		}
+	}
+	W25QXX_CS_H;
+	return 0;
+}
+
 //写SPI FLASH
 //在指定地址开始写入指定长度的数据
 //该函数带擦除操作!
@@ -569,17 +599,64 @@ void SPI_FLASH_Init(void)
 //---------------------------------------------------------------------------------
 // 测试程序
 //--------------------------------------------------------------------------------
-const uint8_t TEXT_Buffer[] = {"test esp32 spi flash w25q128!!!"};
-const uint8_t TEXT_Buffer2[] = {"123456789"};
-#define SIZE sizeof(TEXT_Buffer)
-#define SIZE2 sizeof(TEXT_Buffer2)
-uint8_t datatemp[50] = {0};
+// const uint8_t TEXT_Buffer[] = {"test esp32 spi flash w25q128!!!"};
+// const uint8_t TEXT_Buffer2[] = {"123456789"};
+// #define SIZE sizeof(TEXT_Buffer)
+// #define SIZE2 sizeof(TEXT_Buffer2)
+uint8_t datatemp[256] = {0};
+uint8_t testtemp[50] = {0};
 
 void SPIFlash_Test_Process(void)
 {
-	W25QXX_Write((uint8_t *)TEXT_Buffer2, 4079, SIZE2);
-	W25QXX_Write((uint8_t *)TEXT_Buffer, 4090, SIZE);
-	printf("spi flash test write ok!\n");
-	W25QXX_Read((uint8_t *)datatemp, 4090, 50);
-	printf("spi flash test read ok:%s\n ", datatemp);
+	// W25QXX_Write((uint8_t *)TEXT_Buffer2, 4080, SIZE2);
+	// W25QXX_Write((uint8_t *)TEXT_Buffer, 4090, SIZE);
+	// printf("spi flash test write ok!\n");
+
+	char *OutBuffer;
+	uint8_t *SaveBuffer;
+	uint8_t len = 0;
+	uint16_t read_len;
+	cJSON *pJsonRoot;
+	pJsonRoot = cJSON_CreateObject();
+	cJSON_AddStringToObject(pJsonRoot, "created_at", "2020-02-20T08:52:08Z");
+	cJSON_AddNumberToObject(pJsonRoot, "field1", 1.001232);
+	cJSON_AddNumberToObject(pJsonRoot, "field2", 1.00234);
+	cJSON_AddNumberToObject(pJsonRoot, "field2", 1.04303);
+	OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+	cJSON_Delete(pJsonRoot);					   //delete cjson root
+	len = strlen(OutBuffer);
+	printf("len:%d\n%s\n", len, OutBuffer);
+	// SaveBuffer = (uint8_t *)malloc(len);
+	SaveBuffer = (uint8_t *)malloc(len);
+	memcpy(SaveBuffer, OutBuffer, len);
+	W25QXX_Write(SaveBuffer, 0, len);
+	free(SaveBuffer);
+	free(OutBuffer);
+
+	char *OutBuffer2;
+	uint8_t *SaveBuffer2;
+	uint8_t len2 = 0;
+	cJSON *pJsonRoot2;
+	pJsonRoot2 = cJSON_CreateObject();
+	cJSON_AddStringToObject(pJsonRoot2, "created_at", "2020-02-20T08:52:08Z");
+	cJSON_AddNumberToObject(pJsonRoot2, "field1", 1.004);
+	cJSON_AddNumberToObject(pJsonRoot2, "field2", 1.005);
+	cJSON_AddNumberToObject(pJsonRoot2, "field2", 1.006);
+	OutBuffer2 = cJSON_PrintUnformatted(pJsonRoot2); //cJSON_Print(Root)
+	cJSON_Delete(pJsonRoot2);						 //delete cjson root
+	len2 = strlen(OutBuffer2);
+	printf("len2:%d\n%s\n", len2, OutBuffer2);
+	// SaveBuffer = (uint8_t *)malloc(len);
+	SaveBuffer2 = (uint8_t *)malloc(len2);
+	memcpy(SaveBuffer2, OutBuffer2, len2);
+	W25QXX_Write(SaveBuffer2, len, len2);
+	free(SaveBuffer2);
+	free(OutBuffer2);
+
+	// W25QXX_Read((uint8_t *)datatemp, 0, len2 + len);
+	read_len = W25QXX_Read_Data(datatemp, 0, 256);
+	printf("read_len1:%d\n%s\n ", read_len, datatemp);
+	memset(datatemp, 0, 256);
+	read_len = W25QXX_Read_Data(datatemp, read_len + 1, 256);
+	printf("read_len2:%d\n%s\n ", read_len, datatemp);
 }

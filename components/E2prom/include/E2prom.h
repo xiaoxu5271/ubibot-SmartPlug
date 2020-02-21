@@ -1,34 +1,3 @@
-/*
-EEPROM读写程序AT24C08
-创建日期：2018年10月29日
-作者：孙浩
-更新日期：2018年10月31日
-作者：孙浩
-EEPROM写入和读取长度增加大于16个字节
-更新日期：2018年10月31日
-作者：孙浩
-EEPROM写入和读取起始字节必必须是16的倍数
-
-E2prom_Init()
-用于EEPROM的初始化，主要包括GPIO初始化和IIC初始化，在初始化模块中调用
-SCL_IO=14               
-SDA_IO=18      
-
-int E2prom_Write(uint8_t addr,uint8_t*data_write,int len);
-用于写入EEPROM，参数：写入数据地址、指针和写入数据长度，操作扇区为0号扇区
-地址范围0x00-0xff
-返回值
-ESP_OK 写入成功
-其他 写入失败
-
-int E2prom_Read(uint8_t addr,uint8_t*data_read,int len);
-用于在0号扇区读出数据，参数：读出数据数据地址、指针和读出长度
-地址范围0x00-0xff
-返回值
-ESP_OK 读取成功
-其他 读取失败
-
-*/
 
 #ifndef _E2PROM_H_
 #define _E2PROM_H_
@@ -56,46 +25,32 @@ ESP_OK 读取成功
 #define ACK_VAL 0x0       /*!< I2C ack value */
 #define NACK_VAL 0x1      /*!< I2C nack value */
 
-//page0 用地址
-#define ADDR_PAGE0 0xA8
-#define PRODUCT_ID_ADDR 0x00
-#define SERISE_NUM_ADDR 0x20
-#define WEB_HOST_ADD 0X30
-#define CHANNEL_ID_ADD 0X50
-#define USER_ID_ADD 0X60
+//Device Address
+#define DEV_ADD 0XA8
 
 #define PRODUCT_ID_LEN 32
 #define SERISE_NUM_LEN 16
 #define WEB_HOST_LEN 32
 #define CHANNEL_ID_LEN 16
 #define USER_ID_LEN 48
+//地址
+#define PRODUCT_ID_ADDR 0                                //product id
+#define SERISE_NUM_ADDR PRODUCT_ID_ADDR + PRODUCT_ID_LEN //serise num
+#define WEB_HOST_ADD SERISE_NUM_ADDR + SERISE_NUM_LEN    //web host
+#define CHANNEL_ID_ADD WEB_HOST_ADD + WEB_HOST_LEN       //chanel id
+#define USER_ID_ADD CHANNEL_ID_ADD + CHANNEL_ID_LEN      //user id
+#define dhcp_mode_add USER_ID_ADD + USER_ID_LEN          //dhcp mode u1
+#define net_mode_add dhcp_mode_add + 1                   //net mode u1
+#define save_data_add net_mode_add + 4                   //flash save add u32
 
-//page1 用地址
-#define ADDR_PAGE1 0xAA
-
-//page2 用地址
-#define ADDR_PAGE2 0xAC
-#define need_update_add 0x00     //page2 用地址
-#define update_fail_num_add 0x01 //page2 用地址
-#define dhcp_mode_add 0x02       //page2 用地址
-#define net_mode_add 0x03        //page2 用地址
-
-//page3 用地址
-#define ADDR_PAGE3 0xAE
-#define ota_url_add 0x00
-#define NETINFO_add 0x80
-
-esp_err_t
-EE_byte_Write(uint8_t page, uint8_t reg_addr, uint8_t dat);
-esp_err_t EE_byte_Read(uint8_t page, uint8_t reg_addr, uint8_t *dat);
-
-extern void E2prom_Init(void);
-extern int E2prom_Write(uint8_t addr, uint8_t *data_write, int len);
-extern int E2prom_Read(uint8_t addr, uint8_t *data_read, int len);
-extern int E2prom_BluWrite(uint8_t addr, uint8_t *data_write, int len);
-extern int E2prom_BluRead(uint8_t addr, uint8_t *data_read, int len);
-extern int E2prom_page_Write(uint8_t addr, uint8_t *data_write, int len);
-extern int E2prom_page_Read(uint8_t addr, uint8_t *data_read, int len);
-extern int E2prom_empty_all(void);
+void E2prom_Init(void);
+esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat);
+uint8_t AT24CXX_ReadOneByte(uint16_t reg_addr);
+void AT24CXX_WriteLenByte(uint16_t WriteAddr, uint32_t DataToWrite, uint8_t Len);
+uint32_t AT24CXX_ReadLenByte(uint16_t ReadAddr, uint8_t Len);
+void AT24CXX_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead);
+void AT24CXX_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite);
+bool AT24CXX_Check(void);
+void E2prom_empty_all(void);
 
 #endif

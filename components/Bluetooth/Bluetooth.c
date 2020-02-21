@@ -492,9 +492,6 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                     strcpy(BleRespond, "{\"result\":\"success\"}");
                     printf("{\"result\":\"success\"} \n");
 
-                    uint8_t zerobuf[256] = "\0";
-                    E2prom_BluWrite(0x00, (uint8_t *)zerobuf, 256);
-                    E2prom_BluWrite(0x00, (uint8_t *)buf, param->write.len);
                     Ble_mes_status = BLEOK;
                 }
                 else //激活失败

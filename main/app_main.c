@@ -46,7 +46,7 @@ void app_main(void)
 	// nvs_flash_erase();
 	nvs_flash_init();
 	SPI_FLASH_Init();
-	SPIFlash_Test_Process();
+	// SPIFlash_Test_Process();
 	E2prom_Init();
 	Uart_Init();
 	Led_Init();
@@ -61,13 +61,13 @@ void app_main(void)
 	printf("FIRMWARE=%s\n", FIRMWARE);
 
 	/*step1 判断是否有序列号和product id****/
-	E2prom_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+	AT24CXX_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
 	printf("SerialNum=%s\n", SerialNum);
-	E2prom_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+	AT24CXX_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
 	printf("ProductId=%s\n", ProductId);
-	E2prom_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+	AT24CXX_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
 	printf("Host=%s\n", WEB_SERVER);
-	EE_byte_Read(ADDR_PAGE2, net_mode_add, &net_mode); //读取网络模式
+	net_mode = AT24CXX_ReadOneByte(net_mode_add); //读取网络模式
 	printf("net mode is %d!\n", net_mode);
 
 	if ((strlen(SerialNum) == 0) || (strlen(ProductId) == 0) || (strlen(WEB_SERVER) == 0)) //未获取到序列号或productid，未烧写序列号
