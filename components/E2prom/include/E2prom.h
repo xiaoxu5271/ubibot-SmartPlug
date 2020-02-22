@@ -39,9 +39,17 @@
 #define WEB_HOST_ADD SERISE_NUM_ADDR + SERISE_NUM_LEN    //web host
 #define CHANNEL_ID_ADD WEB_HOST_ADD + WEB_HOST_LEN       //chanel id
 #define USER_ID_ADD CHANNEL_ID_ADD + CHANNEL_ID_LEN      //user id
-#define dhcp_mode_add USER_ID_ADD + USER_ID_LEN          //dhcp mode u1
-#define net_mode_add dhcp_mode_add + 1                   //net mode u1
-#define save_data_add net_mode_add + 4                   //flash save add u32
+#define dhcp_mode_add USER_ID_ADD + USER_ID_LEN          //dhcp mode u8
+#define save_data_add dhcp_mode_add + 1                  //flash save add u32
+#define fn_set_flag_add save_data_add + 4                //metadata setted flag u8
+#define fn_dp_add fn_set_flag_add + 1                    //数据发送频率uint32_t
+#define fn_485_th_add fn_dp_add + 4                      //485温湿度探头uint32_t
+#define fn_485_sth_add fn_485_th_add + 4                 //485 土壤探头uint32_t
+#define fn_ext_add fn_485_sth_add + 4                    //18b20uint32_t
+#define fn_energy_add fn_ext_add + 4                     //电能信息：电压/电流/功率uint32_t
+#define fn_ele_quan_add fn_energy_add + 4                //用电量统计uint32_t
+#define cg_data_led_add fn_ele_quan_add + 4              //发送数据 LED状态 0关闭，1打开uint8_t
+#define net_mode_add cg_data_led_add + 1                 //上网模式选择 0：自动模式 1：lan模式 2：wifi模式uint8_t
 
 void E2prom_Init(void);
 esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat);

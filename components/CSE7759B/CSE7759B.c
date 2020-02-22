@@ -6,7 +6,6 @@
 #include "driver/gpio.h"
 #include "Json_parse.h"
 #include "CSE7759B.h"
-#include "soft_uart.h"
 #include "Uart0.h"
 
 #define TAG "CSE7759B"

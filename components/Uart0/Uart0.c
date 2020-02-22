@@ -23,6 +23,8 @@
 static const char *TAG = "UART0";
 SemaphoreHandle_t xMutex_uart2_sw = NULL;
 
+static void Uart0_Task(void *arg);
+
 void Uart_Init(void)
 {
     //uart0,log
@@ -60,6 +62,8 @@ void Uart_Init(void)
 
     //创建切换uart2 互斥信号
     xMutex_uart2_sw = xSemaphoreCreateMutex();
+    //串口0 接收解析
+    xTaskCreate(Uart0_Task, "Uart0_Task", 4096, NULL, 9, NULL);
 }
 
 void sw_uart2(uint8_t uart2_mode)
@@ -97,5 +101,14 @@ void Uart0_read(void)
         ESP_LOGW(TAG, "data_u0=%s", data_u0);
         ParseTcpUartCmd((char *)data_u0);
         bzero(data_u0, sizeof(data_u0));
+    }
+}
+
+void Uart0_Task(void *arg)
+{
+    while (1)
+    {
+        Uart0_read();
+        vTaskDelay(10 / portTICK_RATE_MS);
     }
 }

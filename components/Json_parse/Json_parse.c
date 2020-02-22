@@ -33,11 +33,14 @@
 //wifi_config_t wifi_config;
 
 //#define DEBUG_
-
-unsigned long fn_dp = 0;  //数据发送频率
-unsigned long fn_th = 0;  //温湿度频率
-unsigned long fn_sen = 1; //人感灵敏度，1对应100ms
-uint8_t cg_data_led = 1;  //发送数据 LED状态 0：不闪烁 1：闪烁
+uint8_t fn_set_flag = 0;  //metadata 读取标志，未读取则使用下面固定参数
+uint32_t fn_dp = 60;      //数据发送频率
+uint32_t fn_485_th = 0;   //485温湿度探头
+uint32_t fn_485_sth = 0;  //485 土壤探头
+uint32_t fn_ext = 0;      //18b20
+uint32_t fn_energy = 0;   //电能信息：电压/电流/功率
+uint32_t fn_ele_quan = 0; //用电量统计
+uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
 uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 
 typedef enum
@@ -56,7 +59,6 @@ int n = 0, i;
 
 static short Parse_metadata(char *ptrptr)
 {
-    bool fn_flag = 0;
     if (NULL == ptrptr)
     {
         return 0;
@@ -69,28 +71,15 @@ static short Parse_metadata(char *ptrptr)
 
         return 0;
     }
-
-    cJSON *pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_th"); //"fn_th"
-    if (NULL != pSubSubSub)
-    {
-
-        if ((unsigned long)pSubSubSub->valueint != fn_th)
-        {
-            fn_flag = 1;
-            fn_th = (unsigned long)pSubSubSub->valueint;
-            printf("fn_th = %ld\n", fn_th);
-        }
-    }
-
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_dp"); //"fn_dp"
+    cJSON *pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_dp"); //"fn_dp"
     if (NULL != pSubSubSub)
     {
 
         if ((unsigned long)pSubSubSub->valueint != fn_dp)
         {
-            fn_flag = 1;
             fn_dp = (unsigned long)pSubSubSub->valueint;
-            printf("fn_dp = %ld\n", fn_dp);
+            AT24CXX_WriteLenByte(fn_dp_add, fn_dp, 4);
+            printf("fn_dp = %d\n", fn_dp);
             // if (timer_human_handle != NULL)
             // {
             //     human_intr_num = 0;
@@ -108,19 +97,57 @@ static short Parse_metadata(char *ptrptr)
             // }
         }
     }
-
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sen"); //"fn_sen"
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_th"); //"fn_th"
     if (NULL != pSubSubSub)
     {
 
-        if ((unsigned long)pSubSubSub->valueint != fn_sen)
+        if ((uint32_t)pSubSubSub->valueint != fn_485_th)
         {
-            fn_flag = 1;
-            fn_sen = (unsigned long)pSubSubSub->valueint;
-            printf("fn_sen = %ld\n", fn_sen);
+            fn_485_th = (uint32_t)pSubSubSub->valueint;
+            AT24CXX_WriteLenByte(fn_485_th_add, fn_485_th, 4);
+            printf("fn_485_th = %d\n", fn_485_th);
         }
     }
-
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_sth"); //"fn_485_sth"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_485_sth)
+        {
+            fn_485_sth = (uint32_t)pSubSubSub->valueint;
+            AT24CXX_WriteLenByte(fn_485_sth_add, fn_485_sth, 4);
+            printf("fn_485_sth = %d\n", fn_485_sth);
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ext"); //"fn_ext"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_ext)
+        {
+            fn_ext = (uint32_t)pSubSubSub->valueint;
+            AT24CXX_WriteLenByte(fn_ext_add, fn_ext, 4);
+            printf("fn_ext = %d\n", fn_ext);
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_energy"); //"fn_energy"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_energy)
+        {
+            fn_energy = (uint32_t)pSubSubSub->valueint;
+            AT24CXX_WriteLenByte(fn_energy_add, fn_energy, 4);
+            printf("fn_energy = %d\n", fn_energy);
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ele_quan"); //"fn_ele_quan"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_ele_quan)
+        {
+            fn_ele_quan = (uint32_t)pSubSubSub->valueint;
+            AT24CXX_WriteLenByte(fn_ele_quan_add, fn_ele_quan, 4);
+            printf("fn_ele_quan = %d\n", fn_ele_quan);
+        }
+    }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "cg_data_led"); //"cg_data_led"
     if (NULL != pSubSubSub)
     {
@@ -128,6 +155,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != cg_data_led)
         {
             cg_data_led = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(cg_data_led_add, cg_data_led);
             printf("cg_data_led = %d\n", cg_data_led);
             if (cg_data_led == 0)
             {
@@ -151,6 +179,13 @@ static short Parse_metadata(char *ptrptr)
         }
     }
     cJSON_Delete(pJsonJson);
+    fn_set_flag = AT24CXX_ReadOneByte(fn_set_flag_add);
+    if (fn_set_flag == 0)
+    {
+        fn_set_flag = 1;
+        AT24CXX_WriteOneByte(fn_set_flag_add, fn_set_flag);
+    }
+
     return 1;
 }
 
@@ -827,4 +862,24 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
     cJSON_Delete(pJson); //delete pJson
 
     return ESP_FAIL;
+}
+
+//读取EEPROM中的metadata
+
+void Read_Metadate(void)
+{
+    fn_set_flag = AT24CXX_ReadOneByte(fn_set_flag_add);
+    if (fn_set_flag == 1)
+    {
+        fn_dp = AT24CXX_ReadLenByte(fn_dp_add, 4);             //数据发送频率
+        fn_485_th = AT24CXX_ReadLenByte(fn_485_th_add, 4);     //485温湿度探头
+        fn_485_sth = AT24CXX_ReadLenByte(fn_485_sth_add, 4);   //485 土壤探头
+        fn_ext = AT24CXX_ReadLenByte(fn_ext_add, 4);           //18b20
+        fn_energy = AT24CXX_ReadLenByte(fn_energy_add, 4);     //电能信息：电压/电流/功率
+        fn_ele_quan = AT24CXX_ReadLenByte(fn_ele_quan_add, 4); //用电量统计
+        cg_data_led = AT24CXX_ReadOneByte(cg_data_led_add);    //发送数据 LED状态 0关闭，1打开
+        net_mode = AT24CXX_ReadOneByte(net_mode_add);          //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+    }
+    printf("fn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
+           fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
 }

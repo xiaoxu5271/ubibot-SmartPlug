@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := esp32_project
+PROJECT_NAME :=SP1-V
 
 include $(IDF_PATH)/make/project.mk
 

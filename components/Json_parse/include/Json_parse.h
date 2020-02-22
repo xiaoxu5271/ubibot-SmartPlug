@@ -66,13 +66,18 @@ typedef struct
 int read_bluetooth(void);
 //creat_json *create_http_json(uint8_t post_status);
 void create_http_json(creat_json *pCreat_json, uint8_t flag);
+void Read_Metadate(void);
 
 /************metadata 参数***********/
-extern unsigned long fn_dp;  //数据发送频率
-extern unsigned long fn_th;  //温湿度频率
-extern unsigned long fn_sen; //人感灵敏度
-extern uint8_t cg_data_led;  //发送数据 LED状态 0关闭，1打开
-extern uint8_t net_mode;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+extern uint32_t fn_dp;       //数据发送频率
+extern uint32_t fn_485_th;   //485温湿度探头
+extern uint32_t fn_485_sth;  //485 土壤探头
+extern uint32_t fn_ext;      //18b20
+extern uint32_t fn_energy;   //电能信息：电压/电流/功率
+extern uint32_t fn_ele_quan; //用电量统计
+// extern uint32_t fn_sen;     //人感灵敏度
+extern uint8_t cg_data_led; //发送数据 LED状态 0关闭，1打开
+extern uint8_t net_mode;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 /************************************/
 
 #endif

@@ -162,7 +162,7 @@ void http_get_task(void *pvParameters)
         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
                             false, true, -1);
         printf("Http send !\n");
-        http_send_mes();
+        // http_send_mes();
     }
 }
 
