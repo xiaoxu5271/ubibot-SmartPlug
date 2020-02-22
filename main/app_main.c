@@ -67,8 +67,9 @@ void app_main(void)
 	RS485_Init();
 	CSE7759B_Init();
 	start_ds18b20();
+	Start_Cache();
 	ble_app_init();
 	init_wifi();
-	initialise_http();
+	initialise_http(); //须放在 采集任务建立之后
 	initialise_mqtt();
 }

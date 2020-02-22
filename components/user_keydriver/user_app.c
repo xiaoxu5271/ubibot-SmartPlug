@@ -105,7 +105,7 @@ void user_key_cd_task(void *arg)
         {
         case 1:
             Task_key_num = 0;
-            Key_Switch_Relay();
+            Switch_Relay(-1);
             // lan_ota();
             break;
 

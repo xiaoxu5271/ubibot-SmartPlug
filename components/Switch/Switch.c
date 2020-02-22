@@ -27,34 +27,19 @@ void Switch_Init(void)
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
 }
 
-void Key_Switch_Relay(void)
+//切换继电器
+void Switch_Relay(int8_t set_value)
 {
-    mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
-    if (mqtt_json_s.mqtt_switch_status == 1)
+    if (set_value == -1)
     {
-        // START_7759B_READ();
-    }
-    else
-    {
-        // STOP_7759B_READ();
+        mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
     }
 
-    gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
-    // need_send = 1;
-    if (Binary_Http_Send != NULL)
-    {
-        xSemaphoreGive(Binary_Http_Send);
-    }
-}
-
-void Mqtt_Switch_Relay(uint8_t set_value)
-{
-    if (set_value >= 1 && set_value < 100)
+    else if (set_value >= 1 && set_value < 100)
     {
         if (mqtt_json_s.mqtt_switch_status != 1)
         {
             mqtt_json_s.mqtt_switch_status = 1;
-            // START_7759B_READ();
         }
     }
     else if (set_value == 0)
@@ -62,13 +47,11 @@ void Mqtt_Switch_Relay(uint8_t set_value)
         if (mqtt_json_s.mqtt_switch_status != 0)
         {
             mqtt_json_s.mqtt_switch_status = 0;
-            // STOP_7759B_READ();
         }
     }
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
-    // need_send = 1;
-    if (Binary_Http_Send != NULL)
+    if (Binary_energy != NULL)
     {
-        xSemaphoreGive(Binary_Http_Send);
+        xTaskNotifyGive(Binary_energy);
     }
 }

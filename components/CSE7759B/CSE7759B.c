@@ -7,9 +7,12 @@
 #include "Json_parse.h"
 #include "CSE7759B.h"
 #include "Uart0.h"
+#include "Http.h"
 
 #define TAG "CSE7759B"
 TaskHandle_t CSE7759B_Handle = NULL;
+SemaphoreHandle_t Energy_read_Binary = NULL;
+SemaphoreHandle_t Ele_quan_Binary = NULL;
 
 #define UART1_TXD (UART_PIN_NO_CHANGE)
 #define UART1_RXD (GPIO_NUM_26)
@@ -38,9 +41,6 @@ TaskHandle_t CSE7759B_Handle = NULL;
 
 //7759B电能计数脉冲溢出时的数据
 #define ENERGY_FLOW_NUM 65536 //电量采集，电能溢出时的脉冲计数值
-
-#define CSE_READ_CYCLE 10   //读取电量信息周期，单位S
-#define CSE_ENERGY_CYCLE 60 //电量统计上传周期，单位min
 
 typedef struct RuningInf_s
 {
@@ -568,26 +568,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
     return 1;
 }
 
-void CSE7759B_Task(void *pvParameters)
-{
-    uint16_t read_num = 0;
-    while (1)
-    {
-        ESP_LOGI("TEST", "en_uart_recv");
-        CSE7759B_Read();
-        vTaskDelay(1000 * CSE_READ_CYCLE / portTICK_RATE_MS);
-        read_num++;
-        if (read_num * CSE_READ_CYCLE > CSE_ENERGY_CYCLE * 60)
-        {
-            read_num = 0;
-            mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit / 1000.0; //单位是度
-            ESP_LOGI(TAG, "energy=%ld\n", runingInf.energy / runingInf.energyUnit);
-            runingInf.energy = 0; //清除本次统计
-            CSE_Energy_Status = true;
-        }
-    }
-}
-
+//串口读取原始数据
 int8_t CSE7759B_Read(void)
 {
     uint8_t data_u1[BUF_SIZE] = {0};
@@ -653,23 +634,33 @@ int8_t CSE7759B_Read(void)
     }
 }
 
+//读取，构建电能信息
+void Energy_Read_Task(void *pvParameters)
+{
+    vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, -1);
+        CSE7759B_Read();
+    }
+}
+//读取，构建累积用电量
+void Ele_quan_Task(void *pvParameters)
+{
+    vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, -1);
+        CSE7759B_Read();
+        mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit / 1000.0; //单位是度
+        ESP_LOGI(TAG, "energy=%ld\n", runingInf.energy / runingInf.energyUnit);
+        runingInf.energy = 0; //清除本次统计
+        // CSE_Energy_Status = true;
+    }
+}
+
 void CSE7759B_Init(void)
 {
-    // soft_uart_init();
-    xTaskCreate(CSE7759B_Task, "CSE7759B_Task", 4096, NULL, 5, &CSE7759B_Handle);
-    // vTaskSuspend(CSE7759B_Handle);
-    // if (mqtt_json_s.mqtt_switch_status == 0)
-    // {
-    //     STOP_7759B_READ();
-    // }
-}
-
-void STOP_7759B_READ(void)
-{
-    vTaskSuspend(CSE7759B_Handle);
-}
-
-void START_7759B_READ(void)
-{
-    vTaskResume(CSE7759B_Handle);
+    xTaskCreate(Energy_Read_Task, "Energy_Read_Task", 4096, NULL, 5, &Binary_energy);
+    xTaskCreate(Ele_quan_Task, "Ele_quan_Task", 4096, NULL, 5, &Binary_ele_quan);
 }

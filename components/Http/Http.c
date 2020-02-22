@@ -18,15 +18,27 @@
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
-#include "freertos/event_groups.h"
+
 // #include "w5500_driver.h"
 #include "my_base64.h"
 #include "Http.h"
 #include "Mqtt.h"
 
 SemaphoreHandle_t xMutex_Http_Send = NULL;
-SemaphoreHandle_t Binary_Http_Send = NULL;
-SemaphoreHandle_t Binary_Heart_Send = NULL;
+// SemaphoreHandle_t Binary_Heart_Send = NULL;
+// SemaphoreHandle_t Binary_dp = NULL;
+// SemaphoreHandle_t Binary_485_th = NULL;
+// SemaphoreHandle_t Binary_485_sth = NULL;
+// SemaphoreHandle_t Binary_ext = NULL;
+// SemaphoreHandle_t Binary_energy = NULL;
+// SemaphoreHandle_t Binary_ele_quan = NULL;
+TaskHandle_t Binary_Heart_Send = NULL;
+TaskHandle_t Binary_dp = NULL;
+TaskHandle_t Binary_485_th = NULL;
+TaskHandle_t Binary_485_sth = NULL;
+TaskHandle_t Binary_ext = NULL;
+TaskHandle_t Binary_energy = NULL;
+TaskHandle_t Binary_ele_quan = NULL;
 
 // extern uint8_t data_read[34];
 
@@ -35,6 +47,7 @@ uint32_t HTTP_STATUS = HTTP_KEY_GET;
 uint8_t post_status = POST_NOCOMMAND;
 
 static char build_heart_url[256];
+BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 TaskHandle_t httpHandle = NULL;
 esp_timer_handle_t http_timer_suspend_p = NULL;
@@ -45,6 +58,51 @@ esp_timer_create_args_t timer_heart_arg = {
     .callback = &timer_heart_cb,
     .arg = NULL,
     .name = "Heart_Timer"};
+
+//1min 定时，用来触发各组数据采集/发送
+void timer_heart_cb(void *arg)
+{
+    // xSemaphoreGive(Binary_Heart_Send);
+    vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
+    static uint32_t min_num = 0;
+    min_num++;
+    if (fn_dp)
+        if (min_num % (fn_dp / 60) == 0)
+        {
+            // xSemaphoreGive(Binary_dp);
+            vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
+        }
+    if (fn_485_th)
+        if (min_num % (fn_485_th / 60) == 0)
+        {
+            // xSemaphoreGive(Binary_485_th);
+            vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
+        }
+    if (fn_485_sth)
+        if (min_num % (fn_485_sth / 60) == 0)
+        {
+            // xSemaphoreGive(Binary_485_sth);
+            vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
+        }
+    if (fn_energy)
+        if (min_num % (fn_energy / 60) == 0)
+        {
+            // xSemaphoreGive(Binary_energy);
+            vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
+        }
+    if (fn_ele_quan)
+        if (min_num % (fn_ele_quan / 60) == 0)
+        {
+            // xSemaphoreGive(Binary_ele_quan);
+            vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
+        }
+    if (fn_ext)
+        if (min_num % (fn_ext / 60) == 0)
+        {
+            // xSemaphoreGive(Binary_ext);
+            vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
+        }
+}
 
 int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)
 {
@@ -151,20 +209,20 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
     }
 }
 
-void http_get_task(void *pvParameters)
-{
-    xSemaphoreGive(Binary_Http_Send); //先发送一次
+// void http_get_task(void *pvParameters)
+// {
+//     xSemaphoreGive(Binary_Http_Send); //先发送一次
 
-    while (1)
-    {
-        //需要把数据发送到平台
-        xSemaphoreTake(Binary_Http_Send, (fn_dp * 1000) / portTICK_PERIOD_MS);
-        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
-                            false, true, -1);
-        printf("Http send !\n");
-        // http_send_mes();
-    }
-}
+//     while (1)
+//     {
+//         //需要把数据发送到平台
+//         xSemaphoreTake(Binary_Http_Send, (fn_dp * 1000) / portTICK_PERIOD_MS);
+//         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+//                             false, true, -1);
+//         printf("Http send !\n");
+//         // http_send_mes();
+//     }
+// }
 
 void send_heart_task(void *arg)
 {
@@ -172,7 +230,9 @@ void send_heart_task(void *arg)
 
     while (1)
     {
-        xSemaphoreTake(Binary_Heart_Send, -1);
+        // xSemaphoreTake(Binary_Heart_Send, -1);
+        ulTaskNotifyTake(pdTRUE, -1);
+        // xTaskNotifyWait()
         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, -1); //等网络连接
         printf("Heart send !\n");
         if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)
@@ -194,12 +254,6 @@ void send_heart_task(void *arg)
             printf("hart recv 0!\r\n");
         }
     }
-}
-
-//定时发送心跳包
-void timer_heart_cb(void *arg)
-{
-    xSemaphoreGive(Binary_Heart_Send);
 }
 
 //激活流程
@@ -326,9 +380,16 @@ void http_send_mes(void)
 
 void initialise_http(void)
 {
-    xMutex_Http_Send = xSemaphoreCreateMutex();   //创建HTTP发送互斥信号
-    Binary_Http_Send = xSemaphoreCreateBinary();  //http
-    Binary_Heart_Send = xSemaphoreCreateBinary(); //心跳包
+    xTaskCreate(send_heart_task, "send_heart_task", 8192, NULL, 5, &Binary_Heart_Send);
+
+    xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
+    // Binary_Heart_Send = xSemaphoreCreateBinary(); //心跳包
+    // Binary_dp = xSemaphoreCreateBinary();
+    // Binary_485_th = xSemaphoreCreateBinary();
+    // Binary_485_sth = xSemaphoreCreateBinary();
+    // Binary_ext = xSemaphoreCreateBinary();
+    // Binary_energy = xSemaphoreCreateBinary();
+    // Binary_ele_quan = xSemaphoreCreateBinary();
 
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
 
@@ -344,7 +405,8 @@ void initialise_http(void)
             ApiKey,
             WEB_SERVER);
     printf("build_heart_url:%s", build_heart_url);
-    xSemaphoreGive(Binary_Heart_Send);
+    // xSemaphoreGive(Binary_Heart_Send);
+    xTaskNotifyGive(Binary_Heart_Send);
 
     err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s
     if (err != ESP_OK)
@@ -352,6 +414,5 @@ void initialise_http(void)
         printf("timer heart create err code:%d\n", err);
     }
 
-    xTaskCreate(&http_get_task, "http_get_task", 8192, NULL, 6, &httpHandle);
-    xTaskCreate(&send_heart_task, "send_heart_task", 8192, NULL, 5, NULL);
+    // xTaskCreate(&http_get_task, "http_get_task", 8192, NULL, 6, &httpHandle);
 }

@@ -453,9 +453,9 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
         strncpy(mqtt_json_s.mqtt_string, json_data_string_parse->valuestring, strlen(json_data_string_parse->valuestring));
 
         post_status = POST_NORMAL;
-        if (Binary_Http_Send != NULL)
+        if (Binary_dp != NULL)
         {
-            xSemaphoreGive(Binary_Http_Send);
+            // xSemaphoreGive(Binary_Http_Send);
         }
         // need_send = 1;
         json_data_string_parse = cJSON_Parse(json_data_string_parse->valuestring); //将command_string再次构建成json格式，以便二次解析
@@ -490,11 +490,11 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
                 {
                     if ((json_data_set_state = cJSON_GetObjectItem(json_data_string_parse, "set_state")) != NULL)
                     {
-                        Mqtt_Switch_Relay(json_data_set_state->valueint);
+                        Switch_Relay(json_data_set_state->valueint);
                     }
                     else if ((json_data_set_state = cJSON_GetObjectItem(json_data_string_parse, "set_state_plug1")) != NULL)
                     {
-                        Mqtt_Switch_Relay(json_data_set_state->valueint);
+                        Switch_Relay(json_data_set_state->valueint);
                     }
                 }
                 else
