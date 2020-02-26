@@ -21,6 +21,6 @@ float Wind_Read(void);
 extern float ext_tem, ext_hum;
 extern bool RS485_status;
 void RS485_Init(void);
-void RS485_Read(void);
+int8_t RS485_Read(char *Send_485_Buff);
 
 #endif

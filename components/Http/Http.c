@@ -25,13 +25,7 @@
 #include "Mqtt.h"
 
 SemaphoreHandle_t xMutex_Http_Send = NULL;
-// SemaphoreHandle_t Binary_Heart_Send = NULL;
-// SemaphoreHandle_t Binary_dp = NULL;
-// SemaphoreHandle_t Binary_485_th = NULL;
-// SemaphoreHandle_t Binary_485_sth = NULL;
-// SemaphoreHandle_t Binary_ext = NULL;
-// SemaphoreHandle_t Binary_energy = NULL;
-// SemaphoreHandle_t Binary_ele_quan = NULL;
+
 TaskHandle_t Binary_Heart_Send = NULL;
 TaskHandle_t Binary_dp = NULL;
 TaskHandle_t Binary_485_th = NULL;
@@ -62,44 +56,37 @@ esp_timer_create_args_t timer_heart_arg = {
 //1min 定时，用来触发各组数据采集/发送
 void timer_heart_cb(void *arg)
 {
-    // xSemaphoreGive(Binary_Heart_Send);
     vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
     static uint32_t min_num = 0;
     min_num++;
     if (fn_dp)
         if (min_num % (fn_dp / 60) == 0)
         {
-            // xSemaphoreGive(Binary_dp);
             vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
         }
     if (fn_485_th)
         if (min_num % (fn_485_th / 60) == 0)
         {
-            // xSemaphoreGive(Binary_485_th);
             vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
         }
     if (fn_485_sth)
         if (min_num % (fn_485_sth / 60) == 0)
         {
-            // xSemaphoreGive(Binary_485_sth);
             vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
         }
     if (fn_energy)
         if (min_num % (fn_energy / 60) == 0)
         {
-            // xSemaphoreGive(Binary_energy);
             vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
         }
     if (fn_ele_quan)
         if (min_num % (fn_ele_quan / 60) == 0)
         {
-            // xSemaphoreGive(Binary_ele_quan);
             vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
         }
     if (fn_ext)
         if (min_num % (fn_ext / 60) == 0)
         {
-            // xSemaphoreGive(Binary_ext);
             vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
         }
 }
@@ -383,13 +370,6 @@ void initialise_http(void)
     xTaskCreate(send_heart_task, "send_heart_task", 8192, NULL, 5, &Binary_Heart_Send);
 
     xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
-    // Binary_Heart_Send = xSemaphoreCreateBinary(); //心跳包
-    // Binary_dp = xSemaphoreCreateBinary();
-    // Binary_485_th = xSemaphoreCreateBinary();
-    // Binary_485_sth = xSemaphoreCreateBinary();
-    // Binary_ext = xSemaphoreCreateBinary();
-    // Binary_energy = xSemaphoreCreateBinary();
-    // Binary_ele_quan = xSemaphoreCreateBinary();
 
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
 

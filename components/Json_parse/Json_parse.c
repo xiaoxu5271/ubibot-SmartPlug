@@ -4,6 +4,7 @@
 
 #include <cJSON.h>
 #include "esp_system.h"
+#include "esp_log.h"
 #include "Json_parse.h"
 #include "Nvs.h"
 #include "ServerTimer.h"

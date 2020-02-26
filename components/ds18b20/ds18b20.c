@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <math.h>
+#include "string.h"
+#include "cJSON.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
 
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "Http.h"
+#include "ServerTimer.h"
+#include "Cache_data.h"
 
 #include "ds18b20.h"
 
@@ -13,7 +18,7 @@
 #define ds18b20_gpio GPIO_NUM_4
 
 //采集数据的次数
-#define Cla_Num 5
+#define Cla_Num 9
 
 #define DATA_IO_ON() gpio_set_level(ds18b20_gpio, 1)
 #define DATA_IO_OFF() gpio_set_level(ds18b20_gpio, 0)
@@ -249,19 +254,43 @@ int8_t ds18b20_get_temp(void)
     return 1;
 }
 
+void Create_Ext_Json(void)
+{
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+    pJsonRoot = cJSON_CreateObject();
+    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+    cJSON_AddItemToObject(pJsonRoot, "field7", cJSON_CreateNumber(DS18B20_TEM));
+    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    cJSON_Delete(pJsonRoot);                       //delete cjson root
+    len = strlen(OutBuffer);
+    printf("len:%d\n%s\n", len, OutBuffer);
+    // SaveBuffer = (uint8_t *)malloc(len);
+    SaveBuffer = (uint8_t *)malloc(len);
+    memcpy(SaveBuffer, OutBuffer, len);
+    DataSave(SaveBuffer, len);
+    free(OutBuffer);
+    free(SaveBuffer);
+}
+
 void get_ds18b20_task(void *org)
 {
     while (1)
     {
-        // RS485_Read();
-        ds18b20_get_temp();
-        vTaskDelay(2000 / portTICK_RATE_MS);
+        ulTaskNotifyTake(pdTRUE, -1);
+        while (ds18b20_get_temp() != 1)
+        {
+            //探头读取错误
+            vTaskDelay(2000 / portTICK_RATE_MS);
+        }
     }
 }
 
 void start_ds18b20(void)
 {
-    xTaskCreate(get_ds18b20_task, "get_ds18b20_task", 4096, NULL, 3, NULL);
+    xTaskCreate(get_ds18b20_task, "get_ds18b20_task", 4096, NULL, 3, &Binary_ext);
 }
 
 /*******************************************************************************

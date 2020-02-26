@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "cJSON.h"
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 #include "driver/uart.h"
@@ -8,6 +9,8 @@
 #include "CSE7759B.h"
 #include "Uart0.h"
 #include "Http.h"
+#include "Cache_data.h"
+#include "ServerTimer.h"
 
 #define TAG "CSE7759B"
 TaskHandle_t CSE7759B_Handle = NULL;
@@ -609,8 +612,12 @@ int8_t CSE7759B_Read(void)
                         if (checksum == data_7759b[23])
                         {
                             ESP_LOGI(TAG, "checksum = 0x%02x ,7759b checksum ok!", checksum);
-                            DealUartInf(data_7759b, 24); //处理7759B数据
-                            return 1;
+                            if (DealUartInf(data_7759b, 24)) //处理7759B数据
+                            {
+                                return 1;
+                            }
+                            ESP_LOGE(TAG, "Chip CSE7759B ERR!");
+                            return 0;
                         }
                         else
                         {
@@ -634,14 +641,65 @@ int8_t CSE7759B_Read(void)
     }
 }
 
+void Creat_Energy_Json(void)
+{
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+    pJsonRoot = cJSON_CreateObject();
+    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+    cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+    cJSON_AddItemToObject(pJsonRoot, "field2", cJSON_CreateNumber(mqtt_json_s.mqtt_Voltage));
+    cJSON_AddItemToObject(pJsonRoot, "field3", cJSON_CreateNumber(mqtt_json_s.mqtt_Current));
+    cJSON_AddItemToObject(pJsonRoot, "field4", cJSON_CreateNumber(mqtt_json_s.mqtt_Power));
+    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    cJSON_Delete(pJsonRoot);                       //delete cjson root
+    len = strlen(OutBuffer);
+    printf("len:%d\n%s\n", len, OutBuffer);
+    // SaveBuffer = (uint8_t *)malloc(len);
+    SaveBuffer = (uint8_t *)malloc(len);
+    memcpy(SaveBuffer, OutBuffer, len);
+    DataSave(SaveBuffer, len);
+    free(OutBuffer);
+    free(SaveBuffer);
+}
+
+void Creat_Ele_quan_Json(void)
+{
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+    pJsonRoot = cJSON_CreateObject();
+    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+    cJSON_AddItemToObject(pJsonRoot, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
+    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    cJSON_Delete(pJsonRoot);                       //delete cjson root
+    len = strlen(OutBuffer);
+    printf("len:%d\n%s\n", len, OutBuffer);
+    // SaveBuffer = (uint8_t *)malloc(len);
+    SaveBuffer = (uint8_t *)malloc(len);
+    memcpy(SaveBuffer, OutBuffer, len);
+    DataSave(SaveBuffer, len);
+    free(OutBuffer);
+    free(SaveBuffer);
+}
+
 //读取，构建电能信息
 void Energy_Read_Task(void *pvParameters)
 {
+    CSE7759B_Read();
     vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
+    CSE7759B_Read();
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        CSE7759B_Read();
+        while (CSE7759B_Read() != 1)
+        {
+            vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
+        }
+        Creat_Energy_Json();
     }
 }
 //读取，构建累积用电量
@@ -651,11 +709,12 @@ void Ele_quan_Task(void *pvParameters)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        CSE7759B_Read();
+        // CSE7759B_Read();
         mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit / 1000.0; //单位是度
         ESP_LOGI(TAG, "energy=%ld\n", runingInf.energy / runingInf.energyUnit);
         runingInf.energy = 0; //清除本次统计
         // CSE_Energy_Status = true;
+        Creat_Ele_quan_Json();
     }
 }
 

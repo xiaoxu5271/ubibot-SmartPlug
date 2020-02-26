@@ -31,6 +31,7 @@
 #include "ds18b20.h"
 #include "user_app.h"
 #include "my_spi_flash.h"
+#include "Cache_data.h"
 
 void app_main(void)
 {
