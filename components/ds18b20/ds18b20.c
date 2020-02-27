@@ -270,7 +270,9 @@ void Create_Ext_Json(void)
     // SaveBuffer = (uint8_t *)malloc(len);
     SaveBuffer = (uint8_t *)malloc(len);
     memcpy(SaveBuffer, OutBuffer, len);
+    xSemaphoreTake(Cache_muxtex, -1);
     DataSave(SaveBuffer, len);
+    xSemaphoreGive(Cache_muxtex);
     free(OutBuffer);
     free(SaveBuffer);
 }

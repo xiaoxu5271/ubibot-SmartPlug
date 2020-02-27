@@ -9,7 +9,6 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
-#include "user_key.h"
 #include <esp_log.h>
 #include "tcp_bsp.h"
 #include "Smartconfig.h"
@@ -20,7 +19,9 @@
 #include "E2prom.h"
 #include "Json_parse.h"
 #include "Switch.h"
+#include "Http.h"
 
+#include "user_key.h"
 uint8_t Task_key_num = 0;
 
 /* 填充需要配置的按键个数以及对应的相关参数 */
@@ -97,6 +98,7 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
     }
 }
 
+// BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 void user_key_cd_task(void *arg)
 {
     while (1)
@@ -107,6 +109,10 @@ void user_key_cd_task(void *arg)
             Task_key_num = 0;
             Switch_Relay(-1);
             // lan_ota();
+            break;
+
+        case 2:
+            vTaskNotifyGiveFromISR(Binary_dp, NULL);
             break;
 
         case 5:
@@ -164,5 +170,5 @@ void user_app_key_init(void)
     err_code = user_key_init(gs_m_key_config, BOARD_BUTTON_COUNT, DECOUNE_TIMER, long_pressed_cb, short_pressed_cb);
     ESP_LOGI("user_app_key_init", "user_key_init is %d\n", err_code);
     xTaskCreate(user_key_cd_task, "user_key_cd_task", 4096, NULL, 8, NULL);
-    xTaskCreate(vTask_view_Work, "vTask_view_Work", 10240, NULL, 5, NULL);
+    // xTaskCreate(vTask_view_Work, "vTask_view_Work", 10240, NULL, 5, NULL);
 }

@@ -14,6 +14,7 @@
 #include "Smartconfig.h"
 #include "E2prom.h"
 #include "Http.h"
+#include "Cache_data.h"
 //#include "Motorctl.h"
 //#include "Wind.h"
 #include "Bluetooth.h"
@@ -527,6 +528,53 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     return 1;
 }
 
+uint8_t Create_NET_Json(char *status_buff)
+{
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+    wifi_ap_record_t wifidata;
+    uint8_t mac_sys[6] = {0};
+    char mac_buff[32] = {0};
+    char ssid64_buff[64] = {0};
+
+    pJsonRoot = cJSON_CreateObject();
+    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+
+    if (esp_wifi_sta_get_ap_info(&wifidata) == 0)
+    {
+        itoa(wifidata.rssi, mqtt_json_s.mqtt_Rssi, 10);
+    }
+    cJSON_AddItemToObject(pJsonRoot, "field6", cJSON_CreateString(mqtt_json_s.mqtt_Rssi));
+    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    cJSON_Delete(pJsonRoot);                       //delete cjson root
+    len = strlen(OutBuffer);
+    printf("len:%d\n%s\n", len, OutBuffer);
+    // SaveBuffer = (uint8_t *)malloc(len);
+    SaveBuffer = (uint8_t *)malloc(len);
+    memcpy(SaveBuffer, OutBuffer, len);
+    xSemaphoreTake(Cache_muxtex, -1);
+    DataSave(SaveBuffer, len);
+    xSemaphoreGive(Cache_muxtex);
+    free(OutBuffer);
+    free(SaveBuffer);
+
+    esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
+    sprintf(mac_buff,
+            "mac=%02x:%02x:%02x:%02x:%02x:%02x",
+            mac_sys[0],
+            mac_sys[1],
+            mac_sys[2],
+            mac_sys[3],
+            mac_sys[4],
+            mac_sys[5]);
+    base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
+
+    sprintf(status_buff, "],\"status\":\"%s\",\"ssid_base64\":\"%s\"}", mac_buff, ssid64_buff);
+    return strlen(status_buff);
+}
+
 void create_http_json(creat_json *pCreat_json, uint8_t flag)
 {
     printf("INTO CREATE_HTTP_JSON\r\n");
@@ -538,11 +586,7 @@ void create_http_json(creat_json *pCreat_json, uint8_t flag)
     uint8_t mac_sys[6] = {0};
     char mac_buff[32] = {0};
     char ssid64_buff[64] = {0};
-    //char status_creat_json_c[256];
 
-    //printf("Server_Timer_SEND() %s", (char *)Server_Timer_SEND());
-    //strncpy(http_json_c.http_time[20], Server_Timer_SEND(), 20);
-    // printf("this http_json_c.http_time[20]  %s\r\n", http_json_c.http_time);
     strncpy(http_json_c.http_time, Server_Timer_SEND(), 24);
     wifi_ap_record_t wifidata;
 

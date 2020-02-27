@@ -59,36 +59,36 @@ void timer_heart_cb(void *arg)
     vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
     static uint32_t min_num = 0;
     min_num++;
-    if (fn_dp)
-        if (min_num % (fn_dp / 60) == 0)
-        {
-            vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
-        }
-    if (fn_485_th)
-        if (min_num % (fn_485_th / 60) == 0)
-        {
-            vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
-        }
-    if (fn_485_sth)
-        if (min_num % (fn_485_sth / 60) == 0)
-        {
-            vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
-        }
-    if (fn_energy)
-        if (min_num % (fn_energy / 60) == 0)
-        {
-            vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
-        }
-    if (fn_ele_quan)
-        if (min_num % (fn_ele_quan / 60) == 0)
-        {
-            vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
-        }
-    if (fn_ext)
-        if (min_num % (fn_ext / 60) == 0)
-        {
-            vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
-        }
+    // if (fn_dp)
+    // if (min_num % (fn_dp / 60) == 0)
+    // {
+    //     vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
+    // }
+    // if (fn_485_th)
+    //     if (min_num % (fn_485_th / 60) == 0)
+    //     {
+    //         vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
+    //     }
+    // if (fn_485_sth)
+    //     if (min_num % (fn_485_sth / 60) == 0)
+    //     {
+    //         vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
+    //     }
+    // if (fn_energy)
+    //     if (min_num % (fn_energy / 60) == 0)
+    //     {
+    //         vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
+    //     }
+    // if (fn_ele_quan)
+    //     if (min_num % (fn_ele_quan / 60) == 0)
+    //     {
+    //         vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
+    //     }
+    // if (fn_ext)
+    //     if (min_num % (fn_ext / 60) == 0)
+    //     {
+    //         vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
+    //     }
 }
 
 int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)
@@ -169,6 +169,113 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
     close(s);
     // printf("http send end!\n");
     return r;
+}
+
+//http post 初始化
+//return socke
+int32_t http_post_init(uint32_t Content_Length)
+{
+    char build_po_url[512] = {0};
+
+    if (post_status == POST_NOCOMMAND) //无commID
+    {
+        sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nUser-Agent: dalian urban ILS1\r\nContent-Length:%d\r\n\r\n",
+                WEB_SERVER,
+                ApiKey,
+                FIRMWARE,
+                WEB_SERVER,
+                Content_Length);
+    }
+    else
+    {
+        post_status = POST_NOCOMMAND;
+        sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
+                WEB_SERVER,
+                ApiKey,
+                FIRMWARE,
+                mqtt_json_s.mqtt_command_id,
+                WEB_SERVER,
+                Content_Length);
+    }
+
+    ESP_LOGI("HTTP_POST_INIT", "url:%s", build_po_url);
+
+    const struct addrinfo hints = {
+        .ai_family = AF_INET,
+        .ai_socktype = SOCK_STREAM,
+    };
+    struct addrinfo *res;
+    struct in_addr *addr;
+    int32_t s = 0;
+
+    int err = getaddrinfo("api.ubibot.cn", "80", &hints, &res); //step1：DNS域名解析
+
+    if (err != 0 || res == NULL)
+    {
+        ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        return -1;
+    }
+
+    addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
+    ESP_LOGI(TAG, "DNS lookup succeeded. IP=%s", inet_ntoa(*addr));
+
+    s = socket(res->ai_family, res->ai_socktype, 0); //step2：新建套接字
+    if (s < 0)
+    {
+        ESP_LOGE(TAG, "... Failed to allocate socket. err:%d", s);
+        close(s);
+        freeaddrinfo(res);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        return -1;
+    }
+    ESP_LOGI(TAG, "... allocated socket");
+
+    if (connect(s, res->ai_addr, res->ai_addrlen) != 0) //step3：连接IP
+    {
+        ESP_LOGE(TAG, "... socket connect failed errno=%d", errno);
+        close(s);
+        freeaddrinfo(res);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "... connected");
+    freeaddrinfo(res);
+
+    if (write(s, build_po_url, strlen(build_po_url)) < 0) //step4：发送http Header
+    {
+        ESP_LOGE(TAG, "... socket send failed");
+        close(s);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        return -1;
+    }
+    return s;
+}
+
+//读取http post 返回
+int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
+{
+    struct timeval receiving_timeout;
+    receiving_timeout.tv_sec = 5;
+    receiving_timeout.tv_usec = 0;
+    if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout, //step5：设置接收超时
+                   sizeof(receiving_timeout)) < 0)
+    {
+        ESP_LOGE(TAG, "... failed to set socket receiving timeout");
+        close(s);
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
+        return -1;
+    }
+    ESP_LOGI(TAG, "... set socket receiving timeout success");
+
+    /* Read HTTP response */
+    int r;
+    bzero((uint16_t *)recv_buff, buff_size);
+    r = read(s, (uint16_t *)recv_buff, buff_size);
+    ESP_LOGI(TAG, "r=%d,activate recv_buf=%s\r\n", r, (char *)recv_buff);
+    close(s);
+    return 1;
 }
 
 int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)

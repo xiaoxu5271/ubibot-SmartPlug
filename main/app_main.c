@@ -40,6 +40,9 @@ void app_main(void)
 	SPI_FLASH_Init();
 	// SPIFlash_Test_Process();
 	E2prom_Init();
+	/******擦除测试******/
+	Erase_Flash_data_test();
+
 	Uart_Init();
 	Led_Init();
 	Switch_Init();

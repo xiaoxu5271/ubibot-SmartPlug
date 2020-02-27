@@ -133,7 +133,9 @@ void Create_485th_Json(void)
     // SaveBuffer = (uint8_t *)malloc(len);
     SaveBuffer = (uint8_t *)malloc(len);
     memcpy(SaveBuffer, OutBuffer, len);
+    xSemaphoreTake(Cache_muxtex, -1);
     DataSave(SaveBuffer, len);
+    xSemaphoreGive(Cache_muxtex);
     free(OutBuffer);
     free(SaveBuffer);
 }
@@ -171,7 +173,9 @@ void Create_485sth_Json(void)
     // SaveBuffer = (uint8_t *)malloc(len);
     SaveBuffer = (uint8_t *)malloc(len);
     memcpy(SaveBuffer, OutBuffer, len);
+    xSemaphoreTake(Cache_muxtex, -1);
     DataSave(SaveBuffer, len);
+    xSemaphoreGive(Cache_muxtex);
     free(OutBuffer);
     free(SaveBuffer);
 }
@@ -194,6 +198,8 @@ void RS485_Init(void)
     xTaskCreate(read_485_th_task, "read_485_th_task", 4096, NULL, 3, &Binary_485_th);
     xTaskCreate(read_485_sth_task, "read_485_sth_task", 4096, NULL, 3, &Binary_485_sth);
 }
+
+
 
 // /*******************************************************************************
 //                                       END

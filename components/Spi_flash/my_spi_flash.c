@@ -133,7 +133,7 @@ int VprocHALWrite(uint8_t val)
 	/*Note: Implement this as per your platform*/
 	esp_err_t ret;
 	spi_transaction_t t;
-	unsigned short data = 0;
+	// unsigned short data = 0;
 	memset(&t, 0, sizeof(t));		//Zero out the transaction
 	t.length = sizeof(uint8_t) * 8; //Len is in bytes, transaction length is in bits.
 
@@ -153,7 +153,7 @@ int VprocHALRead(uint8_t *pVal)
 	/*Note: Implement this as per your platform*/
 	esp_err_t ret;
 	spi_transaction_t t;
-	unsigned short data = 0xFFFF;
+	// unsigned short data = 0xFFFF;
 	uint8_t data1 = 0xFF;
 
 	memset(&t, 0, sizeof(t)); //Zero out the transaction
@@ -423,33 +423,129 @@ void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 	W25QXX_CS_H;
 }
 
-//读取数据缓存，返回一组数据的大小，失败返回0
+//读取数据缓存，返回一组数据占用flash的大小，可能包含错误的部分，失败返回0
 //一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
-uint16_t W25QXX_Read_Data(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
+uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_Temp_buff)
 {
-	uint16_t i;
+	uint16_t i = 0, j = 0;
 	uint8_t Temp = 0;
+	bool start_flag = false;
 	W25QXX_CS_L; //使能器件
 
 	VprocHALWrite(W25X_ReadData);				//发送读取命令
 	VprocHALWrite((uint8_t)((ReadAddr) >> 16)); //发送24bit地址
 	VprocHALWrite((uint8_t)((ReadAddr) >> 8));
 	VprocHALWrite((uint8_t)ReadAddr);
-	for (i = 0; i < NumByteToRead; i++)
+	for (i = 0; i < Size_Temp_buff; i++)
 	{
 		VprocHALRead(&Temp);
-		pBuffer[i] = Temp;	 //循环读数
-		if (pBuffer[i] == '}') //一组数据读取完成
+		if (Temp == '{' && start_flag == false) //数据开头
 		{
-			if (pBuffer[0] == '{') //数据完整
+			Temp_buff[j] = Temp; //循环读数
+			start_flag = true;
+			j = 1;
+		}
+		else if (start_flag == true) //开始一组数据计数
+		{
+			if (Temp == '}') //一组数据结束
 			{
-				W25QXX_CS_H;
-				return i; //读取到的字节数
+				Temp_buff[j] = Temp; //循环读数
+				return i;			 //返回从缓存中读了多少字节,用来计算下次读取的开始地址
 			}
+			else if (Temp == '{') //数据缓存时出现中断，重新计数
+			{
+				memset(Temp_buff, 0, (j + 1));
+				j = 0;
+				start_flag = false;
+				ESP_LOGE("read_date", "data broke");
+			}
+			else
+			{
+				Temp_buff[j] = Temp; //循环读数
+				j++;
+			}
+		}
+		else
+		{
+			ESP_LOGE("read_date", "no data");
 		}
 	}
 	W25QXX_CS_H;
+	ESP_LOGE("read_date", "read over ,no correct data");
 	return 0;
+}
+
+//读取数据缓存中正确的数据的大小，
+//一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
+uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr)
+{
+	ESP_LOGI("read_date", "Start_Addr=%d,End_Addr=%d", Start_Addr, End_Addr);
+	if (Start_Addr > End_Addr)
+	{
+		ESP_LOGE("read_date", "Start_Addr>End_Addr");
+		return 0;
+	}
+
+	uint32_t i = 0, j = 0;
+	uint8_t Temp = 0;
+	uint32_t post_len = 0;
+	uint32_t data_num = 0;
+	bool start_flag = false;
+
+	W25QXX_CS_L; //使能器件
+
+	VprocHALWrite(W25X_ReadData);				  //发送读取命令
+	VprocHALWrite((uint8_t)((Start_Addr) >> 16)); //发送24bit地址
+	VprocHALWrite((uint8_t)((Start_Addr) >> 8));
+	VprocHALWrite((uint8_t)Start_Addr);
+	for (i = 0; i < (End_Addr - Start_Addr); i++)
+	{
+		VprocHALRead(&Temp);
+		// ESP_LOGI("read_date", "Temp=%c", Temp);
+
+		if (Temp == '{' && start_flag == false) //数据开头
+		{
+			// Temp_buff[j] = Temp; //循环读数
+			start_flag = true;
+			j = 1;
+			// ESP_LOGI("read_date", "read data start");
+		}
+		else if (start_flag == true) //开始一组数据计数
+		{
+			if (Temp == '}') //一组数据结束
+			{
+				j++;
+				post_len = post_len + j + 1; //加上 ',' 分隔
+				j = 0;
+				start_flag = false;
+				data_num++;
+				// ESP_LOGI("read_date", "data_num = %d,post_len = %d", data_num, post_len);
+			}
+			else if (Temp == '{') //数据缓存时出现中断，重新计数
+			{
+				j = 0;
+				start_flag = false;
+				ESP_LOGE("read_date", "data broke");
+			}
+			else
+			{
+				// Temp_buff[j] = Temp; //循环读数
+				j++;
+				if (j > 512)
+				{
+					ESP_LOGE("read_date", "too long ,err");
+					j = 0;
+					start_flag = false;
+				}
+			}
+		}
+		else
+		{
+			ESP_LOGE("read_date", "no data");
+		}
+	}
+	W25QXX_CS_H;
+	return (post_len - 1);
 }
 
 //写SPI FLASH
@@ -512,10 +608,6 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 
 void SPI_FLASH_Init(void)
 {
-	uint8_t count_Temp = 100;
-	esp_err_t ret;
-	//spi_device_handle_t spi;
-
 	gpio_config_t io_conf;
 	//disable interrupt
 	io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
@@ -530,30 +622,6 @@ void SPI_FLASH_Init(void)
 	//configure GPIO with the given settings
 	gpio_config(&io_conf);
 
-	/*  spi_bus_config_t buscfg={
-        .miso_io_num=PIN_NUM_MISO,
-        .mosi_io_num=PIN_NUM_MOSI,
-        .sclk_io_num=PIN_NUM_CLK,
-        .quadwp_io_num=-1,
-        .quadhd_io_num=-1,
-        .max_transfer_sz=FLASH_SIZE,
-    };
-    spi_device_interface_config_t devcfg={
-        .clock_speed_hz=10*1000*1000,           //Clock out at 10 MHz
-        .mode=0,                                //SPI mode 0
-		.command_bits = 1,
-		.address_bits = 0,
-        .spics_io_num=PIN_NUM_CS,               //CS pin
-        .queue_size=7,                          //We want to be able to queue 7 transactions at a time
-        //.pre_cb=lcd_spi_pre_transfer_callback,  //Specify pre-transfer callback to handle D/C line
-    };
-    //Initialize the SPI bus
-    ret=spi_bus_initialize(HSPI_HOST, &buscfg, 1);
-    ESP_ERROR_CHECK(ret);
-    //Attach the Flash to the SPI bus
-    ret=spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
-    ESP_ERROR_CHECK(ret);
-	*/
 	VprocHALInit();
 	ESP_LOGI(TAG, "SPI_SET 1.0 \n");
 	W25QXX_CS_H; //SPI FLASH不选中
@@ -571,29 +639,6 @@ void SPI_FLASH_Init(void)
 	W25QXX_Wait_Busy();
 
 	ESP_LOGI(TAG, "W25QXX OK！\n");
-	/*uint8_t * pBuffer = NULL;
-	pBuffer = (uint8_t *)malloc(sizeof(uint8_t)*4096);
-	memset(pBuffer,0x55,4096);
-	//esp_log_buffer_hex(TAG,(char *)pBuffer,4096);
-	W25QXX_Write(pBuffer,0,4096);
-	//ESP_LOGI(TAG, "END Write\n");
-	W25QXX_Read(pBuffer,0*4096,4096);
-	esp_log_buffer_hex(TAG,(char *)pBuffer,4096);
-	uint8_t i=0;
-	while(1)
-	{
-		vTaskDelay(1000*10 / portTICK_RATE_MS);
-		ESP_LOGI(TAG, "Start Rend\n");
-		for(i=0;i<20;i++)
-		{
-			memset(pBuffer,0,4096);
-			W25QXX_Read(pBuffer,i*4096,4096);
-			esp_log_buffer_hex(TAG,(char *)pBuffer,4096);
-		}
-		ESP_LOGI(TAG, "END Rend\n");
-	}
-
-	free(pBuffer);*/
 }
 
 //---------------------------------------------------------------------------------
