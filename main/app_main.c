@@ -33,15 +33,31 @@
 #include "my_spi_flash.h"
 #include "Cache_data.h"
 
+//内存检测
+void memory_check_task(void *pvParameter)
+{
+	while (1)
+	{
+		ESP_LOGW("memroy check", "%d: - INTERNAL RAM left %dKB", __LINE__,
+				 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024);
+		// ESP_LOGW(MEMORY_CHECK_TAG, "%d: - SPI      RAM left %dkB", __LINE__,
+		// 		heap_caps_get_free_size( MALLOC_CAP_SPIRAM )/1024);
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
+	}
+	vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
 	// nvs_flash_erase();
+	xTaskCreate(&memory_check_task, "memory_check_task", 2048, NULL, 5, NULL);
 	nvs_flash_init();
 	SPI_FLASH_Init();
 	// SPIFlash_Test_Process();
 	E2prom_Init();
 	/******擦除测试******/
-	Erase_Flash_data_test();
+	// Erase_Flash_data_test();
+	// Raad_flash_Soctor();
 
 	Uart_Init();
 	Led_Init();

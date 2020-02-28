@@ -37,7 +37,7 @@ void Data_Post_Task(void *pvParameters)
         if (!Http_post_fun())
         {
             vTaskDelay(2000 / portTICK_PERIOD_MS);
-            xTaskNotifyGive(Binary_dp);
+            // xTaskNotifyGive(Binary_dp);
         }
     }
 }
@@ -69,6 +69,7 @@ void Start_Cache(void)
 /*******************************************************************************
 //  HTTP POST 
 *******************************************************************************/
+
 static uint8_t Http_post_fun(void)
 {
     const char *post_header = "{\"feeds\":["; //
@@ -82,14 +83,17 @@ static uint8_t Http_post_fun(void)
     uint32_t post_data_len;                   //Content_Length，通过http发送的总数据大小
     int32_t socket_num;                       //http socket
     bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
-    char recv_buff[512];
+    char recv_buff[1024];
 
     status_buff_len = Create_NET_Json((char *)status_buff); //该函数中save 了一条最近的数据，需在read end_raad_num之前
     ESP_LOGI(TAG, "status_buff_len:%d,buff:%s", status_buff_len, status_buff);
-    start_read_num_oen = AT24CXX_ReadLenByte(start_read_num_add, 4);
+    start_read_num = AT24CXX_ReadLenByte(start_read_num_add, 4);
+    start_read_num_oen = start_read_num;
+    ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
     xSemaphoreTake(Cache_muxtex, -1);
     end_read_num = AT24CXX_ReadLenByte(flash_used_num_add, 4); //放入 互斥锁内读取，防止数据被改写
+    ESP_LOGI(TAG, "end_read_num=%d", end_read_num);
     cache_data_len = Read_Post_Len(start_read_num, end_read_num);
     xSemaphoreGive(Cache_muxtex);
 
@@ -111,10 +115,10 @@ static uint8_t Http_post_fun(void)
             xSemaphoreTake(Cache_muxtex, -1);
             one_data_len = W25QXX_Read_Data(one_post_buff, start_read_num_oen, sizeof(one_post_buff));
             xSemaphoreGive(Cache_muxtex);
-            ESP_LOGI(TAG, "post_buff:%s,strlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
+            // ESP_LOGI(TAG, "post_buff:%s,strlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
             if (one_data_len > 0)
             {
-                start_read_num_oen += one_data_len;
+                start_read_num_oen = start_read_num_oen + one_data_len;
                 if (start_read_num_oen >= end_read_num)
                 {
                     send_status = true; //数据读完
@@ -126,12 +130,13 @@ static uint8_t Http_post_fun(void)
                     one_post_buff[strlen((const char *)one_post_buff)] = ',';
                 }
 
-                if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //step4：发送http Header
+                if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
                 {
                     ESP_LOGE(TAG, "... socket send failed");
                     close(socket_num);
                     return 0;
                 }
+                memset(one_post_buff, 0, sizeof(one_post_buff));
             }
             else //当前读取的缓存中没有正确数组
             {
@@ -143,13 +148,19 @@ static uint8_t Http_post_fun(void)
                 }
             }
         }
+        if (write(socket_num, status_buff, strlen((const char *)status_buff)) < 0) //status_buff
+        {
+            ESP_LOGE(TAG, "... socket send failed");
+            close(socket_num);
+            return 0;
+        }
         if (http_post_read(socket_num, recv_buff, sizeof(recv_buff)) < 0)
         {
             ESP_LOGE(TAG, "POST READ ERR");
             return 0;
         }
         // printf("解析返回数据！\n");
-        ESP_LOGI(TAG, "mes recv:%s", recv_buff);
+        ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
         if (parse_objects_http_respond(strchr(recv_buff, '{')))
         {
             Led_Status = LED_STA_WORK;
@@ -172,11 +183,23 @@ static uint8_t Http_post_fun(void)
 void Erase_Flash_data_test(void)
 {
     printf("\nstart erase flash\n");
-    W25QXX_Erase_Sector(1);
+    W25QXX_Erase_Sector(0);
     AT24CXX_WriteLenByte(start_read_num_add, 0, 4);
     AT24CXX_WriteLenByte(data_save_num_add, 0, 4);
     AT24CXX_WriteLenByte(flash_used_num_add, 0, 4);
     printf("\nerase flash ok\n");
+}
+
+void Raad_flash_Soctor(void)
+{
+    uint8_t test_buff[10] = {0};
+    W25QXX_Read(test_buff, 0, 10);
+    for (uint8_t i = 0; i < 10; i++)
+    {
+        printf("i:%d,num:%d,char:%c\n", i, test_buff[i], test_buff[i]);
+    }
+
+    // printf("len:%d\ntest_buff:%s\n", strlen((const char *)test_buff), test_buff);
 }
 
 // /*******************************************************************************

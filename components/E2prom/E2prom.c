@@ -7,6 +7,7 @@
 #include "E2prom.h"
 
 static const char *TAG = "EEPROM";
+SemaphoreHandle_t At24_Mutex = NULL;
 
 void E2prom_Init(void)
 {
@@ -23,6 +24,8 @@ void E2prom_Init(void)
                        I2C_MASTER_RX_BUF_DISABLE,
                        I2C_MASTER_TX_BUF_DISABLE, 0);
 
+    At24_Mutex = xSemaphoreCreateMutex();
+
     while (AT24CXX_Check() != true)
     {
         vTaskDelay(1000 / portTICK_RATE_MS);
@@ -32,6 +35,7 @@ void E2prom_Init(void)
 
 esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat)
 {
+    xSemaphoreTake(At24_Mutex, -1);
     int ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -44,12 +48,13 @@ esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat)
     i2c_cmd_link_delete(cmd);
 
     vTaskDelay(20 / portTICK_RATE_MS);
-
+    xSemaphoreGive(At24_Mutex);
     return ret;
 }
 
 uint8_t AT24CXX_ReadOneByte(uint16_t reg_addr)
 {
+    xSemaphoreTake(At24_Mutex, -1);
     uint8_t temp = 0;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -66,6 +71,7 @@ uint8_t AT24CXX_ReadOneByte(uint16_t reg_addr)
     i2c_cmd_link_delete(cmd);
 
     vTaskDelay(20 / portTICK_RATE_MS);
+    xSemaphoreGive(At24_Mutex);
     return temp;
 }
 

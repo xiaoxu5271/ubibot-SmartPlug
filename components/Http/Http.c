@@ -56,7 +56,7 @@ esp_timer_create_args_t timer_heart_arg = {
 //1min 定时，用来触发各组数据采集/发送
 void timer_heart_cb(void *arg)
 {
-    vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
+    // vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
     static uint32_t min_num = 0;
     min_num++;
     // if (fn_dp)
@@ -179,7 +179,7 @@ int32_t http_post_init(uint32_t Content_Length)
 
     if (post_status == POST_NOCOMMAND) //无commID
     {
-        sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nUser-Agent: dalian urban ILS1\r\nContent-Length:%d\r\n\r\n",
+        sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                 WEB_SERVER,
                 ApiKey,
                 FIRMWARE,
@@ -189,7 +189,7 @@ int32_t http_post_init(uint32_t Content_Length)
     else
     {
         post_status = POST_NOCOMMAND;
-        sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
+        sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                 WEB_SERVER,
                 ApiKey,
                 FIRMWARE,
@@ -257,9 +257,9 @@ int32_t http_post_init(uint32_t Content_Length)
 int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
 {
     struct timeval receiving_timeout;
-    receiving_timeout.tv_sec = 5;
+    receiving_timeout.tv_sec = 15;
     receiving_timeout.tv_usec = 0;
-    if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout, //step5：设置接收超时
+    if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout, //设置接收超时
                    sizeof(receiving_timeout)) < 0)
     {
         ESP_LOGE(TAG, "... failed to set socket receiving timeout");
@@ -273,9 +273,9 @@ int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
     int r;
     bzero((uint16_t *)recv_buff, buff_size);
     r = read(s, (uint16_t *)recv_buff, buff_size);
-    ESP_LOGI(TAG, "r=%d,activate recv_buf=%s\r\n", r, (char *)recv_buff);
+    // ESP_LOGI(TAG, "r=%d,activate recv_buf=%s\r\n", r, (char *)recv_buff);
     close(s);
-    return 1;
+    return r;
 }
 
 int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)

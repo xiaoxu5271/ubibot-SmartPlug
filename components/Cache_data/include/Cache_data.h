@@ -14,5 +14,6 @@ extern uint32_t data_save_num;  //缓存的数据组数
 void DataSave(uint8_t *sava_buff, uint16_t Buff_len);
 void Start_Cache(void);
 void Erase_Flash_data_test(void);
+void Raad_flash_Soctor(void);
 
 #endif

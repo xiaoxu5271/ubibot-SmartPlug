@@ -106,7 +106,6 @@ void user_key_cd_task(void *arg)
         switch (Task_key_num)
         {
         case 1:
-            Task_key_num = 0;
             Switch_Relay(-1);
             // lan_ota();
             break;
@@ -116,7 +115,6 @@ void user_key_cd_task(void *arg)
             break;
 
         case 5:
-            Task_key_num = 0;
             ble_app_start();
             // wifi_init_softap();
             break;
@@ -124,6 +122,7 @@ void user_key_cd_task(void *arg)
         default:
             break;
         }
+        Task_key_num = 0;
         vTaskDelay(100 / portTICK_RATE_MS);
     }
 }

@@ -61,7 +61,7 @@ int VprocHALInit(void)
 		.quadhd_io_num = -1};
 
 	spi_device_interface_config_t devcfg = {
-		.clock_speed_hz = 10 * 1000 * 1000, // Clock out at 10 MHz
+		.clock_speed_hz = 20 * 1000 * 1000, // Clock out at 10 MHz
 		.mode = 0,							// SPI mode 0
 		.spics_io_num = -1,					//GPIO_NUM_15,             // CS pin
 		.queue_size = 6,					//queue 7 transactions at a time
@@ -400,6 +400,7 @@ void W25QXX_WAKEUP(void)
 //NumByteToRead:要读取的字节数(最大65535)
 void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 {
+	ESP_LOGI("read_date", "ReadAddr=%d,NumByteToRead=%d", ReadAddr, NumByteToRead);
 	uint32_t i;
 	uint8_t Temp = 0;
 	W25QXX_CS_L;								//使能器件
@@ -427,8 +428,10 @@ void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 //一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
 uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_Temp_buff)
 {
+	ESP_LOGI("read_date", "ReadAddr=%d,Size_Temp_buff=%d", ReadAddr, Size_Temp_buff);
 	uint16_t i = 0, j = 0;
 	uint8_t Temp = 0;
+	uint32_t no_data_len = 0;
 	bool start_flag = false;
 	W25QXX_CS_L; //使能器件
 
@@ -436,7 +439,7 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 	VprocHALWrite((uint8_t)((ReadAddr) >> 16)); //发送24bit地址
 	VprocHALWrite((uint8_t)((ReadAddr) >> 8));
 	VprocHALWrite((uint8_t)ReadAddr);
-	for (i = 0; i < Size_Temp_buff; i++)
+	for (i = 1; i < Size_Temp_buff; i++)
 	{
 		VprocHALRead(&Temp);
 		if (Temp == '{' && start_flag == false) //数据开头
@@ -449,6 +452,7 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 		{
 			if (Temp == '}') //一组数据结束
 			{
+				W25QXX_CS_H;
 				Temp_buff[j] = Temp; //循环读数
 				return i;			 //返回从缓存中读了多少字节,用来计算下次读取的开始地址
 			}
@@ -467,7 +471,8 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 		}
 		else
 		{
-			ESP_LOGE("read_date", "no data");
+			ESP_LOGE("read_date", "no data,i=%d,temp=%c", i, Temp);
+			// no_data_len++
 		}
 	}
 	W25QXX_CS_H;
