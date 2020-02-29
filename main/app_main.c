@@ -49,9 +49,16 @@ void memory_check_task(void *pvParameter)
 
 void app_main(void)
 {
-	// nvs_flash_erase();
+	esp_err_t ret;
+	ret = nvs_flash_init();
+	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+	{
+		ESP_ERROR_CHECK(nvs_flash_erase());
+		ret = nvs_flash_init();
+	}
+	ESP_ERROR_CHECK(ret);
+
 	xTaskCreate(&memory_check_task, "memory_check_task", 2048, NULL, 5, NULL);
-	nvs_flash_init();
 	SPI_FLASH_Init();
 	// SPIFlash_Test_Process();
 	E2prom_Init();

@@ -714,7 +714,10 @@ void Ele_quan_Task(void *pvParameters)
     {
         ulTaskNotifyTake(pdTRUE, -1);
         // CSE7759B_Read();
-        mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit / 1000.0; //单位是度
+        if (runingInf.energyUnit == 0)
+            mqtt_json_s.mqtt_Energy = 0;
+        else
+            mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit / 1000.0; //单位是度
         ESP_LOGI(TAG, "energy=%ld\n", runingInf.energy / runingInf.energyUnit);
         runingInf.energy = 0; //清除本次统计
         // CSE_Energy_Status = true;

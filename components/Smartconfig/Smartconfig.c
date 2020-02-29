@@ -298,7 +298,7 @@ void wifi_init_apsta(void)
 
 void stop_user_wifi(void)
 {
-    if (wifi_work_sta == turn_on)
+    // if (wifi_work_sta == turn_on)
     {
         ESP_ERROR_CHECK(esp_wifi_stop());
         wifi_work_sta = turn_off;

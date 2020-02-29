@@ -56,39 +56,39 @@ esp_timer_create_args_t timer_heart_arg = {
 //1min 定时，用来触发各组数据采集/发送
 void timer_heart_cb(void *arg)
 {
-    // vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
     static uint32_t min_num = 0;
     min_num++;
-    // if (fn_dp)
-    // if (min_num % (fn_dp / 60) == 0)
-    // {
-    //     vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
-    // }
-    // if (fn_485_th)
-    //     if (min_num % (fn_485_th / 60) == 0)
-    //     {
-    //         vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
-    //     }
-    // if (fn_485_sth)
-    //     if (min_num % (fn_485_sth / 60) == 0)
-    //     {
-    //         vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
-    //     }
-    // if (fn_energy)
-    //     if (min_num % (fn_energy / 60) == 0)
-    //     {
-    //         vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
-    //     }
-    // if (fn_ele_quan)
-    //     if (min_num % (fn_ele_quan / 60) == 0)
-    //     {
-    //         vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
-    //     }
-    // if (fn_ext)
-    //     if (min_num % (fn_ext / 60) == 0)
-    //     {
-    //         vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
-    //     }
+    if (fn_dp)
+        if (min_num % (fn_dp / 60) == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
+        }
+    if (fn_485_th)
+        if (min_num % (fn_485_th / 60) == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
+        }
+    if (fn_485_sth)
+        if (min_num % (fn_485_sth / 60) == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
+        }
+    if (fn_energy)
+        if (min_num % (fn_energy / 60) == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
+        }
+    if (fn_ele_quan)
+        if (min_num % (fn_ele_quan / 60) == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
+        }
+    if (fn_ext)
+        if (min_num % (fn_ext / 60) == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
+        }
 }
 
 int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)
