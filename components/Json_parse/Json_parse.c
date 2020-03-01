@@ -224,7 +224,7 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
     }
     cJSON_Delete(cjson_blu_data_parse);
 
-    if (xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, 20000 / portTICK_RATE_MS))
+    if (xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS))
     {
         return http_activate();
     }
@@ -738,97 +738,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 }
             }
         }
-        // else if (!strcmp((char const *)pSub->valuestring, "SetupEthernet")) //Command:SetupEthernet
-        // {
-        //     char *InpString;
-        //     uint8_t set_net_buf[16];
 
-        //     pSub = cJSON_GetObjectItem(pJson, "dhcp"); //"dhcp"
-        //     if (NULL != pSub)
-        //     {
-        //         EE_byte_Write(ADDR_PAGE2, dhcp_mode_add, (uint8_t)pSub->valueint); //写入DHCP模式
-        //         // user_dhcp_mode = (uint8_t)pSub->valueint;
-        //     }
-
-        //     pSub = cJSON_GetObjectItem(pJson, "ip"); //"ip"
-        //     if (NULL != pSub)
-        //     {
-        //         InpString = strtok(pSub->valuestring, ".");
-        //         set_net_buf[0] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[1] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[2] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[3] = (uint8_t)strtoul(InpString, 0, 10);
-        //     }
-
-        //     pSub = cJSON_GetObjectItem(pJson, "mask"); //"sn"
-        //     if (NULL != pSub)
-        //     {
-        //         InpString = strtok(pSub->valuestring, ".");
-        //         set_net_buf[4] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[5] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[6] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[7] = (uint8_t)strtoul(InpString, 0, 10);
-        //     }
-
-        //     pSub = cJSON_GetObjectItem(pJson, "gw"); //"gw"
-        //     if (NULL != pSub)
-        //     {
-        //         InpString = strtok(pSub->valuestring, ".");
-        //         set_net_buf[8] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[9] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[10] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[11] = (uint8_t)strtoul(InpString, 0, 10);
-        //     }
-
-        //     pSub = cJSON_GetObjectItem(pJson, "dns1"); //"dns"
-        //     if (NULL != pSub)
-        //     {
-        //         InpString = strtok(pSub->valuestring, ".");
-        //         set_net_buf[12] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[13] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[14] = (uint8_t)strtoul(InpString, 0, 10);
-
-        //         InpString = strtok(NULL, ".");
-        //         set_net_buf[15] = (uint8_t)strtoul(InpString, 0, 10);
-        //     }
-        //     for (uint8_t j = 0; j < 17; j++)
-        //     {
-        //         printf("netinfo_buff[%d]:%d\n", j, set_net_buf[j]);
-        //     }
-        //     E2prom_page_Write(NETINFO_add, set_net_buf, sizeof(set_net_buf));
-
-        //     EE_byte_Write(ADDR_PAGE2, net_mode_add, NET_LAN); //写入net_mode
-        //     net_mode = NET_LAN;
-
-        //     W5500_Network_Init();
-
-        //     // E2prom_page_Read(NETINFO_add, (uint8_t *)netinfo_buff, sizeof(netinfo_buff));
-        //     // printf("%02x \n", (unsigned int)netinfo_buff);
-        //     cJSON_Delete(pJson); //delete pJson
-        //     return 1;
-        // }
         else if (!strcmp((char const *)pSub->valuestring, "SetupWifi")) //Command:SetupWifi
         {
             pSub = cJSON_GetObjectItem(pJson, "SSID"); //"SSID"
@@ -836,6 +746,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             {
                 bzero(wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
                 strcpy(wifi_data.wifi_ssid, pSub->valuestring);
+                AT24CXX_Write(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
                 printf("WIFI_SSID = %s\r\n", pSub->valuestring);
             }
 
@@ -844,12 +755,13 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             {
                 bzero(wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
                 strcpy(wifi_data.wifi_pwd, pSub->valuestring);
+                AT24CXX_Write(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
                 printf("WIFI_PWD = %s\r\n", pSub->valuestring);
             }
             AT24CXX_WriteOneByte(net_mode_add, NET_WIFI); //写入net_mode
             net_mode = NET_WIFI;
-            // initialise_wifi(wifi_data.wifi_ssid, wifi_data.wifi_pwd);
-            initialise_wifi();
+            start_user_wifi();
+
             cJSON_Delete(pJson); //delete pJson
 
             return 1;

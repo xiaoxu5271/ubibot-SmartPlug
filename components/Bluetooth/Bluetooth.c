@@ -890,10 +890,10 @@ void ble_app_init(void)
 void ble_app_start(void)
 {
     esp_ble_gap_start_advertising(&adv_params);
-    //开启成功
     bl_flag = 1;
-    Led_Status = LED_STA_AP;
-    stop_user_wifi(); //停止网络连接
+    // Led_Status = LED_STA_AP;
+    // stop_user_wifi(); //停止网络连接
+    // wifi_disconnect();
 }
 
 void ble_app_stop(void)

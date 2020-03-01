@@ -23,6 +23,7 @@
 
 #include "user_key.h"
 uint8_t Task_key_num = 0;
+TaskHandle_t view_sys_handle = NULL;
 
 /* 填充需要配置的按键个数以及对应的相关参数 */
 static key_config_t gs_m_key_config[BOARD_BUTTON_COUNT] =
@@ -111,7 +112,7 @@ void user_key_cd_task(void *arg)
             break;
 
         case 2:
-            vTaskNotifyGiveFromISR(Binary_dp, NULL);
+            vTaskNotifyGiveFromISR(view_sys_handle, NULL);
             break;
 
         case 5:
@@ -133,25 +134,22 @@ static void vTask_view_Work(void *pvParameters)
 
     while (1)
     {
-        if (Task_key_num == 2)
-        {
-            Task_key_num = 0;
+        ulTaskNotifyTake(pdTRUE, -1);
+        ESP_LOGW("memroy check", "%d: - INTERNAL RAM left %dKB", __LINE__,
+                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024);
+        printf("free Heap:%d\n", esp_get_free_heap_size());
+        /* K1键按下 打印任务执行情况 */
 
-            printf("free Heap:%d\n", esp_get_free_heap_size());
-            /* K1键按下 打印任务执行情况 */
+        printf("=======================================================\r\n");
+        printf("任务名           任务状态   优先级      剩余栈   任务序号\r\n");
+        vTaskList((char *)&pcWriteBuffer);
+        printf("%s\r\n", pcWriteBuffer);
 
-            printf("=======================================================\r\n");
-            printf("任务名           任务状态   优先级      剩余栈   任务序号\r\n");
-            vTaskList((char *)&pcWriteBuffer);
-            printf("%s\r\n", pcWriteBuffer);
+        // printf("\r\n任务名            运行计数              使用率\r\n");
+        // vTaskGetRunTimeStats((char *)&pcWriteBuffer);
+        // printf("%s\r\n", pcWriteBuffer);
 
-            printf("\r\n任务名            运行计数              使用率\r\n");
-            vTaskGetRunTimeStats((char *)&pcWriteBuffer);
-            printf("%s\r\n", pcWriteBuffer);
-
-            /* 其他的键值不处理 */
-        }
-        vTaskDelay(100 / portTICK_RATE_MS);
+        /* 其他的键值不处理 */
     }
 }
 
@@ -168,6 +166,6 @@ void user_app_key_init(void)
     int32_t err_code;
     err_code = user_key_init(gs_m_key_config, BOARD_BUTTON_COUNT, DECOUNE_TIMER, long_pressed_cb, short_pressed_cb);
     ESP_LOGI("user_app_key_init", "user_key_init is %d\n", err_code);
+    xTaskCreate(vTask_view_Work, "vTask_view_Work", 10240, NULL, 5, &view_sys_handle);
     xTaskCreate(user_key_cd_task, "user_key_cd_task", 4096, NULL, 8, NULL);
-    // xTaskCreate(vTask_view_Work, "vTask_view_Work", 10240, NULL, 5, NULL);
 }

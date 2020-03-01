@@ -701,7 +701,7 @@ void Energy_Read_Task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         while (CSE7759B_Read() != 1)
         {
-            vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
+            vTaskDelay(2000 / portTICK_PERIOD_MS); //
         }
         Creat_Energy_Json();
     }
@@ -717,7 +717,7 @@ void Ele_quan_Task(void *pvParameters)
         if (runingInf.energyUnit == 0)
             mqtt_json_s.mqtt_Energy = 0;
         else
-            mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit / 1000.0; //单位是度
+            mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit; //单位是 W/H
         ESP_LOGI(TAG, "energy=%ld\n", runingInf.energy / runingInf.energyUnit);
         runingInf.energy = 0; //清除本次统计
         // CSE_Energy_Status = true;

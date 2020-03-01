@@ -15,6 +15,7 @@
 #include "my_spi_flash.h"
 #include "E2prom.h"
 #include "lwip/sockets.h"
+#include "Smartconfig.h"
 
 #include "Cache_data.h"
 
@@ -34,10 +35,11 @@ void Data_Post_Task(void *pvParameters)
     {
         //发送成功后，判断当前使用flash是否大一个扇区，大于的话再擦除
         ulTaskNotifyTake(pdTRUE, -1);
+        // xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+        //                     false, true, -1);
         if (!Http_post_fun())
         {
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-            // xTaskNotifyGive(Binary_dp);
+            Led_Status = LED_STA_WIFIERR;
         }
     }
 }

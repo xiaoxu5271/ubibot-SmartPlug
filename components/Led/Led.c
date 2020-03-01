@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
+#include "Smartconfig.h"
 
 #include "Led.h"
 
@@ -24,74 +25,74 @@ static void Led_Task(void *arg)
 {
     while (1)
     {
-        switch (Led_Status)
+        if (bl_flag == 1)
         {
-        case LED_STA_INIT:
-            Led_B_On();
-            vTaskDelay(10 / portTICK_RATE_MS);
-            break;
-
-        case LED_STA_WORK:
-            // Led_G_On();
-            // vTaskDelay(100 / portTICK_RATE_MS);
-            Led_Off();
-            vTaskDelay(100 / portTICK_RATE_MS);
-            break;
-
-        case LED_STA_AP:
             Led_B_On();
             vTaskDelay(400 / portTICK_RATE_MS);
             Led_Off();
             vTaskDelay(100 / portTICK_RATE_MS);
-            break;
+        }
+        else
+        {
+            switch (Led_Status)
+            {
+            case LED_STA_INIT:
+                Led_B_On();
+                vTaskDelay(10 / portTICK_RATE_MS);
+                break;
 
-        case LED_STA_NOSER:
-            Led_R_On();
-            vTaskDelay(100 / portTICK_RATE_MS);
-            break;
+            case LED_STA_WORK:
+                // Led_G_On();
+                // vTaskDelay(100 / portTICK_RATE_MS);
+                Led_Off();
+                vTaskDelay(100 / portTICK_RATE_MS);
+                break;
 
-        case LED_STA_WIFIERR:
-            Led_Off();
-            vTaskDelay(250 / portTICK_RATE_MS);
-            Led_B_On();
-            vTaskDelay(250 / portTICK_RATE_MS);
-            break;
+            case LED_STA_AP:
+                Led_B_On();
+                vTaskDelay(400 / portTICK_RATE_MS);
+                Led_Off();
+                vTaskDelay(100 / portTICK_RATE_MS);
+                break;
 
-        case LED_STA_ACTIVE_ERR:
-            Led_Off();
-            vTaskDelay(250 / portTICK_RATE_MS);
-            Led_B_On();
-            vTaskDelay(250 / portTICK_RATE_MS);
-            break;
+            case LED_STA_NOSER:
+                Led_R_On();
+                vTaskDelay(100 / portTICK_RATE_MS);
+                break;
 
-        case LED_STA_SEND:
-            // Led_Off();
-            // vTaskDelay(100 / portTICK_RATE_MS);
-            // Led_G_On();
-            // vTaskDelay(100 / portTICK_RATE_MS);
-            // Led_Off();
-            // vTaskDelay(100 / portTICK_RATE_MS);
-            // Led_G_On();
-            // vTaskDelay(100 / portTICK_RATE_MS);
-            // Led_Off();
-            // vTaskDelay(100 / portTICK_RATE_MS);
+            case LED_STA_WIFIERR:
+                Led_Off();
+                vTaskDelay(250 / portTICK_RATE_MS);
+                Led_B_On();
+                vTaskDelay(250 / portTICK_RATE_MS);
+                break;
 
-            Led_Status = Last_Led_Status;
-            break;
+            case LED_STA_ACTIVE_ERR:
+                Led_Off();
+                vTaskDelay(250 / portTICK_RATE_MS);
+                Led_B_On();
+                vTaskDelay(250 / portTICK_RATE_MS);
+                break;
 
-        case LED_STA_HEARD_ERR:
-            Led_Off();
-            vTaskDelay(250 / portTICK_RATE_MS);
-            Led_B_On();
-            vTaskDelay(250 / portTICK_RATE_MS);
+            case LED_STA_SEND:
 
-        case LED_STA_OTA:
-            Led_Off();
-            vTaskDelay(50 / portTICK_RATE_MS);
-            Led_B_On();
-            vTaskDelay(50 / portTICK_RATE_MS);
+                Led_Status = Last_Led_Status;
+                break;
 
-            break;
+            case LED_STA_HEARD_ERR:
+                Led_Off();
+                vTaskDelay(250 / portTICK_RATE_MS);
+                Led_B_On();
+                vTaskDelay(250 / portTICK_RATE_MS);
+
+            case LED_STA_OTA:
+                Led_Off();
+                vTaskDelay(50 / portTICK_RATE_MS);
+                Led_B_On();
+                vTaskDelay(50 / portTICK_RATE_MS);
+
+                break;
+            }
         }
     }
 }

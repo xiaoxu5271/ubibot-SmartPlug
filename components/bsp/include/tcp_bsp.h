@@ -12,8 +12,6 @@
 //#define TCP_SERVER_CLIENT_OPTION FALSE              //esp32作为client
 #define TCP_SERVER_CLIENT_OPTION TRUE //esp32作为server
 
-#define TAG "User_Wifi" //打印的tag
-
 #define TCP_SERVER_ADRESS "192.168.169.212" //作为client，要连接TCP服务器地址
 #define TCP_PORT 5001                       //统一的端口号，包括TCP客户端或者服务端
 

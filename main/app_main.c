@@ -33,20 +33,6 @@
 #include "my_spi_flash.h"
 #include "Cache_data.h"
 
-//内存检测
-void memory_check_task(void *pvParameter)
-{
-	while (1)
-	{
-		ESP_LOGW("memroy check", "%d: - INTERNAL RAM left %dKB", __LINE__,
-				 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024);
-		// ESP_LOGW(MEMORY_CHECK_TAG, "%d: - SPI      RAM left %dkB", __LINE__,
-		// 		heap_caps_get_free_size( MALLOC_CAP_SPIRAM )/1024);
-		vTaskDelay(2000 / portTICK_PERIOD_MS);
-	}
-	vTaskDelete(NULL);
-}
-
 void app_main(void)
 {
 	esp_err_t ret;
@@ -58,7 +44,6 @@ void app_main(void)
 	}
 	ESP_ERROR_CHECK(ret);
 
-	xTaskCreate(&memory_check_task, "memory_check_task", 2048, NULL, 5, NULL);
 	SPI_FLASH_Init();
 	// SPIFlash_Test_Process();
 	E2prom_Init();
@@ -78,7 +63,11 @@ void app_main(void)
 	AT24CXX_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
 	printf("ProductId=%s\n", ProductId);
 	AT24CXX_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+
 	printf("Host=%s\n", WEB_SERVER);
+	AT24CXX_Read(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
+	AT24CXX_Read(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
+	printf("wifi ssid=%s,wifi password=%s\n", wifi_data.wifi_ssid, wifi_data.wifi_pwd);
 
 	/* 判断是否有序列号和product id */
 	if ((strlen(SerialNum) == 0) || (strlen(ProductId) == 0) || (strlen(WEB_SERVER) == 0)) //未获取到序列号或productid，未烧写序列号
@@ -95,8 +84,8 @@ void app_main(void)
 	CSE7759B_Init();
 	start_ds18b20();
 	Start_Cache();
-	ble_app_init();
 	init_wifi();
+	ble_app_init();
 	initialise_http(); //须放在 采集任务建立之后
 	initialise_mqtt();
 }

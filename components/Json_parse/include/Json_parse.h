@@ -48,8 +48,8 @@ struct
 
 struct
 {
-    char wifi_ssid[36];
-    char wifi_pwd[36];
+    char wifi_ssid[32];
+    char wifi_pwd[64];
 } wifi_data;
 
 struct
