@@ -30,6 +30,7 @@ static const char *TAG = "MQTT";
 extern const int CONNECTED_BIT;
 
 esp_mqtt_client_handle_t client = NULL;
+TaskHandle_t Binary_mqtt = NULL;
 
 char topic_s[100] = {0};
 char topic_p[100] = {0};
@@ -88,6 +89,26 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     return ESP_OK;
 }
 
+void mqtt_send_task(void *arg)
+{
+    creat_json *Mqtt_json;
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, -1);
+        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+                            false, true, portMAX_DELAY);
+        Mqtt_json = malloc(sizeof(creat_json));
+        memset(Mqtt_json->buff, 0, sizeof(Mqtt_json->buff));
+        if (client != NULL)
+        {
+            create_http_json(Mqtt_json, 0);
+            esp_mqtt_client_publish(client, topic_p, Mqtt_json->buff, 0, 1, 0);
+            ESP_LOGI(TAG, "sent publish successful,\n%s", Mqtt_json->buff);
+        }
+        free(Mqtt_json);
+    }
+}
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
@@ -114,6 +135,7 @@ void initialise_mqtt(void)
 
     };
 
+    xTaskCreate(mqtt_send_task, "mqtt_send_task", 4096, NULL, 7, &Binary_mqtt);
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
     client = esp_mqtt_client_init(&mqtt_cfg);

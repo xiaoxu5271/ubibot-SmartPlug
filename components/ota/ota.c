@@ -129,7 +129,7 @@ static void wifi_ota_task(void *pvParameter)
         {
             if (image_header_was_checked == false)
             {
-                esp_app_desc_t new_app_info;
+                // esp_app_desc_t new_app_info;
                 if (data_read > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t))
                 {
                     // check current version with downloading

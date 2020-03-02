@@ -36,6 +36,7 @@ extern TaskHandle_t Binary_485_sth;
 extern TaskHandle_t Binary_ext;
 extern TaskHandle_t Binary_energy;
 extern TaskHandle_t Binary_ele_quan;
+extern TaskHandle_t Binary_mqtt;
 
 void initialise_http(void);
 

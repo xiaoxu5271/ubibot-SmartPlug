@@ -59,8 +59,8 @@ struct
 
 typedef struct
 {
-    char creat_json_b[256];
-    int creat_json_c;
+    char buff[256];
+    uint8_t len;
 } creat_json;
 
 int read_bluetooth(void);

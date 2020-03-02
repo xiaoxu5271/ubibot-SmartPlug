@@ -54,4 +54,8 @@ void Switch_Relay(int8_t set_value)
     {
         xTaskNotifyGive(Binary_energy);
     }
+    if (Binary_dp != NULL)
+    {
+        xTaskNotifyGive(Binary_dp);
+    }
 }

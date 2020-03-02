@@ -5,6 +5,7 @@
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "E2prom.h"
+#include "Json_parse.h"
 
 static const char *TAG = "EEPROM";
 SemaphoreHandle_t At24_Mutex = NULL;
@@ -136,6 +137,10 @@ void E2prom_empty_all(void)
 {
     uint8_t empty_buff[1024] = {0};
     AT24CXX_Write(0, empty_buff, 1024);
+}
+void E2prom_set_defaul(void)
+{
+    AT24CXX_WriteOneByte(cg_data_led_add, cg_data_led);
 }
 
 //检查AT24CXX是否正常,以及是否为新EEPROM

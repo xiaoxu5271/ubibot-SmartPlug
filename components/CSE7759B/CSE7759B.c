@@ -703,6 +703,11 @@ void Energy_Read_Task(void *pvParameters)
         {
             vTaskDelay(2000 / portTICK_PERIOD_MS); //
         }
+        if (Binary_mqtt != NULL)
+        {
+            xTaskNotifyGive(Binary_mqtt);
+        }
+
         Creat_Energy_Json();
     }
 }
@@ -718,9 +723,9 @@ void Ele_quan_Task(void *pvParameters)
             mqtt_json_s.mqtt_Energy = 0;
         else
             mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit; //单位是 W/H
-        ESP_LOGI(TAG, "energy=%ld\n", runingInf.energy / runingInf.energyUnit);
+        // ESP_LOGI(TAG, "energy=%f\n", mqtt_json_s.mqtt_Energy);
         runingInf.energy = 0; //清除本次统计
-        // CSE_Energy_Status = true;
+        CSE_Energy_Status = true;
         Creat_Ele_quan_Json();
     }
 }

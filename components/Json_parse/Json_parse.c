@@ -35,15 +35,16 @@
 //wifi_config_t wifi_config;
 
 //#define DEBUG_
-uint8_t fn_set_flag = 0;  //metadata 读取标志，未读取则使用下面固定参数
-uint32_t fn_dp = 60;      //数据发送频率
-uint32_t fn_485_th = 0;   //485温湿度探头
-uint32_t fn_485_sth = 0;  //485 土壤探头
-uint32_t fn_ext = 0;      //18b20
-uint32_t fn_energy = 0;   //电能信息：电压/电流/功率
-uint32_t fn_ele_quan = 0; //用电量统计
-uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
-uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+// uint8_t fn_set_flag = 0;     //metadata 读取标志，未读取则使用下面固定参数
+uint32_t fn_dp = 0;        //数据发送频率
+uint32_t fn_485_th = 0;    //485温湿度探头
+uint32_t fn_485_sth = 0;   //485 土壤探头
+uint32_t fn_ext = 0;       //18b20
+uint32_t fn_energy = 0;    //电能信息：电压/电流/功率
+uint32_t fn_ele_quan = 0;  //用电量统计
+uint8_t cg_data_led = 1;   //发送数据 LED状态 0关闭，1打开
+uint8_t net_mode = 0;      //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+uint8_t de_switch_sta = 0; //开关默认上电状态
 
 typedef enum
 {
@@ -70,7 +71,6 @@ static short Parse_metadata(char *ptrptr)
     if (NULL == pJsonJson)
     {
         cJSON_Delete(pJsonJson); //delete pJson
-
         return 0;
     }
     cJSON *pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_dp"); //"fn_dp"
@@ -181,12 +181,12 @@ static short Parse_metadata(char *ptrptr)
         }
     }
     cJSON_Delete(pJsonJson);
-    fn_set_flag = AT24CXX_ReadOneByte(fn_set_flag_add);
-    if (fn_set_flag == 0)
-    {
-        fn_set_flag = 1;
-        AT24CXX_WriteOneByte(fn_set_flag_add, fn_set_flag);
-    }
+    // fn_set_flag = AT24CXX_ReadOneByte(fn_set_flag_add);
+    // if (fn_set_flag != 1)
+    // {
+    //     fn_set_flag = 1;
+    //     AT24CXX_WriteOneByte(fn_set_flag_add, fn_set_flag);
+    // }
 
     return 1;
 }
@@ -577,7 +577,7 @@ uint8_t Create_NET_Json(char *status_buff)
 
 void create_http_json(creat_json *pCreat_json, uint8_t flag)
 {
-    printf("INTO CREATE_HTTP_JSON\r\n");
+    // printf("INTO CREATE_HTTP_JSON\r\n");
     //creat_json *pCreat_json = malloc(sizeof(creat_json));
     cJSON *root = cJSON_CreateObject();
     // cJSON *item = cJSON_CreateObject();
@@ -587,12 +587,12 @@ void create_http_json(creat_json *pCreat_json, uint8_t flag)
     char mac_buff[32] = {0};
     char ssid64_buff[64] = {0};
 
-    strncpy(http_json_c.http_time, Server_Timer_SEND(), 24);
     wifi_ap_record_t wifidata;
 
     cJSON_AddItemToObject(root, "feeds", fe_body);
     cJSON_AddItemToArray(fe_body, next);
-    cJSON_AddItemToObject(next, "created_at", cJSON_CreateString(http_json_c.http_time));
+    // cJSON_AddItemToObject(next, "created_at", cJSON_CreateString(http_json_c.http_time));
+    cJSON_AddStringToObject(next, "created_at", (const char *)Server_Timer_SEND());
     cJSON_AddItemToObject(next, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
     if (mqtt_json_s.mqtt_switch_status == 1 && CSE_Status == true)
     {
@@ -608,18 +608,16 @@ void create_http_json(creat_json *pCreat_json, uint8_t flag)
 
     if (RS485_status == true)
     {
-        cJSON_AddItemToObject(next, "field8", cJSON_CreateString(mqtt_json_s.mqtt_etx_tem)); //485温度
-        cJSON_AddItemToObject(next, "field9", cJSON_CreateString(mqtt_json_s.mqtt_etx_hum)); //485湿度
+        RS485_status = false;
+        cJSON_AddItemToObject(next, "field8", cJSON_CreateNumber(ext_tem));
+        cJSON_AddItemToObject(next, "field9", cJSON_CreateNumber(ext_hum));
     }
     if (DS18b20_status == true)
     {
+        DS18b20_status = false;
         cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
     }
 
-    if (esp_wifi_sta_get_ap_info(&wifidata) == 0)
-    {
-        itoa(wifidata.rssi, mqtt_json_s.mqtt_Rssi, 10);
-    }
     esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
     sprintf(mac_buff,
             "mac=%02x:%02x:%02x:%02x:%02x:%02x",
@@ -631,7 +629,10 @@ void create_http_json(creat_json *pCreat_json, uint8_t flag)
             mac_sys[5]);
     base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
 
-    cJSON_AddItemToObject(next, "field6", cJSON_CreateString(mqtt_json_s.mqtt_Rssi)); //WIFI RSSI
+    if (esp_wifi_sta_get_ap_info(&wifidata) == 0)
+    {
+        cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(wifidata.rssi)); //WIFI RSSI
+    }
     cJSON_AddItemToObject(root, "status", cJSON_CreateString(mac_buff));
     cJSON_AddItemToObject(root, "ssid_base64", cJSON_CreateString(ssid64_buff));
 
@@ -640,11 +641,11 @@ void create_http_json(creat_json *pCreat_json, uint8_t flag)
     cjson_printunformat = cJSON_PrintUnformatted(root); //将整个 json 转换成字符串 ，有格式
     //printf("status_creat_json= %s\r\n", cjson_printunformat);
 
-    pCreat_json->creat_json_c = strlen(cjson_printunformat); //  creat_json_c 是整个json 所占的长度
+    pCreat_json->len = strlen(cjson_printunformat); //  creat_json_c 是整个json 所占的长度
     //pCreat_json->creat_json_b=cjson_printunformat;
     //pCreat_json->creat_json_b=malloc(pCreat_json->creat_json_c);
-    bzero(pCreat_json->creat_json_b, sizeof(pCreat_json->creat_json_b)); //  creat_json_b 是整个json 包
-    memcpy(pCreat_json->creat_json_b, cjson_printunformat, pCreat_json->creat_json_c);
+    bzero(pCreat_json->buff, sizeof(pCreat_json->len)); //  creat_json_b 是整个json 包
+    memcpy(pCreat_json->buff, cjson_printunformat, pCreat_json->len);
     //printf("http_json=%s\n",pCreat_json->creat_json_b);
     free(cjson_printunformat);
     cJSON_Delete(root);
@@ -825,18 +826,16 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
 void Read_Metadate(void)
 {
-    fn_set_flag = AT24CXX_ReadOneByte(fn_set_flag_add);
-    if (fn_set_flag == 1)
-    {
-        fn_dp = AT24CXX_ReadLenByte(fn_dp_add, 4);             //数据发送频率
-        fn_485_th = AT24CXX_ReadLenByte(fn_485_th_add, 4);     //485温湿度探头
-        fn_485_sth = AT24CXX_ReadLenByte(fn_485_sth_add, 4);   //485 土壤探头
-        fn_ext = AT24CXX_ReadLenByte(fn_ext_add, 4);           //18b20
-        fn_energy = AT24CXX_ReadLenByte(fn_energy_add, 4);     //电能信息：电压/电流/功率
-        fn_ele_quan = AT24CXX_ReadLenByte(fn_ele_quan_add, 4); //用电量统计
-        cg_data_led = AT24CXX_ReadOneByte(cg_data_led_add);    //发送数据 LED状态 0关闭，1打开
-        net_mode = AT24CXX_ReadOneByte(net_mode_add);          //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
-    }
-    printf("fn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
+
+    fn_dp = AT24CXX_ReadLenByte(fn_dp_add, 4);             //数据发送频率
+    fn_485_th = AT24CXX_ReadLenByte(fn_485_th_add, 4);     //485温湿度探头
+    fn_485_sth = AT24CXX_ReadLenByte(fn_485_sth_add, 4);   //485 土壤探头
+    fn_ext = AT24CXX_ReadLenByte(fn_ext_add, 4);           //18b20
+    fn_energy = AT24CXX_ReadLenByte(fn_energy_add, 4);     //电能信息：电压/电流/功率
+    fn_ele_quan = AT24CXX_ReadLenByte(fn_ele_quan_add, 4); //用电量统计
+    cg_data_led = AT24CXX_ReadOneByte(cg_data_led_add);    //发送数据 LED状态 0关闭，1打开
+    net_mode = AT24CXX_ReadOneByte(net_mode_add);          //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+
+    printf("metadata:\nfn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
            fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
 }
