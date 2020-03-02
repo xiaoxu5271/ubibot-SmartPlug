@@ -180,6 +180,17 @@ static short Parse_metadata(char *ptrptr)
             printf("net_mode = %d\n", net_mode);
         }
     }
+
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "de_switch_sta"); //"de_switch_sta"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != de_switch_sta)
+        {
+            de_switch_sta = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(DE_SWITCH_STA_ADD, de_switch_sta); //写入net_mode
+            printf("de_switch_sta = %d\n", de_switch_sta);
+        }
+    }
     cJSON_Delete(pJsonJson);
     // fn_set_flag = AT24CXX_ReadOneByte(fn_set_flag_add);
     // if (fn_set_flag != 1)
@@ -546,6 +557,7 @@ uint8_t Create_NET_Json(char *status_buff)
     {
         itoa(wifidata.rssi, mqtt_json_s.mqtt_Rssi, 10);
     }
+    cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
     cJSON_AddItemToObject(pJsonRoot, "field6", cJSON_CreateString(mqtt_json_s.mqtt_Rssi));
     OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
     cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -826,16 +838,40 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
 void Read_Metadate(void)
 {
+    uint8_t Last_Switch_Status;
+    fn_dp = AT24CXX_ReadLenByte(fn_dp_add, 4);              //数据发送频率
+    fn_485_th = AT24CXX_ReadLenByte(fn_485_th_add, 4);      //485温湿度探头
+    fn_485_sth = AT24CXX_ReadLenByte(fn_485_sth_add, 4);    //485 土壤探头
+    fn_ext = AT24CXX_ReadLenByte(fn_ext_add, 4);            //18b20
+    fn_energy = AT24CXX_ReadLenByte(fn_energy_add, 4);      //电能信息：电压/电流/功率
+    fn_ele_quan = AT24CXX_ReadLenByte(fn_ele_quan_add, 4);  //用电量统计
+    cg_data_led = AT24CXX_ReadOneByte(cg_data_led_add);     //发送数据 LED状态 0关闭，1打开
+    net_mode = AT24CXX_ReadOneByte(net_mode_add);           //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+    de_switch_sta = AT24CXX_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
 
-    fn_dp = AT24CXX_ReadLenByte(fn_dp_add, 4);             //数据发送频率
-    fn_485_th = AT24CXX_ReadLenByte(fn_485_th_add, 4);     //485温湿度探头
-    fn_485_sth = AT24CXX_ReadLenByte(fn_485_sth_add, 4);   //485 土壤探头
-    fn_ext = AT24CXX_ReadLenByte(fn_ext_add, 4);           //18b20
-    fn_energy = AT24CXX_ReadLenByte(fn_energy_add, 4);     //电能信息：电压/电流/功率
-    fn_ele_quan = AT24CXX_ReadLenByte(fn_ele_quan_add, 4); //用电量统计
-    cg_data_led = AT24CXX_ReadOneByte(cg_data_led_add);    //发送数据 LED状态 0关闭，1打开
-    net_mode = AT24CXX_ReadOneByte(net_mode_add);          //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+    switch (de_switch_sta)
+    {
+    case 0:
+        Switch_Relay(0);
+        break;
 
-    printf("metadata:\nfn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
-           fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
+    case 1:
+        Switch_Relay(1);
+        break;
+
+    case 2:
+
+        Last_Switch_Status = AT24CXX_ReadOneByte(LAST_SWITCH_ADD);
+        if (Last_Switch_Status >= 0 && Last_Switch_Status <= 100)
+        {
+            Switch_Relay(AT24CXX_ReadOneByte(LAST_SWITCH_ADD));
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    printf("metadata:\nde_switch_sta=%d\nfn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
+           de_switch_sta, fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
 }

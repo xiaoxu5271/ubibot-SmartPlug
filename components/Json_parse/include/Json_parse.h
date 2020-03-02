@@ -77,8 +77,9 @@ extern uint32_t fn_ext;      //18b20
 extern uint32_t fn_energy;   //电能信息：电压/电流/功率
 extern uint32_t fn_ele_quan; //用电量统计
 // extern uint32_t fn_sen;     //人感灵敏度
-extern uint8_t cg_data_led; //发送数据 LED状态 0关闭，1打开
-extern uint8_t net_mode;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+extern uint8_t cg_data_led;   //发送数据 LED状态 0关闭，1打开
+extern uint8_t net_mode;      //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+extern uint8_t de_switch_sta; //开关默认上电状态
 /************************************/
 
 #endif

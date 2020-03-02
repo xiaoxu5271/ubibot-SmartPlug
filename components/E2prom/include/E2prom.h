@@ -54,6 +54,8 @@
 #define flash_used_num_add data_save_num_add + 4         //缓存已用大小 u32
 #define WIFI_SSID_ADD flash_used_num_add + 4             //32
 #define WIFI_PASSWORD_ADD WIFI_SSID_ADD + 32             //64
+#define DE_SWITCH_STA_ADD WIFI_PASSWORD_ADD + 64         //uint8_t
+#define LAST_SWITCH_ADD DE_SWITCH_STA_ADD + 1            //UINT8
 
 void E2prom_Init(void);
 esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat);

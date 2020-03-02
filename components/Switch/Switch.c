@@ -11,6 +11,8 @@
 #include "Led.h"
 #include "Bluetooth.h"
 #include "CSE7759B.h"
+#include "E2prom.h"
+#include "Json_parse.h"
 
 // static const char *TAG = "switch";
 
@@ -57,5 +59,9 @@ void Switch_Relay(int8_t set_value)
     if (Binary_dp != NULL)
     {
         xTaskNotifyGive(Binary_dp);
+    }
+    if (de_switch_sta == 2)
+    {
+        AT24CXX_WriteOneByte(LAST_SWITCH_ADD, mqtt_json_s.mqtt_switch_status); //写入开关状态
     }
 }
