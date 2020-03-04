@@ -699,16 +699,19 @@ void Energy_Read_Task(void *pvParameters)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        while (CSE7759B_Read() != 1)
+        if (mqtt_json_s.mqtt_switch_status)
         {
-            vTaskDelay(2000 / portTICK_PERIOD_MS); //
+            while (CSE7759B_Read() != 1)
+            {
+                vTaskDelay(2000 / portTICK_PERIOD_MS); //
+            }
+            Creat_Energy_Json();
         }
+
         if (Binary_mqtt != NULL)
         {
             xTaskNotifyGive(Binary_mqtt);
         }
-
-        Creat_Energy_Json();
     }
 }
 //读取，构建累积用电量

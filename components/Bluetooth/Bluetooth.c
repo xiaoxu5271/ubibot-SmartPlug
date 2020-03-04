@@ -382,11 +382,12 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         gl_profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.len = ESP_UUID_LEN_16;
         gl_profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID_TEST_A;
 
-        char BleName_N[10];
+        char BleName_N[5];
         bzero(BleName_N, sizeof(BleName_N));
         bzero(BleName, sizeof(BleName));
         strncpy(BleName_N, SerialNum, 5);
         snprintf(BleName, sizeof(BleName), "%s%s", "Ubibot-SP1-", BleName_N);
+        ESP_LOGI(GATTS_TAG, "BleName:%s", BleName);
         esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(BleName);
         if (set_dev_name_ret)
         {
@@ -889,8 +890,10 @@ void ble_app_init(void)
 
 void ble_app_start(void)
 {
+
     esp_ble_gap_start_advertising(&adv_params);
     bl_flag = 1;
+    ESP_LOGI(GATTS_TAG, "turn on ble！");
     // Led_Status = LED_STA_AP;
     // stop_user_wifi(); //停止网络连接
     // wifi_disconnect();

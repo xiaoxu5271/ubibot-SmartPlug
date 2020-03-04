@@ -6,9 +6,15 @@
 #include "driver/i2c.h"
 #include "E2prom.h"
 #include "Json_parse.h"
+#include "Http.h"
+#include "user_key.h"
 
 static const char *TAG = "EEPROM";
 SemaphoreHandle_t At24_Mutex = NULL;
+
+static bool AT24CXX_Check(void);
+static void E2prom_set_defaul(void);
+static void E2prom_read_defaul(void);
 
 void E2prom_Init(void)
 {
@@ -31,6 +37,12 @@ void E2prom_Init(void)
     {
         vTaskDelay(1000 / portTICK_RATE_MS);
         ESP_LOGE(TAG, "eeprom err !");
+        return;
+    }
+    if (Check_Set_defaul())
+    {
+        E2prom_read_defaul();
+        E2prom_set_defaul();
     }
 }
 
@@ -135,19 +147,51 @@ void AT24CXX_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite)
 
 void E2prom_empty_all(void)
 {
+    printf("\nempty all set\n");
     uint8_t empty_buff[1024] = {0};
     AT24CXX_Write(0, empty_buff, 1024);
 }
-void E2prom_set_defaul(void)
+
+static void E2prom_read_defaul(void)
 {
-    AT24CXX_WriteOneByte(cg_data_led_add, cg_data_led);
+    printf("\nread defaul\n");
+
+    AT24CXX_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+    AT24CXX_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+    AT24CXX_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+    AT24CXX_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+}
+static void E2prom_set_defaul(void)
+{
+    E2prom_empty_all();
+    //写入默认值
+    AT24CXX_Write(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+    AT24CXX_Write(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+    AT24CXX_Write(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+    AT24CXX_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+    AT24CXX_WriteLenByte(FN_DP_ADD, fn_dp, 4);
+    AT24CXX_WriteLenByte(FN_ELE_QUAN_ADD, fn_ele_quan, 4);
+    AT24CXX_WriteLenByte(FN_ENERGY_ADD, fn_energy, 4);
+    AT24CXX_WriteOneByte(CG_DATA_LED_ADD, cg_data_led);
+    AT24CXX_WriteOneByte(RSSI_NUM_ADDR, rssi_w_f_num);
+    AT24CXX_WriteOneByte(GPRS_RSSI_NUM_ADDR, rssi_g_f_num);
+    AT24CXX_WriteOneByte(RS485_LIGHT_NUM_ADDR, r1_light_f_num);
+    AT24CXX_WriteOneByte(RS485_TEMP_NUM_ADDR, r1_th_t_f_num);
+    AT24CXX_WriteOneByte(RS485_HUMI_NUM_ADDR, r1_th_h_f_num);
+    AT24CXX_WriteOneByte(RS485_STEMP_NUM_ADDR, r1_sth_t_f_num);
+    AT24CXX_WriteOneByte(RS485_SHUMI_NUM_ADDR, r1_sth_h_f_num);
+    AT24CXX_WriteOneByte(EXT_TEMP_NUM_ADDR, e1_t_f_num);
+    AT24CXX_WriteOneByte(RS485_T_NUM_ADDR, r1_t_f_num);
+    AT24CXX_WriteOneByte(RS485_WS_NUM_ADDR, r1_ws_f_num);
+    AT24CXX_WriteOneByte(RS485_CO2_NUM_ADDR, r1_co2_f_num);
+    AT24CXX_WriteOneByte(RS485_PH_NUM_ADDR, r1_ph_f_num);
 }
 
 //检查AT24CXX是否正常,以及是否为新EEPROM
 //这里用了24XX的最后一个地址(1023)来存储标志字.
 //如果用其他24C系列,这个地址要修改
 
-bool AT24CXX_Check(void)
+static bool AT24CXX_Check(void)
 {
     uint8_t temp;
     temp = AT24CXX_ReadOneByte(1023);
@@ -157,7 +201,7 @@ bool AT24CXX_Check(void)
         if (temp == 0xff)
         {
             printf("\nnew eeprom\n");
-            E2prom_empty_all();
+            E2prom_set_defaul();
         }
     }
 

@@ -22,15 +22,17 @@
 
 #define RS485RD 21
 
-#define BUF_SIZE 128
+#define BUF_SIZE 32
 
 SemaphoreHandle_t RS485_Mutex = NULL;
 float ext_tem = 0.0, ext_hum = 0.0;
 bool RS485_status = false;
 
-char wind_modbus_send_data[] = {0x20, 0x04, 0x00, 0x06, 0x00, 0x01, 0xd7, 0x7a};    //发送查询风速指令
-char tem_hum_modbus_send_data[] = {0xC1, 0x03, 0x00, 0x00, 0x00, 0x02, 0xD5, 0x0B}; //发送 查询外接空气温湿度探头
-char Sth_modbus_send_data[] = {0xC2, 0x03, 0x00, 0x00, 0x00, 0x02, 0xD5, 0x0B};     //发送 查询土壤探头
+char Rs485_wind_cmd[] = {0x20, 0x04, 0x00, 0x06, 0x00, 0x01, 0xd7, 0x7a}; //查询风速指令
+char Rs485_th_cmd[] = {0xC1, 0x03, 0x00, 0x00, 0x00, 0x02, 0xD5, 0x0B};   //查询外接空气温湿度探头
+char Rs485_sth_cmd[] = {0xC2, 0x03, 0x00, 0x00, 0x00, 0x02, 0xD5, 0x0B};  //查询土壤探头
+char Rs485_t_cmd[] = {0xC2, 0x03, 0x00, 0x00, 0x00, 0x01, 0x95, 0x39};    //查询温度探头
+char Rs485_ws_cmd[] = {0x20, 0x04, 0x00, 0x06, 0x00, 0x01, 0xD7, 0x7A};   //风速
 
 /*******************************************************************************
 // CRC16_Modbus Check
@@ -45,13 +47,10 @@ static uint16_t CRC16_ModBus(uint8_t *buf, uint8_t buf_len)
     for (i = 0; i < buf_len; i++)
     {
         crc16_val = *buf ^ crc16_val;
-
         for (j = 0; j < 8; j++)
         {
             c_val = crc16_val & 0x01;
-
             crc16_val = crc16_val >> 1;
-
             if (c_val)
             {
                 crc16_val = crc16_val ^ crc16_poly;
@@ -63,144 +62,223 @@ static uint16_t CRC16_ModBus(uint8_t *buf, uint8_t buf_len)
     return ((crc16_val & 0x00ff) << 8) | ((crc16_val & 0xff00) >> 8);
 }
 
-int8_t RS485_Read(char *Send_485_Buff)
+int RS485_Read(char *Send_485_Buff, uint8_t *Recv_485_buff)
 {
-    uint8_t data_u2[BUF_SIZE];
-    // gpio_set_level(RS485RD, 1); //RS485输出模式
     sw_uart2(uart2_485);
     uart_write_bytes(UART_NUM_2, Send_485_Buff, 8);
-    // vTaskDelay(100 / portTICK_PERIOD_MS);
-    // gpio_set_level(RS485RD, 0); //RS485输入模式
-    int len2 = uart_read_bytes(UART_NUM_2, data_u2, BUF_SIZE, 100 / portTICK_RATE_MS);
+    int len = uart_read_bytes(UART_NUM_2, Recv_485_buff, BUF_SIZE, 100 / portTICK_RATE_MS);
     xSemaphoreGive(xMutex_uart2_sw);
 
-    if (len2 != 0)
-    {
-        // printf("UART2 len2: %d  recv:", len2);
-        // for (int i = 0; i < len2; i++)
-        // {
-        //     printf("%x ", data_u2[i]);
-        // }
-        // printf("\r\n");
-
-        if ((data_u2[7] * 256 + data_u2[8]) == CRC16_ModBus(data_u2, (len2 - 2)))
-        {
-            if ((data_u2[0] == 0xC1) && (data_u2[1] == 0x03))
-            {
-                ext_tem = ((data_u2[3] << 8) + data_u2[4]) * 0.1;
-                ext_hum = ((data_u2[5] << 8) + data_u2[6]) * 0.1;
-                ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
-                RS485_status = true;
-                return 0;
-            }
-            else
-            {
-                RS485_status = false;
-                ESP_LOGE(TAG, "485 add or cmd error\n");
-                return 1;
-            }
-        }
-        else
-        {
-            RS485_status = false;
-            ESP_LOGE(TAG, "485 CRC error\n");
-            return 1;
-        }
-    }
-    else
-    {
-        RS485_status = false;
-        ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
-        return 1;
-    }
+    return len;
 }
 
-//构建 空气探头 数据包
-void Create_485th_Json(void)
+//读取485 空气探头
+void read_485_th_task(void *pvParameters)
 {
     char *OutBuffer;
     uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
-    pJsonRoot = cJSON_CreateObject();
-    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-    cJSON_AddItemToObject(pJsonRoot, "field8", cJSON_CreateNumber(ext_tem));
-    cJSON_AddItemToObject(pJsonRoot, "field9", cJSON_CreateNumber(ext_hum));
-    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    cJSON_Delete(pJsonRoot);                       //delete cjson root
-    len = strlen(OutBuffer);
-    printf("len:%d\n%s\n", len, OutBuffer);
-    // SaveBuffer = (uint8_t *)malloc(len);
-    SaveBuffer = (uint8_t *)malloc(len);
-    memcpy(SaveBuffer, OutBuffer, len);
-    xSemaphoreTake(Cache_muxtex, -1);
-    DataSave(SaveBuffer, len);
-    xSemaphoreGive(Cache_muxtex);
-    free(OutBuffer);
-    free(SaveBuffer);
-}
-//读取485 空气探头
-void read_485_th_task(void *pvParameters)
-{
+    uint8_t *recv_data;
+    int racv_len = 0;
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
-        while (RS485_Read(tem_hum_modbus_send_data))
+        recv_data = (uint8_t *)malloc(BUF_SIZE);
+        racv_len = RS485_Read(Rs485_th_cmd, recv_data);
+        if (racv_len > 0)
         {
-            vTaskDelay(2000 / portTICK_RATE_MS);
+
+            esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+            if ((recv_data[7] * 256 + recv_data[8]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            {
+                if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
+                {
+                    ext_tem = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
+                    ext_hum = ((recv_data[5] << 8) + recv_data[6]) * 0.1;
+                    ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
+                    RS485_status = true;
+                    // 读取成功
+                    pJsonRoot = cJSON_CreateObject();
+                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                    cJSON_AddItemToObject(pJsonRoot, "field8", cJSON_CreateNumber(ext_tem));
+                    cJSON_AddItemToObject(pJsonRoot, "field9", cJSON_CreateNumber(ext_hum));
+                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                    cJSON_Delete(pJsonRoot);                       //delete cjson root
+                    len = strlen(OutBuffer);
+                    printf("len:%d\n%s\n", len, OutBuffer);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    SaveBuffer = (uint8_t *)malloc(len);
+                    memcpy(SaveBuffer, OutBuffer, len);
+                    xSemaphoreTake(Cache_muxtex, -1);
+                    DataSave(SaveBuffer, len);
+                    xSemaphoreGive(Cache_muxtex);
+                    free(OutBuffer);
+                    free(SaveBuffer);
+                }
+                else
+                {
+                    RS485_status = false;
+                    ESP_LOGE(TAG, "485 add or cmd error\n");
+                    // return 1;
+                }
+            }
+            else
+            {
+                RS485_status = false;
+                ESP_LOGE(TAG, "485 CRC error\n");
+                // return 1;
+            }
         }
-        Create_485th_Json();
+        else
+        {
+            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+        }
         xSemaphoreGive(RS485_Mutex);
     }
 }
 
-//构建 土壤探头 数据包
-void Create_485sth_Json(void)
+//读取485 温度探头
+void read_485_t_task(void *pvParameters)
 {
+    float Rs485_t_val;
     char *OutBuffer;
     uint8_t *SaveBuffer;
-    uint16_t len = 0;
+    uint16_t len;
     cJSON *pJsonRoot;
-    pJsonRoot = cJSON_CreateObject();
-    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-    cJSON_AddItemToObject(pJsonRoot, "field10", cJSON_CreateNumber(ext_tem));
-    cJSON_AddItemToObject(pJsonRoot, "field11", cJSON_CreateNumber(ext_hum));
-    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    cJSON_Delete(pJsonRoot);                       //delete cjson root
-    len = strlen(OutBuffer);
-    printf("len:%d\n%s\n", len, OutBuffer);
-    // SaveBuffer = (uint8_t *)malloc(len);
-    SaveBuffer = (uint8_t *)malloc(len);
-    memcpy(SaveBuffer, OutBuffer, len);
-    xSemaphoreTake(Cache_muxtex, -1);
-    DataSave(SaveBuffer, len);
-    xSemaphoreGive(Cache_muxtex);
-    free(OutBuffer);
-    free(SaveBuffer);
-}
-//读取485 土壤探头
-void read_485_sth_task(void *pvParameters)
-{
-    ulTaskNotifyTake(pdTRUE, -1);
-    xSemaphoreTake(RS485_Mutex, -1);
-    while (RS485_Read(Sth_modbus_send_data))
+    uint8_t *recv_data;
+    int racv_len;
+    while (1)
     {
-        vTaskDelay(2000 / portTICK_RATE_MS);
+        ulTaskNotifyTake(pdTRUE, -1);
+        xSemaphoreTake(RS485_Mutex, -1);
+        recv_data = (uint8_t *)malloc(BUF_SIZE);
+        racv_len = RS485_Read(Rs485_t_cmd, recv_data);
+        if (racv_len > 0)
+        {
+            esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+            if ((recv_data[5] * 256 + recv_data[6]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            {
+                if ((recv_data[0] == Rs485_t_cmd[0]) && (recv_data[1] == Rs485_t_cmd[1]))
+                {
+                    Rs485_t_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
+                    ESP_LOGI(TAG, "Rs485_t_val=%f\n", Rs485_t_val);
+                    // RS485_status = true;
+                    // 读取成功
+                    pJsonRoot = cJSON_CreateObject();
+                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                    cJSON_AddItemToObject(pJsonRoot, "field10", cJSON_CreateNumber(Rs485_t_val));
+                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                    cJSON_Delete(pJsonRoot);                       //delete cjson root
+                    len = strlen(OutBuffer);
+                    printf("len:%d\n%s\n", len, OutBuffer);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    SaveBuffer = (uint8_t *)malloc(len);
+                    memcpy(SaveBuffer, OutBuffer, len);
+                    xSemaphoreTake(Cache_muxtex, -1);
+                    DataSave(SaveBuffer, len);
+                    xSemaphoreGive(Cache_muxtex);
+                    free(OutBuffer);
+                    free(SaveBuffer);
+                }
+                else
+                {
+                    RS485_status = false;
+                    ESP_LOGE(TAG, "485 add or cmd error\n");
+                    // return 1;
+                }
+            }
+            else
+            {
+                RS485_status = false;
+                ESP_LOGE(TAG, "485 CRC error\n");
+                // return 1;
+            }
+        }
+        else
+        {
+            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+        }
+        xSemaphoreGive(RS485_Mutex);
     }
-    Create_485sth_Json();
-    xSemaphoreGive(RS485_Mutex);
+}
+
+//读取485 风速探头
+void read_485_ws_task(void *pvParameters)
+{
+    float Rs485_ws_val;
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len;
+    cJSON *pJsonRoot;
+    uint8_t *recv_data;
+    int racv_len;
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, -1);
+        xSemaphoreTake(RS485_Mutex, -1);
+        recv_data = (uint8_t *)malloc(BUF_SIZE);
+        racv_len = RS485_Read(Rs485_ws_cmd, recv_data);
+        if (racv_len > 0)
+        {
+            esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+            if ((recv_data[5] * 256 + recv_data[6]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            {
+                if ((recv_data[0] == Rs485_ws_cmd[0]) && (recv_data[1] == Rs485_ws_cmd[1]))
+                {
+                    Rs485_ws_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
+                    ESP_LOGI(TAG, "Rs485_ws_val=%f\n", Rs485_ws_val);
+                    // RS485_status = true;
+                    // 读取成功
+                    pJsonRoot = cJSON_CreateObject();
+                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                    cJSON_AddItemToObject(pJsonRoot, "field10", cJSON_CreateNumber(Rs485_ws_val));
+                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                    cJSON_Delete(pJsonRoot);                       //delete cjson root
+                    len = strlen(OutBuffer);
+                    printf("len:%d\n%s\n", len, OutBuffer);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    SaveBuffer = (uint8_t *)malloc(len);
+                    memcpy(SaveBuffer, OutBuffer, len);
+                    xSemaphoreTake(Cache_muxtex, -1);
+                    DataSave(SaveBuffer, len);
+                    xSemaphoreGive(Cache_muxtex);
+                    free(OutBuffer);
+                    free(SaveBuffer);
+                }
+                else
+                {
+                    RS485_status = false;
+                    ESP_LOGE(TAG, "485 add or cmd error\n");
+                    // return 1;
+                }
+            }
+            else
+            {
+                RS485_status = false;
+                ESP_LOGE(TAG, "485 CRC error\n");
+                // return 1;
+            }
+        }
+        else
+        {
+            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+        }
+        xSemaphoreGive(RS485_Mutex);
+    }
 }
 
 void RS485_Init(void)
 {
     RS485_Mutex = xSemaphoreCreateMutex();
     xTaskCreate(read_485_th_task, "read_485_th_task", 4096, NULL, 3, &Binary_485_th);
-    xTaskCreate(read_485_sth_task, "read_485_sth_task", 4096, NULL, 3, &Binary_485_sth);
+    xTaskCreate(read_485_t_task, "read_485_t_task", 4096, NULL, 3, &Binary_485_t);
+    // xTaskCreate(read_485_sth_task, "read_485_sth_task", 4096, NULL, 3, &Binary_485_sth);
 }
-
-
-
 // /*******************************************************************************
 //                                       END
 // *******************************************************************************/

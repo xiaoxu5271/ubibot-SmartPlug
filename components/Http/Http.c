@@ -28,6 +28,7 @@ SemaphoreHandle_t xMutex_Http_Send = NULL;
 
 TaskHandle_t Binary_Heart_Send = NULL;
 TaskHandle_t Binary_dp = NULL;
+TaskHandle_t Binary_485_t = NULL;
 TaskHandle_t Binary_485_th = NULL;
 TaskHandle_t Binary_485_sth = NULL;
 TaskHandle_t Binary_ext = NULL;
@@ -37,7 +38,6 @@ TaskHandle_t Binary_ele_quan = NULL;
 // extern uint8_t data_read[34];
 
 static char *TAG = "HTTP";
-uint32_t HTTP_STATUS = HTTP_KEY_GET;
 uint8_t post_status = POST_NOCOMMAND;
 
 static char build_heart_url[256];
@@ -60,32 +60,37 @@ void timer_heart_cb(void *arg)
     static uint32_t min_num = 0;
     min_num++;
     if (fn_dp)
-        if (min_num % (fn_dp / 60) == 0)
+        if (min_num * 60 % fn_dp == 0)
         {
             vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
         }
+    if (fn_485_t)
+        if (min_num * 60 % fn_485_t == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_t, &xHigherPriorityTaskWoken);
+        }
     if (fn_485_th)
-        if (min_num % (fn_485_th / 60) == 0)
+        if (min_num * 60 % fn_485_th == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
         }
     if (fn_485_sth)
-        if (min_num % (fn_485_sth / 60) == 0)
+        if (min_num * 60 % fn_485_sth == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
         }
     if (fn_energy)
-        if (min_num % (fn_energy / 60) == 0)
+        if (min_num * 60 % fn_energy == 0)
         {
             vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
         }
     if (fn_ele_quan)
-        if (min_num % (fn_ele_quan / 60) == 0)
+        if (min_num * 60 % fn_ele_quan == 0)
         {
             vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
         }
     if (fn_ext)
-        if (min_num % (fn_ext / 60) == 0)
+        if (min_num * 60 % fn_ext == 0)
         {
             vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
         }

@@ -47,8 +47,8 @@ void Data_Post_Task(void *pvParameters)
 void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
 {
     // xSemaphoreTake(Cache_muxtex, -1);
-    flash_used_num = AT24CXX_ReadLenByte(flash_used_num_add, 4);
-    data_save_num = AT24CXX_ReadLenByte(data_save_num_add, 4);
+    flash_used_num = AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4);
+    data_save_num = AT24CXX_ReadLenByte(DATA_SAVE_NUM_ADD, 4);
 
     if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
     {
@@ -57,7 +57,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
     W25QXX_Write(sava_buff, flash_used_num, Buff_len);
     data_save_num++;
     flash_used_num += Buff_len;
-    AT24CXX_WriteLenByte(flash_used_num_add, flash_used_num, 4);
+    AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
     ESP_LOGI(TAG, "flash_used_num=%d", flash_used_num);
     // xSemaphoreGive(Cache_muxtex);
 }
@@ -89,12 +89,12 @@ static uint8_t Http_post_fun(void)
 
     status_buff_len = Create_NET_Json((char *)status_buff); //该函数中save 了一条最近的数据，需在read end_raad_num之前
     ESP_LOGI(TAG, "status_buff_len:%d,buff:%s", status_buff_len, status_buff);
-    start_read_num = AT24CXX_ReadLenByte(start_read_num_add, 4);
+    start_read_num = AT24CXX_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
     ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
     xSemaphoreTake(Cache_muxtex, -1);
-    end_read_num = AT24CXX_ReadLenByte(flash_used_num_add, 4); //放入 互斥锁内读取，防止数据被改写
+    end_read_num = AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4); //放入 互斥锁内读取，防止数据被改写
     ESP_LOGI(TAG, "end_read_num=%d", end_read_num);
     cache_data_len = Read_Post_Len(start_read_num, end_read_num);
     xSemaphoreGive(Cache_muxtex);
@@ -178,7 +178,7 @@ static uint8_t Http_post_fun(void)
         close(socket_num);
         return 0;
     }
-    AT24CXX_WriteLenByte(start_read_num_add, start_read_num_oen, 4);
+    AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
     return 1;
 }
 
@@ -186,9 +186,9 @@ void Erase_Flash_data_test(void)
 {
     printf("\nstart erase flash\n");
     W25QXX_Erase_Sector(0);
-    AT24CXX_WriteLenByte(start_read_num_add, 0, 4);
-    AT24CXX_WriteLenByte(data_save_num_add, 0, 4);
-    AT24CXX_WriteLenByte(flash_used_num_add, 0, 4);
+    AT24CXX_WriteLenByte(START_READ_NUM_ADD, 0, 4);
+    AT24CXX_WriteLenByte(DATA_SAVE_NUM_ADD, 0, 4);
+    AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, 0, 4);
     printf("\nerase flash ok\n");
 }
 

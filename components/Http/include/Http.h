@@ -31,6 +31,7 @@
 //需要发送的二值信号量
 extern TaskHandle_t Binary_Heart_Send;
 extern TaskHandle_t Binary_dp;
+extern TaskHandle_t Binary_485_t;
 extern TaskHandle_t Binary_485_th;
 extern TaskHandle_t Binary_485_sth;
 extern TaskHandle_t Binary_ext;
@@ -44,14 +45,6 @@ void http_send_mes(void);
 int32_t http_activate(void);
 int32_t http_post_init(uint32_t Content_Length);
 int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size);
-
-char SerialNum[16];
-char ProductId[32];
-char BleName[64];
-char ApiKey[33];
-char ChannelId[16];
-char USER_ID[48];
-char WEB_SERVER[20];
 
 extern uint8_t post_status;
 uint8_t human_status;

@@ -342,3 +342,21 @@ int32_t user_key_init(key_config_t *key_config,
         };
     return esp_timer_create(&esp_long_press_timer_args, &gs_m_key_time_params.long_press_time_handle);
 }
+
+//恢复出厂设置按键检测
+bool Check_Set_defaul(void)
+{
+    uint16_t i = 0;
+    gpio_set_direction(BOARD_BUTTON, GPIO_MODE_INPUT);
+    while (!gpio_get_level(BOARD_BUTTON))
+    {
+        i++;
+        if (i > 500) //按住按键5s
+        {
+            printf("\nNow set defaul\n");
+            return true;
+        }
+        vTaskDelay(10 / portTICK_RATE_MS);
+    }
+    return false;
+}
