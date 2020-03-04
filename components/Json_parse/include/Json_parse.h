@@ -66,9 +66,11 @@ typedef struct
 
 //creat_json *create_http_json(uint8_t post_status);
 void create_http_json(creat_json *pCreat_json, uint8_t flag);
-void Read_Metadate(void);
-void Read_Product(void);
-uint8_t Create_NET_Json(char *status_buff);
+void Read_Metadate_E2p(void);
+void Read_Product_E2p(void);
+void Read_Fields_E2p(void);
+void Create_NET_Json(void);
+uint16_t Create_Status_Json(char *status_buff);
 
 /************metadata 参数***********/
 extern uint32_t fn_dp;        //数据发送频率

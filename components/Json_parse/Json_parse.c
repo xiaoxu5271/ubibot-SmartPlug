@@ -72,6 +72,7 @@ char WEB_SERVER[WEB_HOST_LEN] = {0};
 char BleName[17] = {0};
 
 static short Parse_fields_num(char *ptrptr);
+void Create_fields_num(char *read_buf);
 
 static short Parse_metadata(char *ptrptr)
 {
@@ -601,38 +602,16 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     return 1;
 }
 
-uint8_t Create_NET_Json(char *status_buff)
+uint16_t Create_Status_Json(char *status_buff)
 {
-    char *OutBuffer;
-    uint8_t *SaveBuffer;
-    uint16_t len = 0;
-    cJSON *pJsonRoot;
-    wifi_ap_record_t wifidata;
     uint8_t mac_sys[6] = {0};
     char mac_buff[32] = {0};
     char ssid64_buff[64] = {0};
+    char *field_buff;
 
-    pJsonRoot = cJSON_CreateObject();
-    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-
-    if (esp_wifi_sta_get_ap_info(&wifidata) == 0)
-    {
-        itoa(wifidata.rssi, mqtt_json_s.mqtt_Rssi, 10);
-    }
-    cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-    cJSON_AddItemToObject(pJsonRoot, "field6", cJSON_CreateString(mqtt_json_s.mqtt_Rssi));
-    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    cJSON_Delete(pJsonRoot);                       //delete cjson root
-    len = strlen(OutBuffer);
-    printf("len:%d\n%s\n", len, OutBuffer);
-    // SaveBuffer = (uint8_t *)malloc(len);
-    SaveBuffer = (uint8_t *)malloc(len);
-    memcpy(SaveBuffer, OutBuffer, len);
-    xSemaphoreTake(Cache_muxtex, -1);
-    DataSave(SaveBuffer, len);
-    xSemaphoreGive(Cache_muxtex);
-    free(OutBuffer);
-    free(SaveBuffer);
+    field_buff = (char *)malloc(200);
+    memset(field_buff, 0, 200);
+    Create_fields_num(field_buff);
 
     esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
     sprintf(mac_buff,
@@ -645,8 +624,43 @@ uint8_t Create_NET_Json(char *status_buff)
             mac_sys[5]);
     base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
 
-    sprintf(status_buff, "],\"status\":\"%s\",\"ssid_base64\":\"%s\"}", mac_buff, ssid64_buff);
+    sprintf(status_buff, "],\"status\":\"%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}", mac_buff, ssid64_buff, field_buff);
+    free(field_buff);
     return strlen(status_buff);
+}
+
+void Create_NET_Json(void)
+{
+    char Field_Rssi_w[9] = {0};
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+    wifi_ap_record_t wifidata_t;
+
+    snprintf(Field_Rssi_w, sizeof(Field_Rssi_w), "field%d", AT24CXX_ReadOneByte(RSSI_NUM_ADDR));
+
+    pJsonRoot = cJSON_CreateObject();
+    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+
+    if (esp_wifi_sta_get_ap_info(&wifidata_t) == 0)
+    {
+        cJSON_AddItemToObject(pJsonRoot, Field_Rssi_w, cJSON_CreateNumber(wifidata_t.rssi));
+    }
+    cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+
+    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    cJSON_Delete(pJsonRoot);                       //delete cjson root
+    len = strlen(OutBuffer);
+    printf("len:%d\n%s\n", len, OutBuffer);
+    // SaveBuffer = (uint8_t *)malloc(len);
+    SaveBuffer = (uint8_t *)malloc(len);
+    memcpy(SaveBuffer, OutBuffer, len);
+    xSemaphoreTake(Cache_muxtex, -1);
+    DataSave(SaveBuffer, len);
+    xSemaphoreGive(Cache_muxtex);
+    free(OutBuffer);
+    free(SaveBuffer);
 }
 
 void create_http_json(creat_json *pCreat_json, uint8_t flag)
@@ -724,6 +738,44 @@ void create_http_json(creat_json *pCreat_json, uint8_t flag)
     free(cjson_printunformat);
     cJSON_Delete(root);
     //return pCreat_json;
+}
+
+/*******************************************************************************
+// create sensors fields num 
+*******************************************************************************/
+void Create_fields_num(char *read_buf)
+{
+    char *out_buf;
+    uint8_t data_len;
+    cJSON *pJsonRoot;
+
+    pJsonRoot = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(pJsonRoot, "filed1", 1); //rssi_w_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "filed2", 2); //rssi_w_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "filed3", 3); //rssi_w_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "filed4", 4); //rssi_w_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "filed5", 5); //rssi_w_f_num
+
+    cJSON_AddNumberToObject(pJsonRoot, "rssi_w", rssi_w_f_num);     //rssi_w_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "rssi_g", rssi_g_f_num);     //rssi_g_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_light", r1_light_f_num); //r1_light_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_th_t", r1_th_t_f_num);   //r1_th_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_th_h", r1_th_h_f_num);   //r1_th_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_t", r1_sth_t_f_num); //r1_sth_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_h", r1_sth_h_f_num); //r1_sth_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "e1_t", e1_t_f_num);         //e1_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_t", r1_t_f_num);         //r1_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_ws", r1_ws_f_num);       //r1_ws_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2", r1_co2_f_num);     //r1_co2_f_num
+
+    //cJSON_AddNumberToObject(pJsonRoot,"r1_ph",r1_ph_f_num);  //r1_ph_f_num
+
+    out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    data_len = strlen(out_buf);
+    cJSON_Delete(pJsonRoot); //delete cjson root
+    memcpy(read_buf, out_buf, data_len);
+    free(out_buf);
 }
 
 esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
@@ -1030,7 +1082,7 @@ static short Parse_fields_num(char *ptrptr)
 
 //读取EEPROM中的metadata
 
-void Read_Metadate(void)
+void Read_Metadate_E2p(void)
 {
     uint8_t Last_Switch_Status;
     de_switch_sta = AT24CXX_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
@@ -1069,7 +1121,7 @@ void Read_Metadate(void)
            de_switch_sta, fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
 }
 
-void Read_Product(void)
+void Read_Product_E2p(void)
 {
     printf("FIRMWARE=%s\n", FIRMWARE);
     AT24CXX_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
@@ -1087,4 +1139,20 @@ void Read_Product(void)
     AT24CXX_Read(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
     AT24CXX_Read(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
     printf("wifi ssid=%s,wifi password=%s\n", wifi_data.wifi_ssid, wifi_data.wifi_pwd);
+}
+
+void Read_Fields_E2p(void)
+{
+    rssi_w_f_num = AT24CXX_ReadOneByte(RSSI_NUM_ADDR);          //rssi_w
+    rssi_g_f_num = AT24CXX_ReadOneByte(GPRS_RSSI_NUM_ADDR);     //rssi_g
+    r1_light_f_num = AT24CXX_ReadOneByte(RS485_LIGHT_NUM_ADDR); //r1_light
+    r1_th_t_f_num = AT24CXX_ReadOneByte(RS485_TEMP_NUM_ADDR);   //r1_th_t_f_num
+    r1_th_h_f_num = AT24CXX_ReadOneByte(RS485_HUMI_NUM_ADDR);   //r1_th_h_f_num
+    r1_sth_t_f_num = AT24CXX_ReadOneByte(RS485_STEMP_NUM_ADDR); //r1_sth_t_f_num
+    r1_sth_h_f_num = AT24CXX_ReadOneByte(RS485_SHUMI_NUM_ADDR); //r1_sth_h_f_num
+    e1_t_f_num = AT24CXX_ReadOneByte(EXT_TEMP_NUM_ADDR);        //e1_t_f_num
+    r1_t_f_num = AT24CXX_ReadOneByte(RS485_T_NUM_ADDR);         //r1_t_f_num
+    r1_ws_f_num = AT24CXX_ReadOneByte(RS485_WS_NUM_ADDR);       //r1_ws_f_num
+    r1_co2_f_num = AT24CXX_ReadOneByte(RS485_CO2_NUM_ADDR);     //r1_co2_f_num
+    r1_ph_f_num = AT24CXX_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
 }

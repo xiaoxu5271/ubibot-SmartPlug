@@ -37,8 +37,9 @@ void app_main(void)
 {
 	Switch_Init();
 	E2prom_Init();
-	Read_Metadate();
-	Read_Product();
+	Read_Metadate_E2p();
+	Read_Product_E2p();
+	Read_Fields_E2p();
 	SPI_FLASH_Init();
 
 	Uart_Init();

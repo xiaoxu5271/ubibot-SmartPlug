@@ -37,6 +37,7 @@ void Data_Post_Task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         // xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
         //                     false, true, -1);
+        Create_NET_Json();
         if (!Http_post_fun())
         {
             Led_Status = LED_STA_WIFIERR;
@@ -75,19 +76,19 @@ void Start_Cache(void)
 static uint8_t Http_post_fun(void)
 {
     const char *post_header = "{\"feeds\":["; //
-    uint8_t status_buff[128];                 //],"status":"mac=x","ssid_base64":"x"}
+    uint8_t status_buff[350];                 //],"status":"mac=x","ssid_base64":"x"}
     uint8_t one_post_buff[512] = {0};         //一条数据的buff,
     uint16_t one_data_len;                    //读取一条数据占用flash的大小，不一定是这数据的大小
     uint32_t start_read_num_oen;              //单条数据读取的开始地址
     uint32_t end_read_num;                    //本次数据同步 截至地址
-    uint8_t status_buff_len;                  //],"status":"mac=x","ssid_base64":"x"}
+    uint16_t status_buff_len;                 //],"status":"mac=x","ssid_base64":"x"}
     uint32_t cache_data_len;                  //flash内正确待发送的数据总大小，以增加 ','占用
     uint32_t post_data_len;                   //Content_Length，通过http发送的总数据大小
     int32_t socket_num;                       //http socket
     bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
     char recv_buff[1024];
 
-    status_buff_len = Create_NET_Json((char *)status_buff); //该函数中save 了一条最近的数据，需在read end_raad_num之前
+    status_buff_len = Create_Status_Json((char *)status_buff); //该函数中save 了一条最近的数据，需在read end_raad_num之前
     ESP_LOGI(TAG, "status_buff_len:%d,buff:%s", status_buff_len, status_buff);
     start_read_num = AT24CXX_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
