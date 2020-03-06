@@ -33,6 +33,9 @@ static const char *TAG = "SPI_FLASH_MODE";
  before the transaction is sent, the callback will set this line to the correct state.
 */
 
+//单次最大发送的数据条数
+#define MAX_READ_NUM 2000
+
 #define PIN_NUM_CS 5
 #define PIN_NUM_MISO 19
 #define PIN_NUM_MOSI 23
@@ -431,7 +434,6 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 	ESP_LOGI("read_date", "ReadAddr=%d,Size_Temp_buff=%d", ReadAddr, Size_Temp_buff);
 	uint16_t i = 0, j = 0;
 	uint8_t Temp = 0;
-	uint32_t no_data_len = 0;
 	bool start_flag = false;
 	W25QXX_CS_L; //使能器件
 
@@ -482,12 +484,12 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 
 //读取数据缓存中正确的数据的大小，
 //一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
-uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr)
+uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add)
 {
 	ESP_LOGI("read_date", "Start_Addr=%d,End_Addr=%d", Start_Addr, End_Addr);
-	if (Start_Addr > End_Addr)
+	if (Start_Addr >= End_Addr)
 	{
-		ESP_LOGE("read_date", "Start_Addr>End_Addr");
+		ESP_LOGE("Read_Post_Len", "Dont need read!");
 		return 0;
 	}
 
@@ -524,7 +526,11 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr)
 				j = 0;
 				start_flag = false;
 				data_num++;
-				// ESP_LOGI("read_date", "data_num = %d,post_len = %d", data_num, post_len);
+				if (data_num >= MAX_READ_NUM)
+				{
+					ESP_LOGI("read_date", "data num = %d", data_num);
+					break;
+				}
 			}
 			else if (Temp == '{') //数据缓存时出现中断，重新计数
 			{
@@ -534,7 +540,6 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr)
 			}
 			else
 			{
-				// Temp_buff[j] = Temp; //循环读数
 				j++;
 				if (j > 512)
 				{
@@ -550,6 +555,7 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr)
 		}
 	}
 	W25QXX_CS_H;
+	*Read_End_add = i + Start_Addr; //当前截止地址
 	return (post_len - 1);
 }
 

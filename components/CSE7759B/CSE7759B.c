@@ -657,7 +657,6 @@ void Creat_Energy_Json(void)
     cJSON_Delete(pJsonRoot);                       //delete cjson root
     len = strlen(OutBuffer);
     printf("len:%d\n%s\n", len, OutBuffer);
-    // SaveBuffer = (uint8_t *)malloc(len);
     SaveBuffer = (uint8_t *)malloc(len);
     memcpy(SaveBuffer, OutBuffer, len);
     xSemaphoreTake(Cache_muxtex, -1);
@@ -680,7 +679,6 @@ void Creat_Ele_quan_Json(void)
     cJSON_Delete(pJsonRoot);                       //delete cjson root
     len = strlen(OutBuffer);
     printf("len:%d\n%s\n", len, OutBuffer);
-    // SaveBuffer = (uint8_t *)malloc(len);
     SaveBuffer = (uint8_t *)malloc(len);
     memcpy(SaveBuffer, OutBuffer, len);
     xSemaphoreTake(Cache_muxtex, -1);

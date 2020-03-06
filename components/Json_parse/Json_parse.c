@@ -605,8 +605,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
 uint16_t Create_Status_Json(char *status_buff)
 {
     uint8_t mac_sys[6] = {0};
-    char mac_buff[32] = {0};
-    char ssid64_buff[64] = {0};
+    char *ssid64_buff;
     char *field_buff;
 
     field_buff = (char *)malloc(200);
@@ -614,18 +613,22 @@ uint16_t Create_Status_Json(char *status_buff)
     Create_fields_num(field_buff);
 
     esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
-    sprintf(mac_buff,
-            "mac=%02x:%02x:%02x:%02x:%02x:%02x",
+
+    ssid64_buff = (char *)malloc(64);
+    memset(ssid64_buff, 0, 64);
+    base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
+
+    sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}",
             mac_sys[0],
             mac_sys[1],
             mac_sys[2],
             mac_sys[3],
             mac_sys[4],
-            mac_sys[5]);
-    base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
-
-    sprintf(status_buff, "],\"status\":\"%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}", mac_buff, ssid64_buff, field_buff);
+            mac_sys[5],
+            ssid64_buff,
+            field_buff);
     free(field_buff);
+    free(ssid64_buff);
     return strlen(status_buff);
 }
 
@@ -725,13 +728,9 @@ void create_http_json(creat_json *pCreat_json, uint8_t flag)
     cJSON_AddItemToObject(root, "ssid_base64", cJSON_CreateString(ssid64_buff));
 
     char *cjson_printunformat;
-    // cjson_printunformat = cJSON_PrintUnformatted(root); //将整个 json 转换成字符串 ，没有格式
     cjson_printunformat = cJSON_PrintUnformatted(root); //将整个 json 转换成字符串 ，有格式
-    //printf("status_creat_json= %s\r\n", cjson_printunformat);
 
-    pCreat_json->len = strlen(cjson_printunformat); //  creat_json_c 是整个json 所占的长度
-    //pCreat_json->creat_json_b=cjson_printunformat;
-    //pCreat_json->creat_json_b=malloc(pCreat_json->creat_json_c);
+    pCreat_json->len = strlen(cjson_printunformat);     //  creat_json_c 是整个json 所占的长度
     bzero(pCreat_json->buff, sizeof(pCreat_json->len)); //  creat_json_b 是整个json 包
     memcpy(pCreat_json->buff, cjson_printunformat, pCreat_json->len);
     //printf("http_json=%s\n",pCreat_json->creat_json_b);

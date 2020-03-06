@@ -89,7 +89,6 @@ void read_485_th_task(void *pvParameters)
         racv_len = RS485_Read(Rs485_th_cmd, recv_data);
         if (racv_len > 0)
         {
-
             esp_log_buffer_hex(TAG, recv_data, racv_len);
 
             if ((recv_data[7] * 256 + recv_data[8]) == CRC16_ModBus(recv_data, (racv_len - 2)))
@@ -109,7 +108,6 @@ void read_485_th_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
                     SaveBuffer = (uint8_t *)malloc(len);
                     memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
@@ -136,6 +134,7 @@ void read_485_th_task(void *pvParameters)
         {
             ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
         }
+        free(recv_data);
         xSemaphoreGive(RS485_Mutex);
     }
 }
@@ -175,7 +174,6 @@ void read_485_t_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
                     SaveBuffer = (uint8_t *)malloc(len);
                     memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
@@ -202,6 +200,7 @@ void read_485_t_task(void *pvParameters)
         {
             ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
         }
+        free(recv_data);
         xSemaphoreGive(RS485_Mutex);
     }
 }
@@ -241,7 +240,6 @@ void read_485_ws_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
                     SaveBuffer = (uint8_t *)malloc(len);
                     memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
@@ -268,6 +266,7 @@ void read_485_ws_task(void *pvParameters)
         {
             ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
         }
+        free(recv_data);
         xSemaphoreGive(RS485_Mutex);
     }
 }

@@ -59,6 +59,6 @@ void W25QXX_PowerDown(void);                                                    
 void W25QXX_WAKEUP(void);                                                                  //唤醒
 void SPIFlash_Test_Process(void);                                                          //读写测试
 uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_Temp_buff); //读取缓存中的一组数据
-uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr);                            //读取缓存中正确的数据的总大小
+uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add);
 
 #endif

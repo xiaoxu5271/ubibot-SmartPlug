@@ -40,8 +40,9 @@ void Data_Post_Task(void *pvParameters)
         Create_NET_Json();
         if (!Http_post_fun())
         {
-            Led_Status = LED_STA_WIFIERR;
+            // Led_Status = LED_STA_WIFIERR;
         }
+        ESP_LOGW(TAG, "free Heap:%d\n", esp_get_free_heap_size());
     }
 }
 
@@ -95,10 +96,12 @@ static uint8_t Http_post_fun(void)
     ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
     xSemaphoreTake(Cache_muxtex, -1);
-    end_read_num = AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4); //放入 互斥锁内读取，防止数据被改写
-    ESP_LOGI(TAG, "end_read_num=%d", end_read_num);
-    cache_data_len = Read_Post_Len(start_read_num, end_read_num);
+    cache_data_len = Read_Post_Len(start_read_num, AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num);
     xSemaphoreGive(Cache_muxtex);
+    if (cache_data_len == 0)
+    {
+        return 0;
+    }
 
     post_data_len = strlen(post_header) + status_buff_len + cache_data_len;
     ESP_LOGI(TAG, "post_data_len=%d,cache_data_len=%d", post_data_len, cache_data_len);
