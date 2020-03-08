@@ -616,7 +616,7 @@ uint16_t Create_Status_Json(char *status_buff)
 
     ssid64_buff = (char *)malloc(64);
     memset(ssid64_buff, 0, 64);
-    base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
+    base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
     sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}",
             mac_sys[0],

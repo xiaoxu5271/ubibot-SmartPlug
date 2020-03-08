@@ -66,8 +66,9 @@
 #define START_READ_NUM_ADD WIFI_PASSWORD_ADD + 64 //数据读取开始地址 uint32_t
 #define DATA_SAVE_NUM_ADD START_READ_NUM_ADD + 4  //缓存的数据组数 uint32_t
 #define FLASH_USED_NUM_ADD DATA_SAVE_NUM_ADD + 4  //缓存已用大小 u32
+#define EXHAUSTED_FLAG_ADD FLASH_USED_NUM_ADD + 4 //整个储存空间达到上限标志 1byte
 
-#define RSSI_NUM_ADDR FLASH_USED_NUM_ADD + 4          //uint8_t
+#define RSSI_NUM_ADDR EXHAUSTED_FLAG_ADD + 1          //uint8_t
 #define GPRS_RSSI_NUM_ADDR RSSI_NUM_ADDR + 1          //uint8_t
 #define RS485_LIGHT_NUM_ADDR GPRS_RSSI_NUM_ADDR + 1   //uint8_t
 #define RS485_TEMP_NUM_ADDR RS485_LIGHT_NUM_ADDR + 1  //uint8_t

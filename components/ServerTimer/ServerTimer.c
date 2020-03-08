@@ -24,18 +24,18 @@ esp_err_t Server_Timer_GET(char *Server_timer_data)
 
     //time_t t = mktime(tmp_time);
     ESP_LOGI(TAG, "Setting time: %s", asctime(tmp_time));
-    struct timeval now = { .tv_sec = (base_timstamp+28800) };
+    struct timeval now = {.tv_sec = (base_timstamp + 28800)};
     settimeofday(&now, NULL);
 
     free(tmp_time);
     return base_timstamp;
 }
-char* Server_Timer_SEND(void)
+char *Server_Timer_SEND(void)
 {
-    time (&now_timstamp);
-    now_timstamp-=28800;
+    time(&now_timstamp);
+    now_timstamp -= 28800;
     now_time = gmtime(&now_timstamp);
     strftime(time_down, sizeof(time_down), "%Y-%m-%dT%H:%M:%SZ", now_time);
-    printf("this is time %s\r\n", time_down);
+    // printf("this is time %s\r\n", time_down);
     return time_down;
 }

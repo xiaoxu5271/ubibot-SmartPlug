@@ -18,6 +18,8 @@
 #include "soc/gpio_struct.h"
 #include "driver/gpio.h"
 #include "lwip/def.h"
+#include "Cache_data.h"
+
 #include "my_spi_flash.h"
 
 static const char *TAG = "SPI_FLASH_MODE";
@@ -403,7 +405,7 @@ void W25QXX_WAKEUP(void)
 //NumByteToRead:要读取的字节数(最大65535)
 void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 {
-	ESP_LOGI("read_date", "ReadAddr=%d,NumByteToRead=%d", ReadAddr, NumByteToRead);
+	// ESP_LOGI("read_date", "ReadAddr=%d,NumByteToRead=%d", ReadAddr, NumByteToRead);
 	uint32_t i;
 	uint8_t Temp = 0;
 	W25QXX_CS_L;								//使能器件
@@ -433,6 +435,7 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 {
 	ESP_LOGI("read_date", "ReadAddr=%d,Size_Temp_buff=%d", ReadAddr, Size_Temp_buff);
 	uint16_t i = 0, j = 0;
+	uint16_t Read_Size;
 	uint8_t Temp = 0;
 	bool start_flag = false;
 	W25QXX_CS_L; //使能器件
@@ -441,7 +444,10 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 	VprocHALWrite((uint8_t)((ReadAddr) >> 16)); //发送24bit地址
 	VprocHALWrite((uint8_t)((ReadAddr) >> 8));
 	VprocHALWrite((uint8_t)ReadAddr);
-	for (i = 1; i < Size_Temp_buff; i++)
+
+	//限制读取截至地址
+	Read_Size = (Size_Temp_buff + ReadAddr < SPI_FLASH_SIZE) ? Size_Temp_buff : (SPI_FLASH_SIZE - ReadAddr);
+	for (i = 1; i < Read_Size; i++)
 	{
 		VprocHALRead(&Temp);
 		if (Temp == '{' && start_flag == false) //数据开头
@@ -482,21 +488,13 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 	return 0;
 }
 
-//读取数据缓存中正确的数据的大小，
-//一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
-uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add)
+//单次从flash中读取数据缓存中正确的数据的大小，不跨区
+uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add, uint32_t *data_num)
 {
-	ESP_LOGI("read_date", "Start_Addr=%d,End_Addr=%d", Start_Addr, End_Addr);
-	if (Start_Addr >= End_Addr)
-	{
-		ESP_LOGE("Read_Post_Len", "Dont need read!");
-		return 0;
-	}
-
 	uint32_t i = 0, j = 0;
 	uint8_t Temp = 0;
 	uint32_t post_len = 0;
-	uint32_t data_num = 0;
+
 	bool start_flag = false;
 
 	W25QXX_CS_L; //使能器件
@@ -505,6 +503,7 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_En
 	VprocHALWrite((uint8_t)((Start_Addr) >> 16)); //发送24bit地址
 	VprocHALWrite((uint8_t)((Start_Addr) >> 8));
 	VprocHALWrite((uint8_t)Start_Addr);
+
 	for (i = 0; i < (End_Addr - Start_Addr); i++)
 	{
 		VprocHALRead(&Temp);
@@ -525,10 +524,10 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_En
 				post_len = post_len + j + 1; //加上 ',' 分隔
 				j = 0;
 				start_flag = false;
-				data_num++;
-				if (data_num >= MAX_READ_NUM)
+				(*data_num)++;
+				if (*data_num >= MAX_READ_NUM)
 				{
-					ESP_LOGI("read_date", "data num = %d", data_num);
+					ESP_LOGI("read_date", "data num = %d", *data_num);
 					break;
 				}
 			}
@@ -554,8 +553,40 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_En
 			ESP_LOGE("read_date", "no data");
 		}
 	}
+
 	W25QXX_CS_H;
 	*Read_End_add = i + Start_Addr; //当前截止地址
+	return post_len;
+}
+
+//读取数据缓存中正确的数据的大小，
+//一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
+uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add)
+{
+	ESP_LOGI("read_date", "Start_Addr=%d,End_Addr=%d", Start_Addr, End_Addr);
+
+	uint32_t post_len = 0;
+	uint32_t data_num = 0;
+
+	if (Start_Addr < End_Addr)
+	{
+		post_len = Read_Post_Len_Once(Start_Addr, End_Addr, Read_End_add, &data_num);
+	}
+	else
+	{
+		//空
+		if (Start_Addr == End_Addr && Exhausted_flag == 0)
+		{
+			ESP_LOGE("Read_Post_Len", "Dont need read!");
+			return 0;
+		}
+
+		post_len = Read_Post_Len_Once(Start_Addr, SPI_FLASH_SIZE, Read_End_add, &data_num); //从起始读到flash最大地址
+		if (data_num < MAX_READ_NUM)
+			post_len += Read_Post_Len_Once(0, End_Addr, Read_End_add, &data_num); //从flash头读到结束地址
+	}
+
+	// *Read_End_add = i + Start_Addr; //当前截止地址
 	return (post_len - 1);
 }
 
