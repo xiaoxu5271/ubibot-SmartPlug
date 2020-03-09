@@ -585,7 +585,7 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_En
 		if (data_num < MAX_READ_NUM)
 			post_len += Read_Post_Len_Once(0, End_Addr, Read_End_add, &data_num); //从flash头读到结束地址
 	}
-
+	ESP_LOGI("read_date", "data_num=%d,Read_End_add=%d", data_num, *Read_End_add);
 	// *Read_End_add = i + Start_Addr; //当前截止地址
 	return (post_len - 1);
 }

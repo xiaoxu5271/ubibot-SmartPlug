@@ -25,8 +25,15 @@
 #define ACK_VAL 0x0       /*!< I2C ack value */
 #define NACK_VAL 0x1      /*!< I2C nack value */
 
+#define FM24
 //Device Address
+#ifdef FM24
+#define E2P_SIZE 8 * 1024
+#define DEV_ADD 0XAE
+#else
+#define E2P_SIZE 1024
 #define DEV_ADD 0XA8
+#endif
 
 #define PRODUCT_ID_LEN 32
 #define SERISE_NUM_LEN 16

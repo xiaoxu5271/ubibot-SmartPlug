@@ -118,20 +118,20 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
         }
     }
-    //(3)整个空间最大利用
-    else if (flash_used_num == start_read_num && Exhausted_flag == 1)
-    {
-        if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
-        {
-            flash_used_num = 0;
-        }
-        W25QXX_Write(sava_buff, flash_used_num, Buff_len);
-        flash_used_num += Buff_len;
-        //整个储存利用已经最大，则设置读取和截至地址相同，读取数据时分两次读
-        start_read_num = flash_used_num;
-        AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
-        AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
-    }
+    // //(3)整个空间最大利用
+    // else if (flash_used_num == start_read_num && Exhausted_flag == 1)
+    // {
+    //     if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
+    //     {
+    //         flash_used_num = 0;
+    //     }
+    //     W25QXX_Write(sava_buff, flash_used_num, Buff_len);
+    //     flash_used_num += Buff_len;
+    //     //整个储存利用已经最大，则设置读取和截至地址相同，读取数据时分两次读
+    //     start_read_num = flash_used_num;
+    //     AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+    //     AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+    // }
     else
     {
         //(3)整个空间最大利用
@@ -151,6 +151,10 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
         //(数据都读完)
         else
         {
+            if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
+            {
+                flash_used_num = 0;
+            }
             W25QXX_Write(sava_buff, flash_used_num, Buff_len);
             flash_used_num += Buff_len;
             AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
@@ -165,7 +169,7 @@ void Start_Cache(void)
 {
     Cache_muxtex = xSemaphoreCreateMutex();
     xTaskCreate(Data_Post_Task, "Data_Post_Task", 8192, NULL, 10, &Binary_dp);
-    xTaskCreate(Write_Flash_Test_task, "Write_Flash_Test_task", 4096, NULL, 10, NULL);
+    // xTaskCreate(Write_Flash_Test_task, "Write_Flash_Test_task", 4096, NULL, 10, NULL);
 }
 
 /*******************************************************************************
@@ -175,7 +179,7 @@ void Start_Cache(void)
 static uint8_t Http_post_fun(void)
 {
     const char *post_header = "{\"feeds\":["; //
-    uint8_t status_buff[350];                 //],"status":"mac=x","ssid_base64":"x"}
+    uint8_t status_buff[350] = {0};           //],"status":"mac=x","ssid_base64":"x"}
     uint8_t one_post_buff[512] = {0};         //一条数据的buff,
     uint16_t one_data_len;                    //读取一条数据占用flash的大小，不一定是这数据的大小
     uint32_t start_read_num_oen;              //单条数据读取的开始地址
@@ -188,17 +192,18 @@ static uint8_t Http_post_fun(void)
     bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
     char recv_buff[1024];
 
+    xSemaphoreTake(Cache_muxtex, -1);
     status_buff_len = Create_Status_Json((char *)status_buff); //该函数中save 了一条最近的数据，需在read end_raad_num之前
     ESP_LOGI(TAG, "status_buff_len:%d,buff:%s", status_buff_len, status_buff);
     start_read_num = AT24CXX_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
     ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
-    xSemaphoreTake(Cache_muxtex, -1);
     cache_data_len = Read_Post_Len(start_read_num, AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num);
-    xSemaphoreGive(Cache_muxtex);
+    // xSemaphoreGive(Cache_muxtex);
     if (cache_data_len == 0)
     {
+        xSemaphoreGive(Cache_muxtex);
         return 0;
     }
 
@@ -212,6 +217,7 @@ static uint8_t Http_post_fun(void)
         {
             ESP_LOGE(TAG, "... socket send failed");
             close(socket_num);
+            xSemaphoreGive(Cache_muxtex);
             return 0;
         }
 
@@ -227,9 +233,10 @@ static uint8_t Http_post_fun(void)
 
         while (send_status == false)
         {
-            xSemaphoreTake(Cache_muxtex, -1);
+            memset(one_post_buff, 0, sizeof(one_post_buff));
+            // xSemaphoreTake(Cache_muxtex, -1);
             one_data_len = W25QXX_Read_Data(one_post_buff, start_read_num_oen, sizeof(one_post_buff));
-            xSemaphoreGive(Cache_muxtex);
+            // xSemaphoreGive(Cache_muxtex);
             // ESP_LOGI(TAG, "post_buff:%s,strlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
             if (one_data_len > 0)
             {
@@ -242,6 +249,7 @@ static uint8_t Http_post_fun(void)
                         start_read_num_oen = 0;
                         end_read_num_one = end_read_num;
                         one_post_buff[strlen((const char *)one_post_buff)] = ',';
+                        ESP_LOGI(TAG, "first half post/read over");
                     }
                     else
                     {
@@ -255,10 +263,12 @@ static uint8_t Http_post_fun(void)
                     one_post_buff[strlen((const char *)one_post_buff)] = ',';
                 }
 
+                ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
                 if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
                 {
                     ESP_LOGE(TAG, "... socket send failed");
                     close(socket_num);
+                    xSemaphoreGive(Cache_muxtex);
                     return 0;
                 }
                 memset(one_post_buff, 0, sizeof(one_post_buff));
@@ -274,6 +284,7 @@ static uint8_t Http_post_fun(void)
                     {
                         start_read_num_oen = 0;
                         end_read_num_one = end_read_num;
+                        ESP_LOGI(TAG, "first half post/read over");
                     }
                     else
                     {
@@ -288,11 +299,13 @@ static uint8_t Http_post_fun(void)
         {
             ESP_LOGE(TAG, "... socket send failed");
             close(socket_num);
+            xSemaphoreGive(Cache_muxtex);
             return 0;
         }
         if (http_post_read(socket_num, recv_buff, sizeof(recv_buff)) < 0)
         {
             ESP_LOGE(TAG, "POST READ ERR");
+            xSemaphoreGive(Cache_muxtex);
             return 0;
         }
         // printf("解析返回数据！\n");
@@ -310,6 +323,7 @@ static uint8_t Http_post_fun(void)
     {
         ESP_LOGE(TAG, "http_post_init ERR");
         close(socket_num);
+        xSemaphoreGive(Cache_muxtex);
         return 0;
     }
     AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
@@ -318,7 +332,7 @@ static uint8_t Http_post_fun(void)
         Exhausted_flag = 0;
         AT24CXX_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
     }
-
+    xSemaphoreGive(Cache_muxtex);
     return 1;
 }
 
