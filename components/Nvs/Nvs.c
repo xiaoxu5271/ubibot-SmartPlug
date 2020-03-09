@@ -13,7 +13,7 @@ void nvs_write(char *write_nvs, char *write_data)
     printf("\n");
     printf("Opening Non-Volatile Storage (NVS) handle...%s ", write_data);
     nvs_handle my_handle;
-  
+
     err = nvs_open("storage", NVS_READWRITE, &my_handle);
     if (err != ESP_OK)
     {

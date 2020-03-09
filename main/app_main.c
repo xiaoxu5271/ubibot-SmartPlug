@@ -10,7 +10,7 @@
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 
-#include "nvs.h"
+// #include "nvs.h"
 #include "nvs_flash.h"
 
 #include "Smartconfig.h"

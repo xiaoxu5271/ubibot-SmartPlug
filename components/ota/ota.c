@@ -11,7 +11,7 @@
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
 
-#include "nvs.h"
+// #include "nvs.h"
 #include "nvs_flash.h"
 #include "Smartconfig.h"
 #include "Json_parse.h"
