@@ -8,7 +8,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include "nvs.h"
+// #include "nvs.h"
 #include "Json_parse.h"
 #include "E2prom.h"
 #include "Bluetooth.h"
@@ -62,7 +62,7 @@ void timer_heart_cb(void *arg)
     if (fn_dp)
         if (min_num * 60 % fn_dp == 0)
         {
-            // vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
         }
     if (fn_485_t)
         if (min_num * 60 % fn_485_t == 0)
@@ -333,7 +333,6 @@ void send_heart_task(void *arg)
         ulTaskNotifyTake(pdTRUE, -1);
         // xTaskNotifyWait()
         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, -1); //等网络连接
-        ESP_LOGW(TAG, "free Heap:%d\n", esp_get_free_heap_size());
         printf("Heart send !\n");
         if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)
         {
