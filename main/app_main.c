@@ -35,15 +35,14 @@
 
 void app_main(void)
 {
+	Led_Init();
 	Switch_Init();
 	E2prom_Init();
 	Read_Metadate_E2p();
 	Read_Product_E2p();
 	Read_Fields_E2p();
 	SPI_FLASH_Init();
-
 	Uart_Init();
-	Led_Init();
 	user_app_key_init();
 
 	/* 判断是否有序列号和product id */
@@ -57,11 +56,6 @@ void app_main(void)
 		}
 	}
 
-	RS485_Init();
-	CSE7759B_Init();
-	start_ds18b20();
-	Start_Cache();
-
 	esp_err_t ret;
 	ret = nvs_flash_init();
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -72,6 +66,10 @@ void app_main(void)
 	ESP_ERROR_CHECK(ret);
 	init_wifi();
 	ble_app_init();
+	RS485_Init();
+	CSE7759B_Init();
+	start_ds18b20();
+	Start_Cache();
 	initialise_http(); //须放在 采集任务建立之后
 	initialise_mqtt();
 }

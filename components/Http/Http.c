@@ -331,7 +331,10 @@ void send_heart_task(void *arg)
     {
         // xSemaphoreTake(Binary_Heart_Send, -1);
         ulTaskNotifyTake(pdTRUE, -1);
-        // xTaskNotifyWait()
+        ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
+                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
+                 esp_get_free_heap_size());
+
         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, -1); //等网络连接
         printf("Heart send !\n");
         if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)

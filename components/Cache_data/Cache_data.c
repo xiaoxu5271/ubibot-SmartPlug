@@ -136,7 +136,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
             AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
         }
-        //(数据都读完)
+        //(4)数据都读完
         else
         {
             if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写

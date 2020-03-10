@@ -8,6 +8,7 @@
 #include "Json_parse.h"
 #include "Http.h"
 #include "user_key.h"
+#include "Led.h"
 
 static const char *TAG = "EEPROM";
 SemaphoreHandle_t At24_Mutex = NULL;
@@ -15,6 +16,63 @@ SemaphoreHandle_t At24_Mutex = NULL;
 static bool AT24CXX_Check(void);
 static void E2prom_set_defaul(void);
 static void E2prom_read_defaul(void);
+
+// #define TEST_ADDR 4096
+// esp_err_t fm24c_test(void)
+// {
+//     //write
+//     int ret = 0;
+//     // uint8_t write_buff[256] = {0};
+//     // AT24CXX_Write(TEST_ADDR, write_buff, sizeof(write_buff));
+//     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+//     i2c_master_start(cmd);
+
+//     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
+//     i2c_master_write_byte(cmd, (TEST_ADDR / 256), ACK_CHECK_EN);
+//     i2c_master_write_byte(cmd, (TEST_ADDR % 256), ACK_CHECK_EN);
+
+//     for (uint16_t i = 0; i < 256; i++)
+//     {
+//         i2c_master_write_byte(cmd, i, ACK_CHECK_EN); //send data value
+//     }
+//     i2c_master_stop(cmd);
+//     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+//     i2c_cmd_link_delete(cmd);
+
+//     // vTaskDelay(100 / portTICK_PERIOD_MS);
+//     // read
+//     uint8_t read_temp[256] = {0};
+//     uint8_t *p;
+//     p = read_temp;
+//     cmd = i2c_cmd_link_create();
+//     i2c_master_start(cmd);
+//     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
+//     i2c_master_write_byte(cmd, (TEST_ADDR & 0xff00) >> 8, ACK_CHECK_EN);
+//     i2c_master_write_byte(cmd, TEST_ADDR & 0xff, ACK_CHECK_EN);
+
+//     i2c_master_start(cmd);
+//     i2c_master_write_byte(cmd, DEV_ADD + 1, ACK_CHECK_EN);
+//     for (uint16_t i = 0; i < 256; i++)
+//     {
+//         if (i != 255 - 1)
+//         {
+//             i2c_master_read_byte(cmd, p, ACK_VAL);
+//         }
+//         else
+//         {
+//             i2c_master_read_byte(cmd, p, NACK_VAL);
+//         }
+//         p++;
+//     }
+//     i2c_master_stop(cmd);
+//     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+//     i2c_cmd_link_delete(cmd);
+//     esp_log_buffer_hex("test", read_temp, sizeof(read_temp));
+
+//     // AT24CXX_Read(TEST_ADDR, read_temp, sizeof(read_temp));
+//     // esp_log_buffer_hex("test2", read_temp, sizeof(read_temp));
+//     return ret;
+// }
 
 void E2prom_Init(void)
 {
@@ -37,12 +95,16 @@ void E2prom_Init(void)
     {
         vTaskDelay(1000 / portTICK_RATE_MS);
         ESP_LOGE(TAG, "eeprom err !");
+        Led_Status = LED_STA_HEARD_ERR;
         return;
     }
+    // fm24c_test();
     if (Check_Set_defaul())
     {
+        Led_Status = LED_STA_REST;
         E2prom_read_defaul();
         E2prom_set_defaul();
+        Led_Status = LED_STA_INIT;
     }
 }
 
@@ -54,8 +116,8 @@ esp_err_t FM24C_Write(uint16_t reg_addr, uint8_t *dat, uint16_t len)
     i2c_master_start(cmd);
 
     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr & 0xff00) >> 8, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr & 0xff, ACK_CHECK_EN);
 
     while (len)
     {
@@ -80,8 +142,11 @@ esp_err_t FM24C_Read(uint16_t reg_addr, uint8_t *dat, uint16_t len)
     i2c_master_start(cmd);
 
     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr & 0xff00) >> 8, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr & 0xff, ACK_CHECK_EN);
+
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, DEV_ADD + 1, ACK_CHECK_EN);
 
     for (i = 0; i < len; i++)
     {
@@ -91,7 +156,7 @@ esp_err_t FM24C_Read(uint16_t reg_addr, uint8_t *dat, uint16_t len)
         }
         else
         {
-            i2c_master_read_byte(cmd, dat, ACK_CHECK_EN); //read a byte ack
+            i2c_master_read_byte(cmd, dat, ACK_VAL); //read a byte ack
         }
         dat++;
     }
@@ -113,8 +178,8 @@ esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat)
 
 #ifdef FM24
     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr & 0xff00) >> 8, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr & 0xff, ACK_CHECK_EN);
     i2c_master_write_byte(cmd, dat, ACK_CHECK_EN);
     // uint8_t data_buff[1];
     // data_buff[0] = dat;
@@ -144,8 +209,8 @@ uint8_t AT24CXX_ReadOneByte(uint16_t reg_addr)
     i2c_master_start(cmd);
 #ifdef FM24
     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr & 0xff00) >> 8, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr & 0xff, ACK_CHECK_EN);
     // FM24C_Read(reg_addr, &temp, 1);
 #else
     i2c_master_write_byte(cmd, (DEV_ADD + ((reg_addr / 256) << 1)), ACK_CHECK_EN);
@@ -178,10 +243,24 @@ uint8_t AT24CXX_ReadOneByte(uint16_t reg_addr)
 void AT24CXX_WriteLenByte(uint16_t WriteAddr, uint32_t DataToWrite, uint8_t Len)
 {
     uint8_t t;
+#ifdef FM24
+    uint8_t *data_temp;
+    data_temp = (uint8_t *)malloc(Len);
+
+    for (t = 0; t < Len; t++)
+    {
+        data_temp[t] = (DataToWrite >> (8 * t)) & 0xff;
+    }
+    FM24C_Write(WriteAddr, data_temp, Len);
+    free(data_temp);
+
+#else
+
     for (t = 0; t < Len; t++)
     {
         AT24CXX_WriteOneByte(WriteAddr + t, (DataToWrite >> (8 * t)) & 0xff);
     }
+#endif
 }
 
 //在AT24CXX里面的指定地址开始读出长度为Len的数据
@@ -193,11 +272,26 @@ uint32_t AT24CXX_ReadLenByte(uint16_t ReadAddr, uint8_t Len)
 {
     uint8_t t;
     uint32_t temp = 0;
+
+#ifdef FM24
+    uint8_t *data_temp;
+    data_temp = (uint8_t *)malloc(Len);
+
+    FM24C_Read(ReadAddr, data_temp, Len);
+
+    for (t = 0; t < Len; t++)
+    {
+        temp += (data_temp[t] << (8 * t));
+    }
+    free(data_temp);
+#else
     for (t = 0; t < Len; t++)
     {
         temp <<= 8;
         temp += AT24CXX_ReadOneByte(ReadAddr + Len - t - 1);
     }
+#endif
+
     return temp;
 }
 
@@ -208,15 +302,15 @@ uint32_t AT24CXX_ReadLenByte(uint16_t ReadAddr, uint8_t Len)
 void AT24CXX_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead)
 {
 
-    // #ifdef FM24
-    //     FM24C_Read(ReadAddr, pBuffer, NumToRead);
-    // #else
+#ifdef FM24
+    FM24C_Read(ReadAddr, pBuffer, NumToRead);
+#else
     while (NumToRead)
     {
         *pBuffer++ = AT24CXX_ReadOneByte(ReadAddr++);
         NumToRead--;
     }
-    // #endif
+#endif
 }
 //在AT24CXX里面的指定地址开始写入指定个数的数据
 //WriteAddr :开始写入的地址 对24c08为0~1023
@@ -224,18 +318,22 @@ void AT24CXX_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead)
 //NumToWrite:要写入数据的个数
 void AT24CXX_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite)
 {
+#ifdef FM24
+    FM24C_Write(WriteAddr, pBuffer, NumToWrite);
+#elif
     while (NumToWrite--)
     {
         AT24CXX_WriteOneByte(WriteAddr, *pBuffer);
         WriteAddr++;
         pBuffer++;
     }
+#endif
 }
 
 void E2prom_empty_all(void)
 {
     printf("\nempty all set\n");
-    for (uint16_t i = 0; i < E2P_SIZE; i++)
+    for (uint16_t i = 0; i < 1024; i++)
     {
         AT24CXX_WriteOneByte(i, 0);
     }
@@ -283,10 +381,10 @@ static void E2prom_set_defaul(void)
 static bool AT24CXX_Check(void)
 {
     uint8_t temp;
-    temp = AT24CXX_ReadOneByte(1023);
+    temp = AT24CXX_ReadOneByte(E2P_SIZE - 1);
     if (temp == 0xff)
     {
-        temp = AT24CXX_ReadOneByte(1022);
+        temp = AT24CXX_ReadOneByte(E2P_SIZE - 2);
         if (temp == 0xff)
         {
             printf("\nnew eeprom\n");
@@ -301,8 +399,8 @@ static bool AT24CXX_Check(void)
     }
     else //排除第一次初始化的情况
     {
-        AT24CXX_WriteOneByte(1023, 0X55);
-        temp = AT24CXX_ReadOneByte(1023);
+        AT24CXX_WriteOneByte(E2P_SIZE - 1, 0X55);
+        temp = AT24CXX_ReadOneByte(E2P_SIZE - 1);
         if (temp == 0X55)
         {
             printf("eeprom check ok!\n");

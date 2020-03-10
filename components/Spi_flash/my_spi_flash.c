@@ -19,6 +19,7 @@
 #include "driver/gpio.h"
 #include "lwip/def.h"
 #include "Cache_data.h"
+#include "Led.h"
 
 #include "my_spi_flash.h"
 
@@ -676,6 +677,7 @@ void SPI_FLASH_Init(void)
 		vTaskDelay(1000 / portTICK_RATE_MS);
 		W25QXX_TYPE = W25QXX_ReadID(); //读取FLASH ID.
 		ESP_LOGE(TAG, "W25QXX_TYPE = %x\n", W25QXX_TYPE);
+		Led_Status = LED_STA_HEARD_ERR;
 	}
 
 	W25QXX_Write_Enable(); //SPI_FLASH写使能

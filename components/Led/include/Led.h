@@ -24,7 +24,8 @@ enum led_sta
     LED_STA_SEND,        //发送数据
     LED_STA_ACTIVE_ERR,  //激活失败
     LED_STA_HEARD_ERR,   //硬件错误
-    LED_STA_OTA          //OTA ING
+    LED_STA_OTA,         //OTA ING
+    LED_STA_REST         //恢复出厂设置
 };
 
 void Led_R_On(void);

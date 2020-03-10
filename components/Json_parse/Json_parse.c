@@ -1080,7 +1080,6 @@ static short Parse_fields_num(char *ptrptr)
 }
 
 //读取EEPROM中的metadata
-
 void Read_Metadate_E2p(void)
 {
     uint8_t Last_Switch_Status;
@@ -1096,7 +1095,6 @@ void Read_Metadate_E2p(void)
         break;
 
     case 2:
-
         Last_Switch_Status = AT24CXX_ReadOneByte(LAST_SWITCH_ADD);
         if (Last_Switch_Status <= 100)
         {
@@ -1116,8 +1114,8 @@ void Read_Metadate_E2p(void)
     cg_data_led = AT24CXX_ReadOneByte(CG_DATA_LED_ADD);    //发送数据 LED状态 0关闭，1打开
     net_mode = AT24CXX_ReadOneByte(NET_MODE_ADD);          //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 
-    printf("metadata:\nde_switch_sta=%d\nfn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
-           de_switch_sta, fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
+    printf("e2prom used:%d \nmetadata:\nde_switch_sta=%d\nfn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
+           RS485_PH_NUM_ADDR, de_switch_sta, fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
 }
 
 void Read_Product_E2p(void)
