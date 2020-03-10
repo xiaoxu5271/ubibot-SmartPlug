@@ -46,21 +46,92 @@ void E2prom_Init(void)
     }
 }
 
+esp_err_t FM24C_Write(uint16_t reg_addr, uint8_t *dat, uint16_t len)
+{
+    // xSemaphoreTake(At24_Mutex, -1);
+    int ret;
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+
+    i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+
+    while (len)
+    {
+        i2c_master_write_byte(cmd, *dat, ACK_CHECK_EN); //send data value
+        dat++;
+        len--;
+    }
+
+    i2c_master_stop(cmd);
+    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+    i2c_cmd_link_delete(cmd);
+
+    // xSemaphoreGive(At24_Mutex);
+    return ret;
+}
+
+esp_err_t FM24C_Read(uint16_t reg_addr, uint8_t *dat, uint16_t len)
+{
+    // xSemaphoreTake(At24_Mutex, -1);
+    int ret, i;
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+
+    i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+
+    for (i = 0; i < len; i++)
+    {
+        if (i == len - 1)
+        {
+            i2c_master_read_byte(cmd, dat, NACK_VAL); //只读1 byte 不需要应答;  //read a byte no ack
+        }
+        else
+        {
+            i2c_master_read_byte(cmd, dat, ACK_CHECK_EN); //read a byte ack
+        }
+        dat++;
+    }
+
+    i2c_master_stop(cmd);
+    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+    i2c_cmd_link_delete(cmd);
+
+    // xSemaphoreGive(At24_Mutex);
+    return ret;
+}
+
 esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat)
 {
     xSemaphoreTake(At24_Mutex, -1);
     int ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
+
+#ifdef FM24
+    i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, dat, ACK_CHECK_EN);
+    // uint8_t data_buff[1];
+    // data_buff[0] = dat;
+    // FM24C_Write(reg_addr, data_buff, 1);
+#else
     i2c_master_write_byte(cmd, (DEV_ADD + ((reg_addr / 256) << 1)), ACK_CHECK_EN);
     i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
     i2c_master_write_byte(cmd, dat, ACK_CHECK_EN);
+#endif
 
     i2c_master_stop(cmd);
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
-
-    vTaskDelay(20 / portTICK_RATE_MS);
+#ifdef FM24
+#else
+    vTaskDelay(10 / portTICK_RATE_MS);
+#endif
     xSemaphoreGive(At24_Mutex);
     return ret;
 }
@@ -71,8 +142,15 @@ uint8_t AT24CXX_ReadOneByte(uint16_t reg_addr)
     uint8_t temp = 0;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
+#ifdef FM24
+    i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+    // FM24C_Read(reg_addr, &temp, 1);
+#else
     i2c_master_write_byte(cmd, (DEV_ADD + ((reg_addr / 256) << 1)), ACK_CHECK_EN);
     i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+#endif
 
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, DEV_ADD + 1, ACK_CHECK_EN);
@@ -83,7 +161,11 @@ uint8_t AT24CXX_ReadOneByte(uint16_t reg_addr)
     i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
-    vTaskDelay(20 / portTICK_RATE_MS);
+#ifdef FM24
+#else
+    vTaskDelay(10 / portTICK_RATE_MS);
+#endif
+
     xSemaphoreGive(At24_Mutex);
     return temp;
 }
@@ -125,11 +207,16 @@ uint32_t AT24CXX_ReadLenByte(uint16_t ReadAddr, uint8_t Len)
 //NumToRead:要读出数据的个数
 void AT24CXX_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead)
 {
+
+    // #ifdef FM24
+    //     FM24C_Read(ReadAddr, pBuffer, NumToRead);
+    // #else
     while (NumToRead)
     {
         *pBuffer++ = AT24CXX_ReadOneByte(ReadAddr++);
         NumToRead--;
     }
+    // #endif
 }
 //在AT24CXX里面的指定地址开始写入指定个数的数据
 //WriteAddr :开始写入的地址 对24c08为0~1023
@@ -148,8 +235,10 @@ void AT24CXX_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite)
 void E2prom_empty_all(void)
 {
     printf("\nempty all set\n");
-    uint8_t empty_buff[1024] = {0};
-    AT24CXX_Write(0, empty_buff, 1024);
+    for (uint16_t i = 0; i < E2P_SIZE; i++)
+    {
+        AT24CXX_WriteOneByte(i, 0);
+    }
 }
 
 static void E2prom_read_defaul(void)
