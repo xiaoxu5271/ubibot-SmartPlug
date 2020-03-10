@@ -433,7 +433,7 @@ void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 //一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
 uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_Temp_buff)
 {
-	ESP_LOGI("read_date", "ReadAddr=%d,Size_Temp_buff=%d", ReadAddr, Size_Temp_buff);
+	// ESP_LOGI("read_date", "ReadAddr=%d,Size_Temp_buff=%d", ReadAddr, Size_Temp_buff);
 	uint16_t i = 0, j = 0;
 	uint16_t Read_Size;
 	uint8_t Temp = 0;
@@ -479,7 +479,7 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 		}
 		else
 		{
-			ESP_LOGE("read_date", "no data,i=%d,temp=%c", i, Temp);
+			// ESP_LOGE("read_date", "no data,i=%d,temp=%c", i, Temp);
 			// no_data_len++
 		}
 	}
@@ -494,6 +494,7 @@ uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Re
 	uint32_t i = 0, j = 0;
 	uint8_t Temp = 0;
 	uint32_t post_len = 0;
+	uint32_t no_data_len = 0;
 
 	bool start_flag = false;
 
@@ -550,10 +551,11 @@ uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Re
 		}
 		else
 		{
-			ESP_LOGE("read_date", "no data");
+			no_data_len++;
+			// ESP_LOGE("read_date", "no data");
 		}
 	}
-
+	ESP_LOGI("read_date", "no_data_len=%d", no_data_len);
 	W25QXX_CS_H;
 	*Read_End_add = i + Start_Addr; //当前截止地址
 	return post_len;

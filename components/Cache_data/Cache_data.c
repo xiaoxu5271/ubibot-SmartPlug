@@ -39,13 +39,14 @@ void Data_Post_Task(void *pvParameters)
     {
         //发送成功后，判断当前使用flash是否大一个扇区，大于的话再擦除
         ulTaskNotifyTake(pdTRUE, -1);
-        // xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
-        //                     false, true, -1);
+        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+                            false, true, -1);
         Create_NET_Json();
         if (!Http_post_fun())
         {
             // Led_Status = LED_STA_WIFIERR;
         }
+        // vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -118,20 +119,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
         }
     }
-    // //(3)整个空间最大利用
-    // else if (flash_used_num == start_read_num && Exhausted_flag == 1)
-    // {
-    //     if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
-    //     {
-    //         flash_used_num = 0;
-    //     }
-    //     W25QXX_Write(sava_buff, flash_used_num, Buff_len);
-    //     flash_used_num += Buff_len;
-    //     //整个储存利用已经最大，则设置读取和截至地址相同，读取数据时分两次读
-    //     start_read_num = flash_used_num;
-    //     AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
-    //     AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
-    // }
+
     else
     {
         //(3)整个空间最大利用
@@ -263,7 +251,7 @@ static uint8_t Http_post_fun(void)
                     one_post_buff[strlen((const char *)one_post_buff)] = ',';
                 }
 
-                ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
+                // ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
                 if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
                 {
                     ESP_LOGE(TAG, "... socket send failed");

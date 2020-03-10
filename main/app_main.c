@@ -57,11 +57,6 @@ void app_main(void)
 		}
 	}
 
-	RS485_Init();
-	CSE7759B_Init();
-	start_ds18b20();
-	Start_Cache();
-
 	esp_err_t ret;
 	ret = nvs_flash_init();
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -72,6 +67,10 @@ void app_main(void)
 	ESP_ERROR_CHECK(ret);
 	init_wifi();
 	ble_app_init();
+	RS485_Init();
+	CSE7759B_Init();
+	start_ds18b20();
+	Start_Cache();
 	initialise_http(); //须放在 采集任务建立之后
 	initialise_mqtt();
 }
