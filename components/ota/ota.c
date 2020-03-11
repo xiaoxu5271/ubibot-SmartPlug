@@ -12,7 +12,7 @@
 #include "esp_https_ota.h"
 
 // #include "nvs.h"
-#include "nvs_flash.h"
+// #include "nvs_flash.h"
 #include "Smartconfig.h"
 #include "Json_parse.h"
 #include "Http.h"

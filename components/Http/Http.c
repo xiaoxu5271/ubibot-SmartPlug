@@ -6,7 +6,7 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "nvs_flash.h"
+// #include "nvs_flash.h"
 
 // #include "nvs.h"
 #include "Json_parse.h"
@@ -41,7 +41,6 @@ static char *TAG = "HTTP";
 uint8_t post_status = POST_NOCOMMAND;
 
 static char build_heart_url[256];
-BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 TaskHandle_t httpHandle = NULL;
 esp_timer_handle_t http_timer_suspend_p = NULL;
@@ -56,43 +55,43 @@ esp_timer_create_args_t timer_heart_arg = {
 //1min 定时，用来触发各组数据采集/发送
 void timer_heart_cb(void *arg)
 {
-    vTaskNotifyGiveFromISR(Binary_Heart_Send, &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(Binary_Heart_Send, NULL);
     static uint32_t min_num = 0;
     min_num++;
     if (fn_dp)
         if (min_num * 60 % fn_dp == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_dp, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_dp, NULL);
         }
     if (fn_485_t)
         if (min_num * 60 % fn_485_t == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_485_t, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_485_t, NULL);
         }
     if (fn_485_th)
         if (min_num * 60 % fn_485_th == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_485_th, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_485_th, NULL);
         }
     if (fn_485_sth)
         if (min_num * 60 % fn_485_sth == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_485_sth, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_485_sth, NULL);
         }
     if (fn_energy)
         if (min_num * 60 % fn_energy == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_energy, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_energy, NULL);
         }
     if (fn_ele_quan)
         if (min_num * 60 % fn_ele_quan == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_ele_quan, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_ele_quan, NULL);
         }
     if (fn_ext)
         if (min_num * 60 % fn_ext == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_ext, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(Binary_ext, NULL);
         }
 }
 
@@ -112,7 +111,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
     if (err != 0 || res == NULL)
     {
         ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
         return -1;
     }
 
@@ -127,7 +126,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
         ESP_LOGE(TAG, "... Failed to allocate socket. err:%d", s);
         close(s);
         freeaddrinfo(res);
-        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
     ESP_LOGI(TAG, "... allocated socket");
@@ -137,7 +136,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
         ESP_LOGE(TAG, "... socket connect failed errno=%d", errno);
         close(s);
         freeaddrinfo(res);
-        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
 
@@ -149,7 +148,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
     {
         ESP_LOGE(TAG, "... socket send failed");
         close(s);
-        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
     ESP_LOGI(TAG, "... socket send success");
@@ -161,7 +160,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
     {
         ESP_LOGE(TAG, "... failed to set socket receiving timeout");
         close(s);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
         return -1;
     }
     ESP_LOGI(TAG, "... set socket receiving timeout success");
@@ -218,7 +217,7 @@ int32_t http_post_init(uint32_t Content_Length)
     if (err != 0 || res == NULL)
     {
         ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
         return -1;
     }
 
@@ -231,7 +230,7 @@ int32_t http_post_init(uint32_t Content_Length)
         ESP_LOGE(TAG, "... Failed to allocate socket. err:%d", s);
         close(s);
         freeaddrinfo(res);
-        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
     ESP_LOGI(TAG, "... allocated socket");
@@ -241,7 +240,7 @@ int32_t http_post_init(uint32_t Content_Length)
         ESP_LOGE(TAG, "... socket connect failed errno=%d", errno);
         close(s);
         freeaddrinfo(res);
-        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
 
@@ -252,7 +251,7 @@ int32_t http_post_init(uint32_t Content_Length)
     {
         ESP_LOGE(TAG, "... socket send failed");
         close(s);
-        vTaskDelay(4000 / portTICK_PERIOD_MS);
+        // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
     return s;
@@ -276,7 +275,7 @@ int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
 
     /* Read HTTP response */
     int r;
-    bzero((uint16_t *)recv_buff, buff_size);
+    // bzero((uint16_t *)recv_buff, buff_size);
     r = read(s, (uint16_t *)recv_buff, buff_size);
     // ESP_LOGI(TAG, "r=%d,activate recv_buf=%s\r\n", r, (char *)recv_buff);
     close(s);
@@ -325,7 +324,7 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
 
 void send_heart_task(void *arg)
 {
-    char recv_buf[1024] = {0};
+    char *recv_buf = NULL;
 
     while (1)
     {
@@ -336,8 +335,12 @@ void send_heart_task(void *arg)
                  esp_get_free_heap_size());
 
         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, -1); //等网络连接
-        printf("Heart send !\n");
-        if ((http_send_buff(build_heart_url, 256, recv_buf, 1024)) > 0)
+        if ((recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN)) == NULL)
+        {
+            ESP_LOGE(TAG, "recv_buf malloc fail");
+        }
+
+        if ((http_send_buff(build_heart_url, 256, recv_buf, HTTP_RECV_BUFF_LEN)) > 0)
         {
             ESP_LOGI(TAG, "hart recv:%s", recv_buf);
             if (parse_objects_heart(strchr(recv_buf, '{')))
@@ -355,6 +358,7 @@ void send_heart_task(void *arg)
             Led_Status = LED_STA_WIFIERR;
             printf("hart recv 0!\r\n");
         }
+        free(recv_buf);
     }
 }
 

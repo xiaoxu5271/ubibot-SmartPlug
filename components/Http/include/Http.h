@@ -6,7 +6,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-#define FIRMWARE "SP1-V0.1.7"
+#define FIRMWARE "SP1-V0.1.8"
 
 #define POST_NORMAL 0X00
 #define POST_HEIGHT_ADD 0X01
@@ -27,6 +27,8 @@
 #define HAVEHUMAN 0x01
 
 #define WEB_PORT 80
+
+#define HTTP_RECV_BUFF_LEN 1024
 
 //需要发送的二值信号量
 extern TaskHandle_t Binary_Heart_Send;

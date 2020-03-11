@@ -6,7 +6,6 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "Json_parse.h"
-#include "Nvs.h"
 #include "ServerTimer.h"
 #include "Http.h"
 
@@ -489,7 +488,7 @@ esp_err_t parse_objects_heart(char *json_data)
     return 1;
 }
 
-//解析MQTT      指令
+//解析MQTT指令
 esp_err_t parse_objects_mqtt(char *mqtt_json_data)
 {
     cJSON *json_data_parse = NULL;
@@ -532,6 +531,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
         if (Binary_dp != NULL)
         {
             // xSemaphoreGive(Binary_Http_Send);
+            vTaskNotifyGiveFromISR(Binary_dp, NULL);
         }
         // need_send = 1;
         json_data_string_parse = cJSON_Parse(json_data_string_parse->valuestring); //将command_string再次构建成json格式，以便二次解析
