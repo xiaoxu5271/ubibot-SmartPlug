@@ -225,5 +225,5 @@ static void wifi_ota_task(void *pvParameter)
 
 void ota_start(void) //建立OTA升级任务，目的是为了让此函数被调用后尽快执行完毕
 {
-    xTaskCreate(wifi_ota_task, "wifi_ota_task", 8192, NULL, 2, ota_handle);
+    xTaskCreate(wifi_ota_task, "wifi_ota_task", 8192, NULL, 2, &ota_handle);
 }

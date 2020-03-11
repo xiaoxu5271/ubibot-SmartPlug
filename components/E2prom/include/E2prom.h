@@ -87,6 +87,11 @@
 #define RS485_WS_NUM_ADDR RS485_T_NUM_ADDR + 1        //uint8_t
 #define RS485_CO2_NUM_ADDR RS485_WS_NUM_ADDR + 1      //uint8_t
 #define RS485_PH_NUM_ADDR RS485_CO2_NUM_ADDR + 1      //uint8_t
+#define SW_S_F_NUM_ADDR RS485_PH_NUM_ADDR + 1         //uint8_t
+#define SW_V_F_NUM_ADDR SW_S_F_NUM_ADDR + 1           //uint8_t
+#define SW_C_F_NUM_ADDR SW_V_F_NUM_ADDR + 1           //uint8_t
+#define SW_P_F_NUM_ADDR SW_C_F_NUM_ADDR + 1           //uint8_t
+#define SW_PC_F_NUM_ADDR SW_P_F_NUM_ADDR + 1          //uint8_t
 
 void E2prom_Init(void);
 esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat);

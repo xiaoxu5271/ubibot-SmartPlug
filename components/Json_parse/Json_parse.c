@@ -33,21 +33,26 @@
 
 //metadata 相关变量
 // uint8_t fn_set_flag = 0;     //metadata 读取标志，未读取则使用下面固定参数
-uint32_t fn_dp = 300;        //数据发送频率
-uint32_t fn_485_t = 0;       //485 温度探头
-uint32_t fn_485_th = 0;      //485温湿度探头
-uint32_t fn_485_sth = 0;     //485 土壤探头
-uint32_t fn_485_ws = 0;      //485 风速
-uint32_t fn_485_lt = 0;      //485 光照
-uint32_t fn_485_co2 = 0;     //485二氧化碳
-uint32_t fn_ext = 0;         //18b20
-uint32_t fn_energy = 60;     //电能信息：电压/电流/功率
-uint32_t fn_ele_quan = 3600; //用电量统计
-uint8_t cg_data_led = 1;     //发送数据 LED状态 0关闭，1打开
-uint8_t net_mode = 0;        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
-uint8_t de_switch_sta = 0;   //开关默认上电状态
+uint32_t fn_dp = 300;     //数据发送频率
+uint32_t fn_485_t = 0;    //485 温度探头
+uint32_t fn_485_th = 0;   //485温湿度探头
+uint32_t fn_485_sth = 0;  //485 土壤探头
+uint32_t fn_485_ws = 0;   //485 风速
+uint32_t fn_485_lt = 0;   //485 光照
+uint32_t fn_485_co2 = 0;  //485二氧化碳
+uint32_t fn_ext = 0;      //18b20
+uint32_t fn_sw_e = 60;    //电能信息：电压/电流/功率
+uint32_t fn_sw_pc = 3600; //用电量统计
+uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
+uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+uint8_t de_sw_s = 0;      //开关默认上电状态
 
 // field num 相关参数
+uint8_t sw_s_f_num = 1;      //开关状态
+uint8_t sw_v_f_num = 2;      //插座电压
+uint8_t sw_c_f_num = 3;      //插座电流
+uint8_t sw_p_f_num = 4;      //插座功率
+uint8_t sw_pc_f_num = 5;     //累计用电量
 uint8_t rssi_w_f_num = 6;    //wifi信号
 uint8_t rssi_g_f_num = 7;    //4G信号
 uint8_t r1_light_f_num = 8;  //485光照
@@ -170,24 +175,24 @@ static short Parse_metadata(char *ptrptr)
             printf("fn_ext = %d\n", fn_ext);
         }
     }
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_energy"); //"fn_energy"
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_e"); //"fn_sw_e"
     if (NULL != pSubSubSub)
     {
-        if ((uint32_t)pSubSubSub->valueint != fn_energy)
+        if ((uint32_t)pSubSubSub->valueint != fn_sw_e)
         {
-            fn_energy = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_ENERGY_ADD, fn_energy, 4);
-            printf("fn_energy = %d\n", fn_energy);
+            fn_sw_e = (uint32_t)pSubSubSub->valueint;
+            AT24CXX_WriteLenByte(FN_ENERGY_ADD, fn_sw_e, 4);
+            printf("fn_sw_e = %d\n", fn_sw_e);
         }
     }
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ele_quan"); //"fn_ele_quan"
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_pc"); //"fn_sw_pc"
     if (NULL != pSubSubSub)
     {
-        if ((uint32_t)pSubSubSub->valueint != fn_ele_quan)
+        if ((uint32_t)pSubSubSub->valueint != fn_sw_pc)
         {
-            fn_ele_quan = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_ELE_QUAN_ADD, fn_ele_quan, 4);
-            printf("fn_ele_quan = %d\n", fn_ele_quan);
+            fn_sw_pc = (uint32_t)pSubSubSub->valueint;
+            AT24CXX_WriteLenByte(FN_ELE_QUAN_ADD, fn_sw_pc, 4);
+            printf("fn_sw_pc = %d\n", fn_sw_pc);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "cg_data_led"); //"cg_data_led"
@@ -221,14 +226,14 @@ static short Parse_metadata(char *ptrptr)
         }
     }
 
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "de_switch_sta"); //"de_switch_sta"
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "de_sw_s"); //"de_sw_s"
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != de_switch_sta)
+        if ((uint8_t)pSubSubSub->valueint != de_sw_s)
         {
-            de_switch_sta = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(DE_SWITCH_STA_ADD, de_switch_sta); //写入net_mode
-            printf("de_switch_sta = %d\n", de_switch_sta);
+            de_sw_s = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(DE_SWITCH_STA_ADD, de_sw_s); //写入net_mode
+            printf("de_sw_s = %d\n", de_sw_s);
         }
     }
     cJSON_Delete(pJsonJson);
@@ -750,12 +755,11 @@ void Create_fields_num(char *read_buf)
 
     pJsonRoot = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(pJsonRoot, "filed1", 1); //rssi_w_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "filed2", 2); //rssi_w_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "filed3", 3); //rssi_w_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "filed4", 4); //rssi_w_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "filed5", 5); //rssi_w_f_num
-
+    cJSON_AddNumberToObject(pJsonRoot, "sw_s", sw_s_f_num);         //sw_s_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_v", sw_v_f_num);         //sw_v_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_c", sw_c_f_num);         //sw_c_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_p", sw_p_f_num);         //sw_p_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_pc", sw_pc_f_num);       //sw_pc_f_num
     cJSON_AddNumberToObject(pJsonRoot, "rssi_w", rssi_w_f_num);     //rssi_w_f_num
     cJSON_AddNumberToObject(pJsonRoot, "rssi_g", rssi_g_f_num);     //rssi_g_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_light", r1_light_f_num); //r1_light_f_num
@@ -767,8 +771,7 @@ void Create_fields_num(char *read_buf)
     cJSON_AddNumberToObject(pJsonRoot, "r1_t", r1_t_f_num);         //r1_t_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_ws", r1_ws_f_num);       //r1_ws_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_co2", r1_co2_f_num);     //r1_co2_f_num
-
-    //cJSON_AddNumberToObject(pJsonRoot,"r1_ph",r1_ph_f_num);  //r1_ph_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);       //r1_ph_f_num
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
     data_len = strlen(out_buf);
@@ -962,7 +965,53 @@ static short Parse_fields_num(char *ptrptr)
         cJSON_Delete(pJsonJson); //delete pJson
         return ESP_FAIL;
     }
-    cJSON *pSubSubSub = cJSON_GetObjectItem(pJsonJson, "rssi_w"); //"rssi_w"
+
+    cJSON *pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_s"); //"sw_s"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        {
+            sw_s_f_num = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(SW_S_F_NUM_ADDR, sw_s_f_num);
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_v"); //"sw_v"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        {
+            sw_v_f_num = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(SW_V_F_NUM_ADDR, sw_v_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_c"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        {
+            sw_c_f_num = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_p"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        {
+            sw_p_f_num = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_pc"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        {
+            sw_pc_f_num = (uint8_t)pSubSubSub->valueint;
+            AT24CXX_WriteOneByte(SW_PC_F_NUM_ADDR, sw_pc_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "rssi_w"); //"rssi_w"
     if (NULL != pSubSubSub)
     {
         if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
@@ -1083,8 +1132,8 @@ static short Parse_fields_num(char *ptrptr)
 void Read_Metadate_E2p(void)
 {
     uint8_t Last_Switch_Status;
-    de_switch_sta = AT24CXX_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
-    switch (de_switch_sta)
+    de_sw_s = AT24CXX_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
+    switch (de_sw_s)
     {
     case 0:
         Switch_Relay(0);
@@ -1105,17 +1154,17 @@ void Read_Metadate_E2p(void)
     default:
         break;
     }
-    fn_dp = AT24CXX_ReadLenByte(FN_DP_ADD, 4);             //数据发送频率
-    fn_485_th = AT24CXX_ReadLenByte(FN_485_TH_ADD, 4);     //485温湿度探头
-    fn_485_sth = AT24CXX_ReadLenByte(FN_485_STH_ADD, 4);   //485 土壤探头
-    fn_ext = AT24CXX_ReadLenByte(FN_EXT_ADD, 4);           //18b20
-    fn_energy = AT24CXX_ReadLenByte(FN_ENERGY_ADD, 4);     //电能信息：电压/电流/功率
-    fn_ele_quan = AT24CXX_ReadLenByte(FN_ELE_QUAN_ADD, 4); //用电量统计
-    cg_data_led = AT24CXX_ReadOneByte(CG_DATA_LED_ADD);    //发送数据 LED状态 0关闭，1打开
-    net_mode = AT24CXX_ReadOneByte(NET_MODE_ADD);          //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+    fn_dp = AT24CXX_ReadLenByte(FN_DP_ADD, 4);           //数据发送频率
+    fn_485_th = AT24CXX_ReadLenByte(FN_485_TH_ADD, 4);   //485温湿度探头
+    fn_485_sth = AT24CXX_ReadLenByte(FN_485_STH_ADD, 4); //485 土壤探头
+    fn_ext = AT24CXX_ReadLenByte(FN_EXT_ADD, 4);         //18b20
+    fn_sw_e = AT24CXX_ReadLenByte(FN_ENERGY_ADD, 4);     //电能信息：电压/电流/功率
+    fn_sw_pc = AT24CXX_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
+    cg_data_led = AT24CXX_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
+    net_mode = AT24CXX_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 
     printf("e2prom used:%d \nmetadata:\nde_switch_sta=%d\nfn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
-           RS485_PH_NUM_ADDR, de_switch_sta, fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_energy, fn_ele_quan, cg_data_led, net_mode);
+           RS485_PH_NUM_ADDR, de_sw_s, fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_sw_e, fn_sw_pc, cg_data_led, net_mode);
 }
 
 void Read_Product_E2p(void)
@@ -1140,6 +1189,11 @@ void Read_Product_E2p(void)
 
 void Read_Fields_E2p(void)
 {
+    sw_s_f_num = AT24CXX_ReadOneByte(SW_S_F_NUM_ADDR);
+    sw_v_f_num = AT24CXX_ReadOneByte(SW_V_F_NUM_ADDR);
+    sw_c_f_num = AT24CXX_ReadOneByte(SW_C_F_NUM_ADDR);
+    sw_p_f_num = AT24CXX_ReadOneByte(SW_P_F_NUM_ADDR);
+    sw_pc_f_num = AT24CXX_ReadOneByte(SW_PC_F_NUM_ADDR);
     rssi_w_f_num = AT24CXX_ReadOneByte(RSSI_NUM_ADDR);          //rssi_w
     rssi_g_f_num = AT24CXX_ReadOneByte(GPRS_RSSI_NUM_ADDR);     //rssi_g
     r1_light_f_num = AT24CXX_ReadOneByte(RS485_LIGHT_NUM_ADDR); //r1_light

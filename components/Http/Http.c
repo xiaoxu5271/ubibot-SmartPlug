@@ -78,13 +78,13 @@ void timer_heart_cb(void *arg)
         {
             vTaskNotifyGiveFromISR(Binary_485_sth, NULL);
         }
-    if (fn_energy)
-        if (min_num * 60 % fn_energy == 0)
+    if (fn_sw_e)
+        if (min_num * 60 % fn_sw_e == 0)
         {
             vTaskNotifyGiveFromISR(Binary_energy, NULL);
         }
-    if (fn_ele_quan)
-        if (min_num * 60 % fn_ele_quan == 0)
+    if (fn_sw_pc)
+        if (min_num * 60 % fn_sw_pc == 0)
         {
             vTaskNotifyGiveFromISR(Binary_ele_quan, NULL);
         }

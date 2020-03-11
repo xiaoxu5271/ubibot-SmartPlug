@@ -17,63 +17,6 @@ static bool AT24CXX_Check(void);
 static void E2prom_set_defaul(void);
 static void E2prom_read_defaul(void);
 
-// #define TEST_ADDR 4096
-// esp_err_t fm24c_test(void)
-// {
-//     //write
-//     int ret = 0;
-//     // uint8_t write_buff[256] = {0};
-//     // AT24CXX_Write(TEST_ADDR, write_buff, sizeof(write_buff));
-//     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-//     i2c_master_start(cmd);
-
-//     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-//     i2c_master_write_byte(cmd, (TEST_ADDR / 256), ACK_CHECK_EN);
-//     i2c_master_write_byte(cmd, (TEST_ADDR % 256), ACK_CHECK_EN);
-
-//     for (uint16_t i = 0; i < 256; i++)
-//     {
-//         i2c_master_write_byte(cmd, i, ACK_CHECK_EN); //send data value
-//     }
-//     i2c_master_stop(cmd);
-//     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-//     i2c_cmd_link_delete(cmd);
-
-//     // vTaskDelay(100 / portTICK_PERIOD_MS);
-//     // read
-//     uint8_t read_temp[256] = {0};
-//     uint8_t *p;
-//     p = read_temp;
-//     cmd = i2c_cmd_link_create();
-//     i2c_master_start(cmd);
-//     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-//     i2c_master_write_byte(cmd, (TEST_ADDR & 0xff00) >> 8, ACK_CHECK_EN);
-//     i2c_master_write_byte(cmd, TEST_ADDR & 0xff, ACK_CHECK_EN);
-
-//     i2c_master_start(cmd);
-//     i2c_master_write_byte(cmd, DEV_ADD + 1, ACK_CHECK_EN);
-//     for (uint16_t i = 0; i < 256; i++)
-//     {
-//         if (i != 255 - 1)
-//         {
-//             i2c_master_read_byte(cmd, p, ACK_VAL);
-//         }
-//         else
-//         {
-//             i2c_master_read_byte(cmd, p, NACK_VAL);
-//         }
-//         p++;
-//     }
-//     i2c_master_stop(cmd);
-//     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-//     i2c_cmd_link_delete(cmd);
-//     esp_log_buffer_hex("test", read_temp, sizeof(read_temp));
-
-//     // AT24CXX_Read(TEST_ADDR, read_temp, sizeof(read_temp));
-//     // esp_log_buffer_hex("test2", read_temp, sizeof(read_temp));
-//     return ret;
-// }
-
 void E2prom_Init(void)
 {
     int i2c_master_port = I2C_MASTER_NUM;
@@ -357,8 +300,8 @@ static void E2prom_set_defaul(void)
     AT24CXX_Write(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
     AT24CXX_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
     AT24CXX_WriteLenByte(FN_DP_ADD, fn_dp, 4);
-    AT24CXX_WriteLenByte(FN_ELE_QUAN_ADD, fn_ele_quan, 4);
-    AT24CXX_WriteLenByte(FN_ENERGY_ADD, fn_energy, 4);
+    AT24CXX_WriteLenByte(FN_ELE_QUAN_ADD, fn_sw_pc, 4);
+    AT24CXX_WriteLenByte(FN_ENERGY_ADD, fn_sw_e, 4);
     AT24CXX_WriteOneByte(CG_DATA_LED_ADD, cg_data_led);
     AT24CXX_WriteOneByte(RSSI_NUM_ADDR, rssi_w_f_num);
     AT24CXX_WriteOneByte(GPRS_RSSI_NUM_ADDR, rssi_g_f_num);
@@ -372,6 +315,10 @@ static void E2prom_set_defaul(void)
     AT24CXX_WriteOneByte(RS485_WS_NUM_ADDR, r1_ws_f_num);
     AT24CXX_WriteOneByte(RS485_CO2_NUM_ADDR, r1_co2_f_num);
     AT24CXX_WriteOneByte(RS485_PH_NUM_ADDR, r1_ph_f_num);
+    AT24CXX_WriteOneByte(SW_S_F_NUM_ADDR, sw_s_f_num);
+    AT24CXX_WriteOneByte(SW_V_F_NUM_ADDR, sw_v_f_num);
+    AT24CXX_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num);
+    AT24CXX_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num);
 }
 
 //检查AT24CXX是否正常,以及是否为新EEPROM

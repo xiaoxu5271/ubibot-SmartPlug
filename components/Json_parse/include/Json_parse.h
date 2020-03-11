@@ -73,21 +73,26 @@ void Create_NET_Json(void);
 uint16_t Create_Status_Json(char *status_buff);
 
 /************metadata 参数***********/
-extern uint32_t fn_dp;        //数据发送频率
-extern uint32_t fn_485_t;     //485 温度探头
-extern uint32_t fn_485_th;    //485温湿度探头
-extern uint32_t fn_485_sth;   //485 土壤探头
-extern uint32_t fn_485_ws;    //485 风速
-extern uint32_t fn_485_lt;    //485 光照
-extern uint32_t fn_485_co2;   //485二氧化碳
-extern uint32_t fn_ext;       //18b20
-extern uint32_t fn_energy;    //电能信息：电压/电流/功率
-extern uint32_t fn_ele_quan;  //用电量统计
-extern uint8_t cg_data_led;   //发送数据 LED状态 0关闭，1打开
-extern uint8_t net_mode;      //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
-extern uint8_t de_switch_sta; //开关默认上电状态
+extern uint32_t fn_dp;      //数据发送频率
+extern uint32_t fn_485_t;   //485 温度探头
+extern uint32_t fn_485_th;  //485温湿度探头
+extern uint32_t fn_485_sth; //485 土壤探头
+extern uint32_t fn_485_ws;  //485 风速
+extern uint32_t fn_485_lt;  //485 光照
+extern uint32_t fn_485_co2; //485二氧化碳
+extern uint32_t fn_ext;     //18b20
+extern uint32_t fn_sw_e;    //电能信息：电压/电流/功率
+extern uint32_t fn_sw_pc;   //用电量统计
+extern uint8_t cg_data_led; //发送数据 LED状态 0关闭，1打开
+extern uint8_t net_mode;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+extern uint8_t de_sw_s;     //开关默认上电状态
 
 /*********field num 相关参数************/
+extern uint8_t sw_s_f_num;     //开关状态
+extern uint8_t sw_v_f_num;     //插座电压
+extern uint8_t sw_c_f_num;     //插座电流
+extern uint8_t sw_p_f_num;     //插座功率
+extern uint8_t sw_pc_f_num;    //累计用电量
 extern uint8_t rssi_w_f_num;   //wifi信号
 extern uint8_t rssi_g_f_num;   //4G信号
 extern uint8_t r1_light_f_num; //485光照
