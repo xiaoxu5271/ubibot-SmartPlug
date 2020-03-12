@@ -530,7 +530,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     {
         json_data_command_id_parse = cJSON_GetObjectItem(json_data_parse, "command_id");
         strncpy(mqtt_json_s.mqtt_command_id, json_data_command_id_parse->valuestring, strlen(json_data_command_id_parse->valuestring));
-        strncpy(mqtt_json_s.mqtt_string, json_data_string_parse->valuestring, strlen(json_data_string_parse->valuestring));
+        // strncpy(mqtt_json_s.mqtt_string, json_data_string_parse->valuestring, strlen(json_data_string_parse->valuestring));
 
         post_status = POST_NORMAL;
         if (Binary_dp != NULL)
@@ -671,78 +671,78 @@ void Create_NET_Json(void)
     free(SaveBuffer);
 }
 
-void create_http_json(creat_json *pCreat_json, uint8_t flag)
-{
-    // printf("INTO CREATE_HTTP_JSON\r\n");
-    //creat_json *pCreat_json = malloc(sizeof(creat_json));
-    cJSON *root = cJSON_CreateObject();
-    // cJSON *item = cJSON_CreateObject();
-    cJSON *next = cJSON_CreateObject();
-    cJSON *fe_body = cJSON_CreateArray();
-    uint8_t mac_sys[6] = {0};
-    char mac_buff[32] = {0};
-    char ssid64_buff[64] = {0};
+// void create_http_json(creat_json *pCreat_json, uint8_t flag)
+// {
+//     // printf("INTO CREATE_HTTP_JSON\r\n");
+//     //creat_json *pCreat_json = malloc(sizeof(creat_json));
+//     cJSON *root = cJSON_CreateObject();
+//     // cJSON *item = cJSON_CreateObject();
+//     cJSON *next = cJSON_CreateObject();
+//     cJSON *fe_body = cJSON_CreateArray();
+//     uint8_t mac_sys[6] = {0};
+//     char mac_buff[32] = {0};
+//     char ssid64_buff[64] = {0};
 
-    wifi_ap_record_t wifidata;
+//     wifi_ap_record_t wifidata;
 
-    cJSON_AddItemToObject(root, "feeds", fe_body);
-    cJSON_AddItemToArray(fe_body, next);
-    // cJSON_AddItemToObject(next, "created_at", cJSON_CreateString(http_json_c.http_time));
-    cJSON_AddStringToObject(next, "created_at", (const char *)Server_Timer_SEND());
-    cJSON_AddItemToObject(next, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-    if (mqtt_json_s.mqtt_switch_status == 1 && CSE_Status == true)
-    {
-        cJSON_AddItemToObject(next, "field2", cJSON_CreateNumber(mqtt_json_s.mqtt_Voltage));
-        cJSON_AddItemToObject(next, "field3", cJSON_CreateNumber(mqtt_json_s.mqtt_Current));
-        cJSON_AddItemToObject(next, "field4", cJSON_CreateNumber(mqtt_json_s.mqtt_Power));
-        if (CSE_Energy_Status == true)
-        {
-            CSE_Energy_Status = false;
-            cJSON_AddItemToObject(next, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
-        }
-    }
+//     cJSON_AddItemToObject(root, "feeds", fe_body);
+//     cJSON_AddItemToArray(fe_body, next);
+//     // cJSON_AddItemToObject(next, "created_at", cJSON_CreateString(http_json_c.http_time));
+//     cJSON_AddStringToObject(next, "created_at", (const char *)Server_Timer_SEND());
+//     cJSON_AddItemToObject(next, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+//     if (mqtt_json_s.mqtt_switch_status == 1 && CSE_Status == true)
+//     {
+//         cJSON_AddItemToObject(next, "field2", cJSON_CreateNumber(mqtt_json_s.mqtt_Voltage));
+//         cJSON_AddItemToObject(next, "field3", cJSON_CreateNumber(mqtt_json_s.mqtt_Current));
+//         cJSON_AddItemToObject(next, "field4", cJSON_CreateNumber(mqtt_json_s.mqtt_Power));
+//         if (CSE_Energy_Status == true)
+//         {
+//             CSE_Energy_Status = false;
+//             cJSON_AddItemToObject(next, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
+//         }
+//     }
 
-    if (RS485_status == true)
-    {
-        RS485_status = false;
-        cJSON_AddItemToObject(next, "field8", cJSON_CreateNumber(ext_tem));
-        cJSON_AddItemToObject(next, "field9", cJSON_CreateNumber(ext_hum));
-    }
-    if (DS18b20_status == true)
-    {
-        DS18b20_status = false;
-        cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
-    }
+//     if (RS485_status == true)
+//     {
+//         RS485_status = false;
+//         cJSON_AddItemToObject(next, "field8", cJSON_CreateNumber(ext_tem));
+//         cJSON_AddItemToObject(next, "field9", cJSON_CreateNumber(ext_hum));
+//     }
+//     if (DS18b20_status == true)
+//     {
+//         DS18b20_status = false;
+//         cJSON_AddItemToObject(next, "field7", cJSON_CreateString(mqtt_json_s.mqtt_DS18B20_TEM)); //18B20温度
+//     }
 
-    esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
-    sprintf(mac_buff,
-            "mac=%02x:%02x:%02x:%02x:%02x:%02x",
-            mac_sys[0],
-            mac_sys[1],
-            mac_sys[2],
-            mac_sys[3],
-            mac_sys[4],
-            mac_sys[5]);
-    base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
+//     esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
+//     sprintf(mac_buff,
+//             "mac=%02x:%02x:%02x:%02x:%02x:%02x",
+//             mac_sys[0],
+//             mac_sys[1],
+//             mac_sys[2],
+//             mac_sys[3],
+//             mac_sys[4],
+//             mac_sys[5]);
+//     base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, sizeof(ssid64_buff));
 
-    if (esp_wifi_sta_get_ap_info(&wifidata) == 0)
-    {
-        cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(wifidata.rssi)); //WIFI RSSI
-    }
-    cJSON_AddItemToObject(root, "status", cJSON_CreateString(mac_buff));
-    cJSON_AddItemToObject(root, "ssid_base64", cJSON_CreateString(ssid64_buff));
+//     if (esp_wifi_sta_get_ap_info(&wifidata) == 0)
+//     {
+//         cJSON_AddItemToObject(next, "field6", cJSON_CreateNumber(wifidata.rssi)); //WIFI RSSI
+//     }
+//     cJSON_AddItemToObject(root, "status", cJSON_CreateString(mac_buff));
+//     cJSON_AddItemToObject(root, "ssid_base64", cJSON_CreateString(ssid64_buff));
 
-    char *cjson_printunformat;
-    cjson_printunformat = cJSON_PrintUnformatted(root); //将整个 json 转换成字符串 ，有格式
+//     char *cjson_printunformat;
+//     cjson_printunformat = cJSON_PrintUnformatted(root); //将整个 json 转换成字符串 ，有格式
 
-    pCreat_json->len = strlen(cjson_printunformat);     //  creat_json_c 是整个json 所占的长度
-    bzero(pCreat_json->buff, sizeof(pCreat_json->len)); //  creat_json_b 是整个json 包
-    memcpy(pCreat_json->buff, cjson_printunformat, pCreat_json->len);
-    //printf("http_json=%s\n",pCreat_json->creat_json_b);
-    free(cjson_printunformat);
-    cJSON_Delete(root);
-    //return pCreat_json;
-}
+//     pCreat_json->len = strlen(cjson_printunformat);     //  creat_json_c 是整个json 所占的长度
+//     bzero(pCreat_json->buff, sizeof(pCreat_json->len)); //  creat_json_b 是整个json 包
+//     memcpy(pCreat_json->buff, cjson_printunformat, pCreat_json->len);
+//     //printf("http_json=%s\n",pCreat_json->creat_json_b);
+//     free(cjson_printunformat);
+//     cJSON_Delete(root);
+//     //return pCreat_json;
+// }
 
 /*******************************************************************************
 // create sensors fields num 

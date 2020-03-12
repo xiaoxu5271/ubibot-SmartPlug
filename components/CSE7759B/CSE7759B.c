@@ -11,6 +11,7 @@
 #include "Http.h"
 #include "Cache_data.h"
 #include "ServerTimer.h"
+#include "Led.h"
 
 #define TAG "CSE7759B"
 TaskHandle_t CSE7759B_Handle = NULL;
@@ -44,6 +45,11 @@ SemaphoreHandle_t Ele_quan_Binary = NULL;
 
 //7759B电能计数脉冲溢出时的数据
 #define ENERGY_FLOW_NUM 65536 //电量采集，电能溢出时的脉冲计数值
+
+double sw_v_val;  //电压 V
+double sw_c_val;  //电流 A
+double sw_p_val;  //功率 W
+double sw_pc_val; //用电量 W/h
 
 typedef struct RuningInf_s
 {
@@ -564,9 +570,9 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         break;
     }
     ESP_LOGI(TAG, "0x%x:V = %ld;I = %ld;P = %ld;\r\n", startFlag, voltage, electricity, power);
-    mqtt_json_s.mqtt_Voltage = voltage / 1000;
-    mqtt_json_s.mqtt_Current = electricity / 1000.0;
-    mqtt_json_s.mqtt_Power = power / 1000.0;
+    sw_v_val = voltage / 1000;
+    sw_c_val = electricity / 1000.0;
+    sw_p_val = power / 1000.0;
     CSE_Status = true;
     return 1;
 }
@@ -641,56 +647,19 @@ int8_t CSE7759B_Read(void)
     }
 }
 
-void Creat_Energy_Json(void)
-{
-    char *OutBuffer;
-    uint8_t *SaveBuffer;
-    uint16_t len = 0;
-    cJSON *pJsonRoot;
-    pJsonRoot = cJSON_CreateObject();
-    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-    cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-    cJSON_AddItemToObject(pJsonRoot, "field2", cJSON_CreateNumber(mqtt_json_s.mqtt_Voltage));
-    cJSON_AddItemToObject(pJsonRoot, "field3", cJSON_CreateNumber(mqtt_json_s.mqtt_Current));
-    cJSON_AddItemToObject(pJsonRoot, "field4", cJSON_CreateNumber(mqtt_json_s.mqtt_Power));
-    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    cJSON_Delete(pJsonRoot);                       //delete cjson root
-    len = strlen(OutBuffer);
-    printf("len:%d\n%s\n", len, OutBuffer);
-    SaveBuffer = (uint8_t *)malloc(len);
-    memcpy(SaveBuffer, OutBuffer, len);
-    xSemaphoreTake(Cache_muxtex, -1);
-    DataSave(SaveBuffer, len);
-    xSemaphoreGive(Cache_muxtex);
-    free(OutBuffer);
-    free(SaveBuffer);
-}
-
 void Creat_Ele_quan_Json(void)
 {
-    char *OutBuffer;
-    uint8_t *SaveBuffer;
-    uint16_t len = 0;
-    cJSON *pJsonRoot;
-    pJsonRoot = cJSON_CreateObject();
-    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-    cJSON_AddItemToObject(pJsonRoot, "field5", cJSON_CreateNumber(mqtt_json_s.mqtt_Energy));
-    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    cJSON_Delete(pJsonRoot);                       //delete cjson root
-    len = strlen(OutBuffer);
-    printf("len:%d\n%s\n", len, OutBuffer);
-    SaveBuffer = (uint8_t *)malloc(len);
-    memcpy(SaveBuffer, OutBuffer, len);
-    xSemaphoreTake(Cache_muxtex, -1);
-    DataSave(SaveBuffer, len);
-    xSemaphoreGive(Cache_muxtex);
-    free(OutBuffer);
-    free(SaveBuffer);
 }
 
 //读取，构建电能信息
 void Energy_Read_Task(void *pvParameters)
 {
+    char *filed_buff;
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+
     CSE7759B_Read();
     vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
     CSE7759B_Read();
@@ -701,9 +670,32 @@ void Energy_Read_Task(void *pvParameters)
         {
             while (CSE7759B_Read() != 1)
             {
+                Led_Status = LED_STA_HEARD_ERR;
                 vTaskDelay(2000 / portTICK_PERIOD_MS); //
             }
-            Creat_Energy_Json();
+            filed_buff = (char *)malloc(9);
+
+            pJsonRoot = cJSON_CreateObject();
+            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+            // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+            snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
+            snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
+            snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
+
+            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+            cJSON_Delete(pJsonRoot);                       //delete cjson root
+            len = strlen(OutBuffer);
+            printf("len:%d\n%s\n", len, OutBuffer);
+            SaveBuffer = (uint8_t *)malloc(len);
+            memcpy(SaveBuffer, OutBuffer, len);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave(SaveBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            free(OutBuffer);
+            free(SaveBuffer);
         }
 
         if (Binary_mqtt != NULL)
@@ -715,19 +707,42 @@ void Energy_Read_Task(void *pvParameters)
 //读取，构建累积用电量
 void Ele_quan_Task(void *pvParameters)
 {
+    char *filed_buff;
+    char *OutBuffer;
+    uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+
     vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        // CSE7759B_Read();
         if (runingInf.energyUnit == 0)
-            mqtt_json_s.mqtt_Energy = 0;
+            sw_pc_val = 0;
         else
-            mqtt_json_s.mqtt_Energy = runingInf.energy / runingInf.energyUnit; //单位是 W/H
+            sw_pc_val = runingInf.energy / runingInf.energyUnit; //单位是 W/H
         // ESP_LOGI(TAG, "energy=%f\n", mqtt_json_s.mqtt_Energy);
         runingInf.energy = 0; //清除本次统计
         CSE_Energy_Status = true;
-        Creat_Ele_quan_Json();
+
+        filed_buff = (char *)malloc(9);
+
+        pJsonRoot = cJSON_CreateObject();
+        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+        snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
+        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+        cJSON_Delete(pJsonRoot);                       //delete cjson root
+        len = strlen(OutBuffer);
+        printf("len:%d\n%s\n", len, OutBuffer);
+        SaveBuffer = (uint8_t *)malloc(len);
+        memcpy(SaveBuffer, OutBuffer, len);
+        xSemaphoreTake(Cache_muxtex, -1);
+        DataSave(SaveBuffer, len);
+        xSemaphoreGive(Cache_muxtex);
+        free(OutBuffer);
+        free(SaveBuffer);
+        free(filed_buff);
     }
 }
 

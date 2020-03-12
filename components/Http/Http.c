@@ -31,6 +31,9 @@ TaskHandle_t Binary_dp = NULL;
 TaskHandle_t Binary_485_t = NULL;
 TaskHandle_t Binary_485_th = NULL;
 TaskHandle_t Binary_485_sth = NULL;
+TaskHandle_t Binary_485_ws = NULL;
+TaskHandle_t Binary_485_lt = NULL;
+TaskHandle_t Binary_485_co2 = NULL;
 TaskHandle_t Binary_ext = NULL;
 TaskHandle_t Binary_energy = NULL;
 TaskHandle_t Binary_ele_quan = NULL;
@@ -78,6 +81,23 @@ void timer_heart_cb(void *arg)
         {
             vTaskNotifyGiveFromISR(Binary_485_sth, NULL);
         }
+
+    if (fn_485_ws)
+        if (min_num * 60 % fn_485_ws == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_ws, NULL);
+        }
+    if (fn_485_lt)
+        if (min_num * 60 % fn_485_lt == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_lt, NULL);
+        }
+    if (fn_485_co2)
+        if (min_num * 60 % fn_485_co2 == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_co2, NULL);
+        }
+
     if (fn_sw_e)
         if (min_num * 60 % fn_sw_e == 0)
         {

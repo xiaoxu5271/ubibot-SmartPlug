@@ -101,7 +101,7 @@ void mqtt_send_task(void *arg)
         memset(Mqtt_json->buff, 0, sizeof(Mqtt_json->buff));
         if (client != NULL)
         {
-            create_http_json(Mqtt_json, 0);
+            // create_http_json(Mqtt_json, 0);
             esp_mqtt_client_publish(client, topic_p, Mqtt_json->buff, 0, 1, 0);
             ESP_LOGI(TAG, "sent publish successful,\n%s", Mqtt_json->buff);
         }
@@ -128,14 +128,12 @@ void initialise_mqtt(void)
 
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = "mqtt://mqtt.ubibot.cn",
-        //.username = "c_id=225",
         .username = mqtt_usr,
-        //.password = "api_key=00000000000000000000000000000000"
         .password = mqtt_pwd,
 
     };
 
-    xTaskCreate(mqtt_send_task, "mqtt_send_task", 4096, NULL, 7, &Binary_mqtt);
+    // xTaskCreate(mqtt_send_task, "mqtt_send_task", 4096, NULL, 7, &Binary_mqtt);
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
     client = esp_mqtt_client_init(&mqtt_cfg);

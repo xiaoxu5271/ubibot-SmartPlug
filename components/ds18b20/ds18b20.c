@@ -190,6 +190,8 @@ int8_t ds18b20_get_temp(void)
     static short temp;
     static uint8_t data_h, data_l;
     float temp_arr[Cla_Num];
+    // temp_arr = (float *)malloc(Cla_Num);
+
     for (uint8_t i = 0; i < Cla_Num; i++)
     {
         DS18B20_TEM = 0.0;
@@ -209,7 +211,7 @@ int8_t ds18b20_get_temp(void)
                 temp <<= 8;
                 temp += data_l;
                 DS18B20_TEM = (float)-temp * 0.0625;
-                // printf("temp11=%f\n", DS18B20_TEM);
+                // printf("temp=%f\n", DS18B20_TEM);
             }
             else //temperature value>=0
             {
@@ -220,19 +222,20 @@ int8_t ds18b20_get_temp(void)
                 // printf("temp1=%f\n", DS18B20_TEM);
             }
             temp_arr[i] = DS18B20_TEM;
-            ESP_LOGD(TAG, "18B20_TEM[%d] = %f", i, temp_arr[i]);
+            // ESP_LOGI(TAG, "18B20_TEM[%d] = %f", i, temp_arr[i]);
         }
         else
         {
             DS18b20_status = false;
-            DS18B20_TEM = 0;
-            printf("18b20 err\n");
+            // free(temp_arr);
+            // printf("18b20 err\n");
             return -1;
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     //进行中间滤波处理
     DS18B20_TEM = GetMedianNum(temp_arr, Cla_Num);
+    ESP_LOGI(TAG, "18B20_TEM= %f", DS18B20_TEM);
     DS18b20_status = true;
     return 1;
 }
@@ -248,6 +251,7 @@ void get_ds18b20_task(void *org)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
+        printf("start 18b20!");
         if (ds18b20_get_temp() > 0)
         {
             Field_e1_t = (char *)malloc(9);
