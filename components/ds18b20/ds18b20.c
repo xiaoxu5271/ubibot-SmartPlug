@@ -244,7 +244,7 @@ void get_ds18b20_task(void *org)
 {
     char *Field_e1_t = NULL;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
 
@@ -264,13 +264,13 @@ void get_ds18b20_task(void *org)
             cJSON_Delete(pJsonRoot);                       //delete cjson root
             len = strlen(OutBuffer);
             printf("len:%d\n%s\n", len, OutBuffer);
-            SaveBuffer = (uint8_t *)malloc(len);
-            memcpy(SaveBuffer, OutBuffer, len);
+            // SaveBuffer = (uint8_t *)malloc(len);
+            // memcpy(SaveBuffer, OutBuffer, len);
             xSemaphoreTake(Cache_muxtex, -1);
-            DataSave(SaveBuffer, len);
+            DataSave((uint8_t *)OutBuffer, len);
             xSemaphoreGive(Cache_muxtex);
             free(OutBuffer);
-            free(SaveBuffer);
+            // free(SaveBuffer);
             free(Field_e1_t);
         }
         else

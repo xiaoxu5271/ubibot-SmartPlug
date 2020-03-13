@@ -85,11 +85,11 @@ static uint16_t CRC16_ModBus(uint8_t *buf, uint8_t buf_len)
     return ((crc16_val & 0x00ff) << 8) | ((crc16_val & 0xff00) >> 8);
 }
 
-int RS485_Read(char *Send_485_Buff, uint8_t *Recv_485_buff)
+int RS485_Read(char *Send_485_Buff, uint8_t *Recv_485_buff, uint8_t Uart_mode)
 {
-    sw_uart2(uart2_485);
+    sw_uart2(Uart_mode);
     uart_write_bytes(UART_NUM_2, Send_485_Buff, 8);
-    int len = uart_read_bytes(UART_NUM_2, Recv_485_buff, BUF_SIZE, 100 / portTICK_RATE_MS);
+    int len = uart_read_bytes(UART_NUM_2, Recv_485_buff, BUF_SIZE, 200 / portTICK_RATE_MS);
     xSemaphoreGive(xMutex_uart2_sw);
 
     return len;
@@ -99,7 +99,7 @@ int RS485_Read(char *Send_485_Buff, uint8_t *Recv_485_buff)
 void read_485_th_task(void *pvParameters)
 {
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
     uint8_t *recv_data;
@@ -110,7 +110,7 @@ void read_485_th_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_th_cmd, recv_data);
+        racv_len = RS485_Read(Rs485_th_cmd, recv_data, uart2_485);
         if (racv_len > 0)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
@@ -136,13 +136,13 @@ void read_485_th_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    SaveBuffer = (uint8_t *)malloc(len);
-                    memcpy(SaveBuffer, OutBuffer, len);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    // memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave(SaveBuffer, len);
+                    DataSave((uint8_t *)OutBuffer, len);
                     xSemaphoreGive(Cache_muxtex);
                     free(OutBuffer);
-                    free(SaveBuffer);
+                    // free(SaveBuffer);
                     free(filed_buff);
                 }
                 else
@@ -173,7 +173,7 @@ void read_485_t_task(void *pvParameters)
 {
     float Rs485_t_val;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len;
     cJSON *pJsonRoot;
     uint8_t *recv_data;
@@ -184,7 +184,7 @@ void read_485_t_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_t_cmd, recv_data);
+        racv_len = RS485_Read(Rs485_t_cmd, recv_data, uart2_485);
         if (racv_len > 0)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
@@ -205,13 +205,13 @@ void read_485_t_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    SaveBuffer = (uint8_t *)malloc(len);
-                    memcpy(SaveBuffer, OutBuffer, len);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    // memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave(SaveBuffer, len);
+                    DataSave((uint8_t *)OutBuffer, len);
                     xSemaphoreGive(Cache_muxtex);
                     free(OutBuffer);
-                    free(SaveBuffer);
+                    // free(SaveBuffer);
                     free(filed_buff);
                 }
                 else
@@ -242,7 +242,7 @@ void read_485_ws_task(void *pvParameters)
 {
     float Rs485_ws_val;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len;
     cJSON *pJsonRoot;
     uint8_t *recv_data;
@@ -253,7 +253,7 @@ void read_485_ws_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_ws_cmd, recv_data);
+        racv_len = RS485_Read(Rs485_ws_cmd, recv_data, uart2_485);
         if (racv_len > 0)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
@@ -273,13 +273,13 @@ void read_485_ws_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    SaveBuffer = (uint8_t *)malloc(len);
-                    memcpy(SaveBuffer, OutBuffer, len);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    // memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave(SaveBuffer, len);
+                    DataSave((uint8_t *)OutBuffer, len);
                     xSemaphoreGive(Cache_muxtex);
                     free(OutBuffer);
-                    free(SaveBuffer);
+                    // free(SaveBuffer);
                     free(filed_buff);
                 }
                 else
@@ -309,7 +309,7 @@ void read_485_sth_task(void *pvParameters)
 {
     float rs485_st_val, rs485_sh_val;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
     uint8_t *recv_data;
@@ -320,7 +320,7 @@ void read_485_sth_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_sth_cmd, recv_data);
+        racv_len = RS485_Read(Rs485_sth_cmd, recv_data, uart2_485);
         if (racv_len > 0)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
@@ -354,13 +354,13 @@ void read_485_sth_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    SaveBuffer = (uint8_t *)malloc(len);
-                    memcpy(SaveBuffer, OutBuffer, len);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    // memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave(SaveBuffer, len);
+                    DataSave((uint8_t *)OutBuffer, len);
                     xSemaphoreGive(Cache_muxtex);
                     free(OutBuffer);
-                    free(SaveBuffer);
+                    // free(SaveBuffer);
                     free(filed_buff);
                 }
                 else
@@ -391,7 +391,7 @@ void read_485_lt_task(void *pvParameters)
 {
     float light_val;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
     uint8_t *recv_data;
@@ -402,7 +402,7 @@ void read_485_lt_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_lt_cmd, recv_data);
+        racv_len = RS485_Read(Rs485_lt_cmd, recv_data, uart2_485);
         if (racv_len > 0)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
@@ -424,13 +424,13 @@ void read_485_lt_task(void *pvParameters)
                     cJSON_Delete(pJsonRoot);                       //delete cjson root
                     len = strlen(OutBuffer);
                     printf("len:%d\n%s\n", len, OutBuffer);
-                    SaveBuffer = (uint8_t *)malloc(len);
-                    memcpy(SaveBuffer, OutBuffer, len);
+                    // SaveBuffer = (uint8_t *)malloc(len);
+                    // memcpy(SaveBuffer, OutBuffer, len);
                     xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave(SaveBuffer, len);
+                    DataSave((uint8_t *)OutBuffer, len);
                     xSemaphoreGive(Cache_muxtex);
                     free(OutBuffer);
-                    free(SaveBuffer);
+                    // free(SaveBuffer);
                     free(filed_buff);
                 }
                 else
@@ -462,7 +462,7 @@ void read_485_co2_task(void *pvParameters)
     float co2_val = 0.0, t_val = 0.0, h_val = 0.0;
     char val_buf[4] = {0};
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
     uint8_t *recv_data;
@@ -473,30 +473,31 @@ void read_485_co2_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_co2_tcmd, recv_data);
+        racv_len = RS485_Read(Rs485_co2_tcmd, recv_data, uart2_co2);
         if (racv_len > 0)
         {
-            // esp_log_buffer_hex(TAG, recv_data, racv_len);
+            // esp_log_buffer_hex("co2_t", recv_data, racv_len);
             if ((recv_data[6] * 256 + recv_data[7]) == CRC16_ModBus(recv_data, (racv_len - 2)))
             {
-                racv_len = RS485_Read(Rs485_co2_scmd, recv_data);
+                racv_len = RS485_Read(Rs485_co2_scmd, recv_data, uart2_co2);
                 if (racv_len > 0)
                 {
+                    // esp_log_buffer_hex("co2_s", recv_data, racv_len);
                     if ((recv_data[6] * 256 + recv_data[7]) == CRC16_ModBus(recv_data, (racv_len - 2)))
                     {
-
                         for (uint8_t i = 0; i < 10; i++)
                         {
-                            racv_len = RS485_Read(Rs485_co2_gcmd, recv_data);
+                            racv_len = RS485_Read(Rs485_co2_gcmd, recv_data, uart2_co2);
                             if (racv_len > 0)
                             {
-                                if ((recv_data[6] * 256 + recv_data[7]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+                                // esp_log_buffer_hex("co2_g", recv_data, racv_len);
+                                if ((recv_data[5] * 256 + recv_data[6]) == CRC16_ModBus(recv_data, (racv_len - 2)))
                                 {
-
-                                    racv_len = RS485_Read(Rs485_co2_rcmd, recv_data);
-                                    esp_log_buffer_hex(TAG, recv_data, racv_len);
+                                    racv_len = RS485_Read(Rs485_co2_rcmd, recv_data, uart2_co2);
+                                    // esp_log_buffer_hex(TAG, recv_data, racv_len);
                                     if (racv_len > 0)
                                     {
+                                        // esp_log_buffer_hex("co2_r", recv_data, racv_len);
                                         if ((recv_data[15] * 256 + recv_data[16]) == CRC16_ModBus(recv_data, (racv_len - 2)))
                                         {
 
@@ -511,22 +512,30 @@ void read_485_co2_task(void *pvParameters)
                                         }
                                         else
                                         {
+                                            ESP_LOGE(TAG, "co2_r CRC ERR");
                                         }
                                     }
                                     else
                                     {
+                                        ESP_LOGE(TAG, "co2_r NO RECV");
                                     }
                                 }
                                 else
                                 {
+                                    ESP_LOGE(TAG, "co2_g CRC ERR");
                                 }
                             }
                             else
                             {
+                                ESP_LOGE(TAG, "co2_g NO RECV");
                             }
                         }
+                        co2_val = ((int)(co2_val * 1000 + 0.5)) * 0.001; //保留3位
+                        t_val = ((int)(t_val * 1000 + 0.5)) * 0.001;     //保留3位
+                        h_val = ((int)(h_val * 1000 + 0.5)) * 0.001;     //保留3位
+
                         ESP_LOGI(TAG, "CO2:%f,T:%f,H:%f", co2_val, t_val, h_val);
-                        if ((co2_val >= 400) && (co2_val <= 10000))
+                        if ((co2_val >= 100) && (co2_val <= 20000))
                         {
                             filed_buff = (char *)malloc(9);
                             pJsonRoot = cJSON_CreateObject();
@@ -541,50 +550,51 @@ void read_485_co2_task(void *pvParameters)
                             cJSON_Delete(pJsonRoot);                       //delete cjson root
                             len = strlen(OutBuffer);
                             printf("len:%d\n%s\n", len, OutBuffer);
-                            SaveBuffer = (uint8_t *)malloc(len);
-                            memcpy(SaveBuffer, OutBuffer, len);
+                            // SaveBuffer = (uint8_t *)malloc(len);
+                            // memcpy(SaveBuffer, OutBuffer, len);
                             xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave(SaveBuffer, len);
+                            DataSave((uint8_t *)OutBuffer, len);
                             xSemaphoreGive(Cache_muxtex);
                             free(OutBuffer);
-                            free(SaveBuffer);
+                            // free(SaveBuffer);
                             free(filed_buff);
                         }
                     }
                     else
                     {
+                        ESP_LOGE(TAG, "co2_s CRC ERR");
                     }
                 }
                 else
                 {
+                    ESP_LOGE(TAG, "co2_s NO RECV");
                 }
             }
             else
             {
-                RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error\n");
+                ESP_LOGE(TAG, "co2_t CRC ERR");
                 // return 1;
             }
         }
         else
         {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+            ESP_LOGE(TAG, "co2_t NO RECV");
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
 void RS485_Init(void)
 {
     RS485_Mutex = xSemaphoreCreateMutex();
-    xTaskCreate(read_485_th_task, "read_485_th_task", 4096, NULL, 3, &Binary_485_th);
-    xTaskCreate(read_485_t_task, "read_485_t_task", 4096, NULL, 3, &Binary_485_t);
-    xTaskCreate(read_485_ws_task, "read_485_ws_task", 4096, NULL, 3, &Binary_485_ws);
-    xTaskCreate(read_485_sth_task, "read_485_sth_task", 4096, NULL, 3, &Binary_485_sth);
-    xTaskCreate(read_485_lt_task, "read_485_lt_task", 4096, NULL, 3, &Binary_485_lt);
-    xTaskCreate(read_485_co2_task, "read_485_co2_task", 4096, NULL, 3, &Binary_485_co2);
-    // xTaskCreate(read_485_sth_task, "read_485_sth_task", 4096, NULL, 3, &Binary_485_sth);
+    xTaskCreate(read_485_th_task, "485_th", 3072, NULL, 3, &Binary_485_th);
+    xTaskCreate(read_485_t_task, "485_t", 3072, NULL, 3, &Binary_485_t);
+    xTaskCreate(read_485_ws_task, "485_ws", 3072, NULL, 3, &Binary_485_ws);
+    xTaskCreate(read_485_sth_task, "485_sth", 3072, NULL, 3, &Binary_485_sth);
+    xTaskCreate(read_485_lt_task, "485_lt", 3072, NULL, 3, &Binary_485_lt);
+    xTaskCreate(read_485_co2_task, "485_co2", 4096, NULL, 3, &Binary_485_co2);
 }
 // /*******************************************************************************
 //                                       END

@@ -89,26 +89,6 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     return ESP_OK;
 }
 
-void mqtt_send_task(void *arg)
-{
-    creat_json *Mqtt_json;
-    while (1)
-    {
-        ulTaskNotifyTake(pdTRUE, -1);
-        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
-                            false, true, portMAX_DELAY);
-        Mqtt_json = malloc(sizeof(creat_json));
-        memset(Mqtt_json->buff, 0, sizeof(Mqtt_json->buff));
-        if (client != NULL)
-        {
-            // create_http_json(Mqtt_json, 0);
-            esp_mqtt_client_publish(client, topic_p, Mqtt_json->buff, 0, 1, 0);
-            ESP_LOGI(TAG, "sent publish successful,\n%s", Mqtt_json->buff);
-        }
-        free(Mqtt_json);
-    }
-}
-
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
@@ -139,4 +119,35 @@ void initialise_mqtt(void)
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
     esp_mqtt_client_start(client);
+}
+
+uint8_t Send_Mqtt(char *data_buff, uint16_t data_len)
+{
+    uint8_t *status_buff = NULL; //],"status":"mac=x","ssid_base64":"x"}
+    uint16_t status_buff_len;
+    char *mqtt_buff = NULL;
+
+    if ((status_buff = (uint8_t *)malloc(350)) == NULL)
+    {
+        ESP_LOGE(TAG, "status_buff malloc fail! ");
+        return 0;
+    }
+    memset(status_buff, 0, 350);
+    status_buff_len = Create_Status_Json((char *)status_buff); //
+
+    if ((mqtt_buff = (char *)malloc(data_len + 350 + 10)) == NULL)
+    {
+        ESP_LOGE(TAG, "status_buff malloc fail! ");
+        return 0;
+    }
+    memset(mqtt_buff, 0, data_len + 350 + 10);
+    snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s", data_buff, status_buff);
+    // printf("mqtt buff:\n%s\n", mqtt_buff);
+    if (client != NULL)
+    {
+        esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
+    }
+    free(status_buff);
+    free(mqtt_buff);
+    return 1;
 }

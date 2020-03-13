@@ -70,24 +70,32 @@ void sw_uart2(uint8_t uart2_mode)
 {
     //
     xSemaphoreTake(xMutex_uart2_sw, portMAX_DELAY);
-    if (uart2_mode == uart2_485)
+    switch (uart2_mode)
     {
+    case uart2_485:
         gpio_set_level(UART2_SW, 0); //RS485输出模式
         uart_flush(UART_NUM_2);
         uart_flush_input(UART_NUM_2);
         uart_set_baudrate(UART_NUM_2, 9600);
+        break;
 
-        vTaskDelay(10 / portTICK_RATE_MS);
-    }
-    else if (uart2_mode == uart2_cse)
-    {
+    case uart2_cse:
         gpio_set_level(UART2_SW, 1); //电能输出模式
         uart_flush(UART_NUM_2);
         uart_flush_input(UART_NUM_2);
         uart_set_baudrate(UART_NUM_2, 4800);
+        break;
 
-        vTaskDelay(10 / portTICK_RATE_MS);
+    case uart2_co2:
+        gpio_set_level(UART2_SW, 0); //CO2输出模式
+        uart_flush(UART_NUM_2);
+        uart_flush_input(UART_NUM_2);
+        uart_set_baudrate(UART_NUM_2, 19200);
+
+    default:
+        break;
     }
+    vTaskDelay(10 / portTICK_RATE_MS);
 }
 
 void Uart0_read(void)

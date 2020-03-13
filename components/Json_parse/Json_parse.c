@@ -5,7 +5,7 @@
 #include <cJSON.h>
 #include "esp_system.h"
 #include "esp_log.h"
-#include "Json_parse.h"
+
 #include "ServerTimer.h"
 #include "Http.h"
 
@@ -14,22 +14,19 @@
 #include "E2prom.h"
 #include "Http.h"
 #include "Cache_data.h"
-//#include "Motorctl.h"
-//#include "Wind.h"
 #include "Bluetooth.h"
-// #include "Human.h"
-// #include "sht30dis.h"
 #include "ota.h"
 #include "Led.h"
-// #include "w5500_driver.h"
 #include "tcp_bsp.h"
 #include "my_base64.h"
-// #include "Human.h"
 #include "RS485_Read.h"
 #include "ds18b20.h"
 #include "RtcUsr.h"
 #include "CSE7759B.h"
 #include "Switch.h"
+#include "Mqtt.h"
+
+#include "Json_parse.h"
 
 //metadata 相关变量
 // uint8_t fn_set_flag = 0;     //metadata 读取标志，未读取则使用下面固定参数
@@ -639,21 +636,22 @@ uint16_t Create_Status_Json(char *status_buff)
 
 void Create_NET_Json(void)
 {
-    char Field_Rssi_w[9] = {0};
+    char *filed_buff;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
     wifi_ap_record_t wifidata_t;
 
-    snprintf(Field_Rssi_w, sizeof(Field_Rssi_w), "field%d", AT24CXX_ReadOneByte(RSSI_NUM_ADDR));
+    filed_buff = (char *)malloc(9);
+    snprintf(filed_buff, 9, "field%d", AT24CXX_ReadOneByte(RSSI_NUM_ADDR));
 
     pJsonRoot = cJSON_CreateObject();
     cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
 
     if (esp_wifi_sta_get_ap_info(&wifidata_t) == 0)
     {
-        cJSON_AddItemToObject(pJsonRoot, Field_Rssi_w, cJSON_CreateNumber(wifidata_t.rssi));
+        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(wifidata_t.rssi));
     }
     cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
 
@@ -661,14 +659,15 @@ void Create_NET_Json(void)
     cJSON_Delete(pJsonRoot);                       //delete cjson root
     len = strlen(OutBuffer);
     printf("len:%d\n%s\n", len, OutBuffer);
+    Send_Mqtt(OutBuffer, len);
     // SaveBuffer = (uint8_t *)malloc(len);
-    SaveBuffer = (uint8_t *)malloc(len);
-    memcpy(SaveBuffer, OutBuffer, len);
+    // memcpy(SaveBuffer, OutBuffer, len);
     xSemaphoreTake(Cache_muxtex, -1);
-    DataSave(SaveBuffer, len);
+    DataSave((uint8_t *)OutBuffer, len);
     xSemaphoreGive(Cache_muxtex);
     free(OutBuffer);
-    free(SaveBuffer);
+    free(filed_buff);
+    // free(SaveBuffer);
 }
 
 // void create_http_json(creat_json *pCreat_json, uint8_t flag)
@@ -1155,16 +1154,17 @@ void Read_Metadate_E2p(void)
         break;
     }
     fn_dp = AT24CXX_ReadLenByte(FN_DP_ADD, 4);           //数据发送频率
-    fn_485_th = AT24CXX_ReadLenByte(FN_485_TH_ADD, 4);   //485温湿度探头
+    fn_485_t = AT24CXX_ReadLenByte(FN_485_T_ADD, 4);     //
+    fn_485_th = AT24CXX_ReadLenByte(FN_485_TH_ADD, 4);   //
     fn_485_sth = AT24CXX_ReadLenByte(FN_485_STH_ADD, 4); //485 土壤探头
+    fn_485_ws = AT24CXX_ReadLenByte(FN_485_WS_ADD, 4);   //
+    fn_485_lt = AT24CXX_ReadLenByte(FN_485_LT_ADD, 4);   //
+    fn_485_co2 = AT24CXX_ReadLenByte(FN_485_CO2_ADD, 4); //
     fn_ext = AT24CXX_ReadLenByte(FN_EXT_ADD, 4);         //18b20
     fn_sw_e = AT24CXX_ReadLenByte(FN_ENERGY_ADD, 4);     //电能信息：电压/电流/功率
     fn_sw_pc = AT24CXX_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
     cg_data_led = AT24CXX_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
     net_mode = AT24CXX_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
-
-    printf("e2prom used:%d \nmetadata:\nde_switch_sta=%d\nfn_dp=%d\nfn_485_th=%d\nfn_485_sth=%d\nfn_ext=%d\nfn_energy=%d\nfn_ele_quan=%d\ncg_data_led=%d\nnet_mode=%d\n",
-           RS485_PH_NUM_ADDR, de_sw_s, fn_dp, fn_485_th, fn_485_sth, fn_ext, fn_sw_e, fn_sw_pc, cg_data_led, net_mode);
 }
 
 void Read_Product_E2p(void)

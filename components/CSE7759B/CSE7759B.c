@@ -656,7 +656,7 @@ void Energy_Read_Task(void *pvParameters)
 {
     char *filed_buff;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
 
@@ -689,13 +689,14 @@ void Energy_Read_Task(void *pvParameters)
             cJSON_Delete(pJsonRoot);                       //delete cjson root
             len = strlen(OutBuffer);
             printf("len:%d\n%s\n", len, OutBuffer);
-            SaveBuffer = (uint8_t *)malloc(len);
-            memcpy(SaveBuffer, OutBuffer, len);
+            // SaveBuffer = (uint8_t *)malloc(len);
+            // memcpy(SaveBuffer, OutBuffer, len);
             xSemaphoreTake(Cache_muxtex, -1);
-            DataSave(SaveBuffer, len);
+            DataSave((uint8_t *)OutBuffer, len);
             xSemaphoreGive(Cache_muxtex);
             free(OutBuffer);
-            free(SaveBuffer);
+            free(filed_buff);
+            // free(SaveBuffer);
         }
 
         if (Binary_mqtt != NULL)
@@ -709,7 +710,7 @@ void Ele_quan_Task(void *pvParameters)
 {
     char *filed_buff;
     char *OutBuffer;
-    uint8_t *SaveBuffer;
+    // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
 
@@ -735,13 +736,13 @@ void Ele_quan_Task(void *pvParameters)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
         len = strlen(OutBuffer);
         printf("len:%d\n%s\n", len, OutBuffer);
-        SaveBuffer = (uint8_t *)malloc(len);
-        memcpy(SaveBuffer, OutBuffer, len);
+        // SaveBuffer = (uint8_t *)malloc(len);
+        // memcpy(SaveBuffer, OutBuffer, len);
         xSemaphoreTake(Cache_muxtex, -1);
-        DataSave(SaveBuffer, len);
+        DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
         free(OutBuffer);
-        free(SaveBuffer);
+        // free(SaveBuffer);
         free(filed_buff);
     }
 }

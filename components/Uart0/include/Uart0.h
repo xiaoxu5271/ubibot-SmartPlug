@@ -9,6 +9,7 @@
 
 #define uart2_485 0
 #define uart2_cse 1
+#define uart2_co2 2
 
 extern SemaphoreHandle_t xMutex_uart2_sw;
 

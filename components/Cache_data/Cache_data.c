@@ -56,8 +56,13 @@ void Data_Post_Task(void *pvParameters)
 void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
 {
     // xSemaphoreTake(Cache_muxtex, -1);
-    if (Buff_len == 0)
+    uint16_t Buff_len_c;
+    Buff_len_c = strlen((const char *)sava_buff);
+    if (Buff_len == 0 || Buff_len != Buff_len_c)
+    {
+        ESP_LOGE(TAG, "save err Buff_len:%d,Buff_len_c:%d", Buff_len, Buff_len_c);
         return;
+    }
 
     flash_used_num = AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4);
     start_read_num = AT24CXX_ReadLenByte(START_READ_NUM_ADD, 4);
@@ -171,7 +176,7 @@ void Start_Cache(void)
 static uint8_t Http_post_fun(void)
 {
     const char *post_header = "{\"feeds\":["; //
-    uint8_t *status_buff = NULL;              //],"status":"mac=x","ssid_base64":"x"}
+    char *status_buff = NULL;                 //],"status":"mac=x","ssid_base64":"x"}
     uint8_t *one_post_buff = NULL;            //一条数据的buff,
     uint16_t one_data_len;                    //读取一条数据占用flash的大小，不一定是这数据的大小
     uint32_t start_read_num_oen;              //单条数据读取的开始地址
@@ -184,7 +189,7 @@ static uint8_t Http_post_fun(void)
     bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
     char *recv_buff = NULL;                   //post 返回
 
-    if ((status_buff = (uint8_t *)malloc(350)) == NULL)
+    if ((status_buff = (char *)malloc(350)) == NULL)
     {
         ESP_LOGE(TAG, "status_buff malloc fail! ");
         return 0;
@@ -192,8 +197,8 @@ static uint8_t Http_post_fun(void)
 
     memset(status_buff, 0, 350);
     xSemaphoreTake(Cache_muxtex, -1);
-    status_buff_len = Create_Status_Json((char *)status_buff); //该函数中save 了一条最近的数据，需在read end_raad_num之前
-    ESP_LOGI(TAG, "status_buff_len:%d,buff:%s", status_buff_len, status_buff);
+    status_buff_len = Create_Status_Json(status_buff); //
+    ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
     start_read_num = AT24CXX_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
     ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
@@ -207,7 +212,7 @@ static uint8_t Http_post_fun(void)
         return 0;
     }
 
-    post_data_len = strlen(post_header) + status_buff_len + cache_data_len;
+    post_data_len = strlen(post_header) + strlen(status_buff) + cache_data_len;
     ESP_LOGI(TAG, "post_data_len=%d,cache_data_len=%d", post_data_len, cache_data_len);
 
     socket_num = http_post_init(post_data_len);
@@ -266,7 +271,7 @@ static uint8_t Http_post_fun(void)
                     one_post_buff[strlen((const char *)one_post_buff)] = ',';
                 }
 
-                // ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
+                ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
                 if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
                 {
                     ESP_LOGE(TAG, "... socket send failed");
