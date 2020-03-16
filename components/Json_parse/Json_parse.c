@@ -644,7 +644,7 @@ void Create_NET_Json(void)
     wifi_ap_record_t wifidata_t;
 
     filed_buff = (char *)malloc(9);
-    snprintf(filed_buff, 9, "field%d", AT24CXX_ReadOneByte(RSSI_NUM_ADDR));
+    snprintf(filed_buff, 9, "field%d", rssi_w_f_num);
 
     pJsonRoot = cJSON_CreateObject();
     cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
@@ -1165,6 +1165,19 @@ void Read_Metadate_E2p(void)
     fn_sw_pc = AT24CXX_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
     cg_data_led = AT24CXX_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
     net_mode = AT24CXX_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+
+    printf("fn_dp:%d\n", fn_dp);
+    printf("fn_485_t:%d\n", fn_485_t);
+    printf("fn_485_th:%d\n", fn_485_th);
+    printf("fn_485_sth:%d\n", fn_485_sth);
+    printf("fn_485_ws:%d\n", fn_485_ws);
+    printf("fn_485_lt:%d\n", fn_485_lt);
+    printf("fn_485_co2:%d\n", fn_485_co2);
+    printf("fn_ext:%d\n", fn_ext);
+    printf("fn_sw_e:%d\n", fn_sw_e);
+    printf("cg_data_led:%d\n", cg_data_led);
+    printf("net_mode:%d\n", net_mode);
+    printf("de_sw_s:%d\n", de_sw_s);
 }
 
 void Read_Product_E2p(void)
@@ -1206,4 +1219,22 @@ void Read_Fields_E2p(void)
     r1_ws_f_num = AT24CXX_ReadOneByte(RS485_WS_NUM_ADDR);       //r1_ws_f_num
     r1_co2_f_num = AT24CXX_ReadOneByte(RS485_CO2_NUM_ADDR);     //r1_co2_f_num
     r1_ph_f_num = AT24CXX_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
+
+    printf("sw_s_f_num:%d\n", sw_s_f_num);
+    printf("sw_v_f_num:%d\n", sw_v_f_num);
+    printf("sw_c_f_num:%d\n", sw_c_f_num);
+    printf("sw_p_f_num:%d\n", sw_p_f_num);
+    printf("sw_pc_f_num:%d\n", sw_pc_f_num);
+    printf("rssi_w_f_num:%d\n", rssi_w_f_num);
+    printf("rssi_g_f_num:%d\n", rssi_g_f_num);
+    printf("r1_light_f_num:%d\n", r1_light_f_num);
+    printf("r1_th_t_f_num:%d\n", r1_th_t_f_num);
+    printf("r1_th_h_f_num:%d\n", r1_th_h_f_num);
+    printf("r1_sth_t_f_num:%d\n", r1_sth_t_f_num);
+    printf("r1_sth_h_f_num:%d\n", r1_sth_h_f_num);
+    printf("e1_t_f_num:%d\n", e1_t_f_num);
+    printf("r1_t_f_num:%d\n", r1_t_f_num);
+    printf("r1_ws_f_num:%d\n", r1_ws_f_num);
+    printf("r1_co2_f_num:%d\n", r1_co2_f_num);
+    printf("r1_ph_f_num:%d\n", r1_ph_f_num);
 }

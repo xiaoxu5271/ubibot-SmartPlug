@@ -67,8 +67,8 @@ typedef struct RuningInf_s
 
 RuningInf_t runingInf;
 
-bool CSE_Status = false;
-bool CSE_Energy_Status = false;
+// bool CSE_Status = false;
+// bool CSE_Energy_Status = false;
 
 //获取电压、电流、功率的有限数据
 unsigned long getVIPvalue(unsigned long *arr) //更新电压、电流、功率的列表
@@ -370,7 +370,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 
     case 0xAA:
         //芯片未校准
-        CSE_Status = false;
+        // CSE_Status = false;
         ESP_LOGE(TAG, "CSE7759B not check\r\n");
         return -1;
         break;
@@ -379,7 +379,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         if ((startFlag & 0xF1) == 0xF1)
         {
             //存储区异常，芯片坏了
-            CSE_Status = false;
+            // CSE_Status = false;
             ESP_LOGE(TAG, "CSE7759B broken\r\n");
             return -1;
         }
@@ -573,7 +573,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
     sw_v_val = voltage / 1000;
     sw_c_val = electricity / 1000.0;
     sw_p_val = power / 1000.0;
-    CSE_Status = true;
+    // CSE_Status = true;
     return 1;
 }
 
@@ -627,7 +627,7 @@ int8_t CSE7759B_Read(void)
                         }
                         else
                         {
-                            CSE_Status = false;
+                            // CSE_Status = false;
                             ESP_LOGE(TAG, "checksum = 0x%02x ,7759b checksum fail!", checksum);
                             return 0;
                         }
@@ -636,13 +636,13 @@ int8_t CSE7759B_Read(void)
             }
         }
         ESP_LOGE(TAG, "CSE7759B Date Err！\n");
-        CSE_Status = false;
+        // CSE_Status = false;
         return 0;
     }
     else
     {
         ESP_LOGE(TAG, "No CSE7759B Date！\n");
-        CSE_Status = false;
+        // CSE_Status = false;
         return 0;
     }
 }
@@ -724,13 +724,12 @@ void Ele_quan_Task(void *pvParameters)
             sw_pc_val = runingInf.energy / runingInf.energyUnit; //单位是 W/H
         // ESP_LOGI(TAG, "energy=%f\n", mqtt_json_s.mqtt_Energy);
         runingInf.energy = 0; //清除本次统计
-        CSE_Energy_Status = true;
 
         filed_buff = (char *)malloc(9);
 
         pJsonRoot = cJSON_CreateObject();
         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-        snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+        snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
         cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
