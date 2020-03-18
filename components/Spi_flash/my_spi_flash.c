@@ -624,12 +624,14 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 		}
 		if (i < secremain) //需要擦除
 		{
-			W25QXX_Erase_Sector(secpos);	//擦除这个扇区
+			ESP_LOGI("w25_writr", "W25QXX_Erase_Sector");
+			W25QXX_Erase_Sector(secpos);	//擦除整个扇区
 			for (i = 0; i < secremain; i++) //复制
 			{
 				W25QXX_BUF[i + secoff] = pBuffer[i];
 			}
-			W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, 4096); //写入整个扇区
+			// W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, 4096);				 //写入整个扇区 ,包括要写入的扇区后半部分，会导致每次写入都需要擦除
+			W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, secoff + secremain); //只写入前一段，扇区剩余为空，避免每次重复擦除
 		}
 		else
 			W25QXX_Write_NoCheck(pBuffer, WriteAddr, secremain); //写已经擦除了的,直接写入扇区剩余区间.

@@ -78,10 +78,16 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             flash_used_num = 0;
             W25QXX_Write(sava_buff, flash_used_num, Buff_len);
             flash_used_num += Buff_len;
-            //如果从头开始写后，结束地址大于下次的读取地址，说明整个储存利用已经最大，则设置读取和截至地址相同，读取数据时分两次读
+            //如果从头开始写后，结束地址大于下次的读取地址，说明整个储存利用已经最大，则设置读取地址为结束地址的下一个扇区，读取数据时分两次读
             if (flash_used_num > start_read_num)
             {
-                start_read_num = flash_used_num;
+                // start_read_num = flash_used_num;
+                start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
+                if (start_read_num > SPI_FLASH_SIZE)
+                {
+                    start_read_num = 0;
+                }
+
                 AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
                 if (Exhausted_flag == 0)
                 {
@@ -101,64 +107,67 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
     //(2)读写地址跨区
     else if (flash_used_num < start_read_num)
     {
-        if (flash_used_num + Buff_len >= start_read_num) //如果写入新数据后 大于 当前读取开始地址
+        if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写, 此时储存区已经全部用尽
         {
-            if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
-            {
-                flash_used_num = 0;
-            }
-
+            flash_used_num = 0;
             W25QXX_Write(sava_buff, flash_used_num, Buff_len);
             flash_used_num += Buff_len;
-            //整个储存利用已经最大，则设置读取和截至地址相同，读取数据时分两次读
-            start_read_num = flash_used_num;
+            start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
+            AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
             if (Exhausted_flag == 0)
             {
                 Exhausted_flag = 1;
                 AT24CXX_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
             }
-            AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
-            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
         }
         else
         {
-            W25QXX_Write(sava_buff, flash_used_num, Buff_len);
-            flash_used_num += Buff_len;
-            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+            if (Exhausted_flag == 1) //用尽
+            {
+                W25QXX_Write(sava_buff, flash_used_num, Buff_len);
+                flash_used_num += Buff_len;
+                start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
+                if (start_read_num > SPI_FLASH_SIZE)
+                {
+                    start_read_num = 0;
+                }
+                AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+                AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+                if (Exhausted_flag == 0)
+                {
+                    Exhausted_flag = 1;
+                    AT24CXX_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+                }
+            }
+            else
+            {
+
+                W25QXX_Write(sava_buff, flash_used_num, Buff_len);
+                flash_used_num += Buff_len;
+                AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+            }
         }
     }
-
     else
     {
-        //(3)整个空间最大利用
-        if (Exhausted_flag == 1)
-        {
-            if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
-            {
-                flash_used_num = 0;
-            }
-            W25QXX_Write(sava_buff, flash_used_num, Buff_len);
-            flash_used_num += Buff_len;
-            //整个储存利用已经最大，则设置读取和截至地址相同，读取数据时分两次读
-            start_read_num = flash_used_num;
-            AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
-            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
-        }
-        //(4)数据都读完
-        else
-        {
-            if (flash_used_num + Buff_len >= SPI_FLASH_SIZE) //如果写入新数据后大须总容量，从头开始写
-            {
-                flash_used_num = 0;
-            }
-            W25QXX_Write(sava_buff, flash_used_num, Buff_len);
-            flash_used_num += Buff_len;
-            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
-        }
-    }
+        if (flash_used_num + Buff_len >= SPI_FLASH_SIZE)
+            flash_used_num = 0;
 
-    // ESP_LOGI(TAG, "flash_used_num=%d", flash_used_num);
-    // xSemaphoreGive(Cache_muxtex);
+        W25QXX_Write(sava_buff, flash_used_num, Buff_len);
+        flash_used_num += Buff_len;
+
+        if (Exhausted_flag == 1) //用尽
+        {
+            start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
+            if (start_read_num > SPI_FLASH_SIZE)
+            {
+                start_read_num = 0;
+            }
+            AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+        }
+        AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+    }
 }
 
 void Start_Cache(void)
