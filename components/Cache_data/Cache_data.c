@@ -64,11 +64,11 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
         return;
     }
 
-    flash_used_num = AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4);
-    start_read_num = AT24CXX_ReadLenByte(START_READ_NUM_ADD, 4);
-    Exhausted_flag = AT24CXX_ReadOneByte(EXHAUSTED_FLAG_ADD);
+    flash_used_num = E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4);
+    start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
+    Exhausted_flag = E2P_ReadOneByte(EXHAUSTED_FLAG_ADD);
     ESP_LOGI(TAG, "flash_used_num=%d,start_read_num=%d,Exhausted_flag=%d", flash_used_num, start_read_num, Exhausted_flag);
-    // data_save_num = AT24CXX_ReadLenByte(DATA_SAVE_NUM_ADD, 4);
+    // data_save_num = E2P_ReadLenByte(DATA_SAVE_NUM_ADD, 4);
 
     //(1)读写地址完整
     if (flash_used_num > start_read_num)
@@ -78,6 +78,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             flash_used_num = 0;
             W25QXX_Write(sava_buff, flash_used_num, Buff_len);
             flash_used_num += Buff_len;
+            E2P_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
             //如果从头开始写后，结束地址大于下次的读取地址，说明整个储存利用已经最大，则设置读取地址为结束地址的下一个扇区，读取数据时分两次读
             if (flash_used_num > start_read_num)
             {
@@ -88,20 +89,19 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
                     start_read_num = 0;
                 }
 
-                AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+                E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
                 if (Exhausted_flag == 0)
                 {
                     Exhausted_flag = 1;
-                    AT24CXX_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+                    E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
                 }
             }
-            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
         }
         else
         {
             W25QXX_Write(sava_buff, flash_used_num, Buff_len);
             flash_used_num += Buff_len;
-            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+            E2P_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
         }
     }
     //(2)读写地址跨区
@@ -113,17 +113,17 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             W25QXX_Write(sava_buff, flash_used_num, Buff_len);
             flash_used_num += Buff_len;
             start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
-            AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
-            AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+            E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+            E2P_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
             if (Exhausted_flag == 0)
             {
                 Exhausted_flag = 1;
-                AT24CXX_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+                E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
             }
         }
         else
         {
-            if (Exhausted_flag == 1) //用尽
+            if (Exhausted_flag == 1 || flash_used_num + Buff_len >= start_read_num) //用尽
             {
                 W25QXX_Write(sava_buff, flash_used_num, Buff_len);
                 flash_used_num += Buff_len;
@@ -132,20 +132,19 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
                 {
                     start_read_num = 0;
                 }
-                AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
-                AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+                E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+                E2P_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
                 if (Exhausted_flag == 0)
                 {
                     Exhausted_flag = 1;
-                    AT24CXX_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+                    E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
                 }
             }
             else
             {
-
                 W25QXX_Write(sava_buff, flash_used_num, Buff_len);
                 flash_used_num += Buff_len;
-                AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+                E2P_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
             }
         }
     }
@@ -164,9 +163,9 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             {
                 start_read_num = 0;
             }
-            AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
+            E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num, 4);
         }
-        AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
+        E2P_WriteLenByte(FLASH_USED_NUM_ADD, flash_used_num, 4);
     }
 }
 
@@ -208,11 +207,11 @@ static uint8_t Http_post_fun(void)
     xSemaphoreTake(Cache_muxtex, -1);
     status_buff_len = Create_Status_Json(status_buff); //
     ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
-    start_read_num = AT24CXX_ReadLenByte(START_READ_NUM_ADD, 4);
+    start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
     ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
-    cache_data_len = Read_Post_Len(start_read_num, AT24CXX_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num);
+    cache_data_len = Read_Post_Len(start_read_num, E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num);
 
     if (cache_data_len == 0)
     {
@@ -280,7 +279,7 @@ static uint8_t Http_post_fun(void)
                     one_post_buff[strlen((const char *)one_post_buff)] = ',';
                 }
 
-                ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
+                // ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
                 if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
                 {
                     ESP_LOGE(TAG, "... socket send failed");
@@ -358,11 +357,11 @@ static uint8_t Http_post_fun(void)
         xSemaphoreGive(Cache_muxtex);
         return 0;
     }
-    AT24CXX_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
+    E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
     if (Exhausted_flag == 1)
     {
         Exhausted_flag = 0;
-        AT24CXX_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+        E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
     }
     free(status_buff);
     free(recv_buff);
@@ -390,9 +389,9 @@ void Erase_Flash_data_test(void)
 {
     printf("\nstart erase flash\n");
     W25QXX_Erase_Sector(0);
-    AT24CXX_WriteLenByte(START_READ_NUM_ADD, 0, 4);
-    AT24CXX_WriteLenByte(DATA_SAVE_NUM_ADD, 0, 4);
-    AT24CXX_WriteLenByte(FLASH_USED_NUM_ADD, 0, 4);
+    E2P_WriteLenByte(START_READ_NUM_ADD, 0, 4);
+    E2P_WriteLenByte(DATA_SAVE_NUM_ADD, 0, 4);
+    E2P_WriteLenByte(FLASH_USED_NUM_ADD, 0, 4);
     printf("\nerase flash ok\n");
 }
 

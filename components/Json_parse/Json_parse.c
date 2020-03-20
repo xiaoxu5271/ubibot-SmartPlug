@@ -95,7 +95,7 @@ static short Parse_metadata(char *ptrptr)
         if ((unsigned long)pSubSubSub->valueint != fn_dp)
         {
             fn_dp = (unsigned long)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_DP_ADD, fn_dp, 4);
+            E2P_WriteLenByte(FN_DP_ADD, fn_dp, 4);
             printf("fn_dp = %d\n", fn_dp);
         }
     }
@@ -107,7 +107,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_485_t)
         {
             fn_485_t = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_485_T_ADD, fn_485_t, 4);
+            E2P_WriteLenByte(FN_485_T_ADD, fn_485_t, 4);
             printf("fn_485_th = %d\n", fn_485_t);
         }
     }
@@ -118,7 +118,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_485_th)
         {
             fn_485_th = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_485_TH_ADD, fn_485_th, 4);
+            E2P_WriteLenByte(FN_485_TH_ADD, fn_485_th, 4);
             printf("fn_485_th = %d\n", fn_485_th);
         }
     }
@@ -128,7 +128,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_485_sth)
         {
             fn_485_sth = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_485_STH_ADD, fn_485_sth, 4);
+            E2P_WriteLenByte(FN_485_STH_ADD, fn_485_sth, 4);
             printf("fn_485_sth = %d\n", fn_485_sth);
         }
     }
@@ -138,7 +138,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_485_ws)
         {
             fn_485_ws = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_485_WS_ADD, fn_485_ws, 4);
+            E2P_WriteLenByte(FN_485_WS_ADD, fn_485_ws, 4);
             printf("fn_485_ws = %d\n", fn_485_ws);
         }
     }
@@ -148,7 +148,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_485_lt)
         {
             fn_485_lt = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_485_LT_ADD, fn_485_lt, 4);
+            E2P_WriteLenByte(FN_485_LT_ADD, fn_485_lt, 4);
             printf("fn_485_lt = %d\n", fn_485_lt);
         }
     }
@@ -158,7 +158,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_485_co2)
         {
             fn_485_co2 = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_485_CO2_ADD, fn_485_co2, 4);
+            E2P_WriteLenByte(FN_485_CO2_ADD, fn_485_co2, 4);
             printf("fn_485_co2 = %d\n", fn_485_co2);
         }
     }
@@ -168,7 +168,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_ext)
         {
             fn_ext = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_EXT_ADD, fn_ext, 4);
+            E2P_WriteLenByte(FN_EXT_ADD, fn_ext, 4);
             printf("fn_ext = %d\n", fn_ext);
         }
     }
@@ -178,7 +178,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_sw_e)
         {
             fn_sw_e = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_ENERGY_ADD, fn_sw_e, 4);
+            E2P_WriteLenByte(FN_ENERGY_ADD, fn_sw_e, 4);
             printf("fn_sw_e = %d\n", fn_sw_e);
         }
     }
@@ -188,7 +188,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint32_t)pSubSubSub->valueint != fn_sw_pc)
         {
             fn_sw_pc = (uint32_t)pSubSubSub->valueint;
-            AT24CXX_WriteLenByte(FN_ELE_QUAN_ADD, fn_sw_pc, 4);
+            E2P_WriteLenByte(FN_ELE_QUAN_ADD, fn_sw_pc, 4);
             printf("fn_sw_pc = %d\n", fn_sw_pc);
         }
     }
@@ -199,7 +199,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != cg_data_led)
         {
             cg_data_led = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(CG_DATA_LED_ADD, cg_data_led);
+            E2P_WriteOneByte(CG_DATA_LED_ADD, cg_data_led);
             printf("cg_data_led = %d\n", cg_data_led);
             if (cg_data_led == 0)
             {
@@ -218,7 +218,7 @@ static short Parse_metadata(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != net_mode)
         {
             net_mode = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
+            E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
             printf("net_mode = %d\n", net_mode);
         }
     }
@@ -229,16 +229,16 @@ static short Parse_metadata(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != de_sw_s)
         {
             de_sw_s = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(DE_SWITCH_STA_ADD, de_sw_s); //写入net_mode
+            E2P_WriteOneByte(DE_SWITCH_STA_ADD, de_sw_s); //写入net_mode
             printf("de_sw_s = %d\n", de_sw_s);
         }
     }
     cJSON_Delete(pJsonJson);
-    // fn_set_flag = AT24CXX_ReadOneByte(FN_SET_FLAG_ADD);
+    // fn_set_flag = E2P_ReadOneByte(FN_SET_FLAG_ADD);
     // if (fn_set_flag != 1)
     // {
     //     fn_set_flag = 1;
-    //     AT24CXX_WriteOneByte(FN_SET_FLAG_ADD, fn_set_flag);
+    //     E2P_WriteOneByte(FN_SET_FLAG_ADD, fn_set_flag);
     // }
 
     return 1;
@@ -361,7 +361,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
                 strcpy(ApiKey, json_data_parse_channel_channel_write_key->valuestring);
                 printf("api_key:%s\n", ApiKey);
                 // sprintf(ApiKey, "%s%c", json_data_parse_channel_channel_write_key->valuestring, '\0');
-                AT24CXX_Write(API_KEY_ADD, (uint8_t *)ApiKey, API_KEY_LEN);
+                E2P_Write(API_KEY_ADD, (uint8_t *)ApiKey, API_KEY_LEN);
             }
 
             //写入channelid
@@ -370,7 +370,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
                 strcpy(ChannelId, json_data_parse_channel_channel_id_value->valuestring);
                 printf("ChannelId:%s\n", ChannelId);
                 // sprintf(ApiKey, "%s%c", json_data_parse_channel_channel_write_key->valuestring, '\0');
-                AT24CXX_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+                E2P_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
             }
 
             //写入user_id
@@ -379,7 +379,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
                 strcpy(USER_ID, json_data_parse_channel_user_id->valuestring);
                 printf("USER_ID:%s\n", USER_ID);
                 // sprintf(ApiKey, "%s%c", json_data_parse_channel_channel_write_key->valuestring, '\0');
-                AT24CXX_Write(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
+                E2P_Write(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
             }
         }
     }
@@ -806,26 +806,26 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             {
                 if (!strcmp((char const *)pSub->valuestring, "CloudForce"))
                 {
-                    // E2prom_empty_all();
+                    // E2prom_set_defaul(false);
                     pSub = cJSON_GetObjectItem(pJson, "ProductID"); //"ProductID"
                     if (NULL != pSub)
                     {
                         printf("ProductID= %s, len= %d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        AT24CXX_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save ProductID
+                        E2P_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save ProductID
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "SeriesNumber"); //"SeriesNumber"
                     if (NULL != pSub)
                     {
                         printf("SeriesNumber= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        AT24CXX_Write(SERISE_NUM_ADDR, (uint8_t *)pSub->valuestring, SERISE_NUM_LEN); //save SeriesNumber
+                        E2P_Write(SERISE_NUM_ADDR, (uint8_t *)pSub->valuestring, SERISE_NUM_LEN); //save SeriesNumber
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "Host"); //"Host"
                     if (NULL != pSub)
                     {
                         printf("Host= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        AT24CXX_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save SeriesNumber
+                        E2P_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save SeriesNumber
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "apn"); //"apn"
@@ -874,7 +874,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             {
                 bzero(wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
                 strcpy(wifi_data.wifi_ssid, pSub->valuestring);
-                AT24CXX_Write(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
+                E2P_Write(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
                 printf("WIFI_SSID = %s\r\n", pSub->valuestring);
             }
 
@@ -883,10 +883,10 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             {
                 bzero(wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
                 strcpy(wifi_data.wifi_pwd, pSub->valuestring);
-                AT24CXX_Write(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
+                E2P_Write(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
                 printf("WIFI_PWD = %s\r\n", pSub->valuestring);
             }
-            AT24CXX_WriteOneByte(NET_MODE_ADD, NET_WIFI); //写入net_mode
+            E2P_WriteOneByte(NET_MODE_ADD, NET_WIFI); //写入net_mode
             net_mode = NET_WIFI;
             start_user_wifi();
 
@@ -901,11 +901,11 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             uint8_t mac_sys[6] = {0};
             cJSON *root = cJSON_CreateObject();
 
-            AT24CXX_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
-            AT24CXX_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
-            AT24CXX_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
-            AT24CXX_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
-            AT24CXX_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
+            E2P_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+            E2P_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+            E2P_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+            E2P_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+            E2P_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
 
             esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
             sprintf(mac_buff,
@@ -971,7 +971,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
         {
             sw_s_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(SW_S_F_NUM_ADDR, sw_s_f_num);
+            E2P_WriteOneByte(SW_S_F_NUM_ADDR, sw_s_f_num);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_v"); //"sw_v"
@@ -980,7 +980,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
         {
             sw_v_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(SW_V_F_NUM_ADDR, sw_v_f_num); //
+            E2P_WriteOneByte(SW_V_F_NUM_ADDR, sw_v_f_num); //
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_c"); //""
@@ -989,7 +989,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
         {
             sw_c_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num); //
+            E2P_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num); //
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_p"); //""
@@ -998,7 +998,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
         {
             sw_p_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num); //
+            E2P_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num); //
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_pc"); //""
@@ -1007,7 +1007,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
         {
             sw_pc_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(SW_PC_F_NUM_ADDR, sw_pc_f_num); //
+            E2P_WriteOneByte(SW_PC_F_NUM_ADDR, sw_pc_f_num); //
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "rssi_w"); //"rssi_w"
@@ -1016,7 +1016,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
         {
             rssi_w_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RSSI_NUM_ADDR, rssi_w_f_num); //rssi_w_f_num
+            E2P_WriteOneByte(RSSI_NUM_ADDR, rssi_w_f_num); //rssi_w_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "rssi_g"); //"rssi_g"
@@ -1025,7 +1025,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != rssi_g_f_num)
         {
             rssi_g_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(GPRS_RSSI_NUM_ADDR, rssi_g_f_num); //rssi_g_f_num
+            E2P_WriteOneByte(GPRS_RSSI_NUM_ADDR, rssi_g_f_num); //rssi_g_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_light"); //"r1_light"
@@ -1034,7 +1034,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_light_f_num)
         {
             r1_light_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_LIGHT_NUM_ADDR, r1_light_f_num); //r1_light_f_num
+            E2P_WriteOneByte(RS485_LIGHT_NUM_ADDR, r1_light_f_num); //r1_light_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_th_t"); //"r1_th_t"
@@ -1043,7 +1043,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_th_t_f_num)
         {
             r1_th_t_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_TEMP_NUM_ADDR, r1_th_t_f_num); //r1_th_t_f_num
+            E2P_WriteOneByte(RS485_TEMP_NUM_ADDR, r1_th_t_f_num); //r1_th_t_f_num
         }
     }
 
@@ -1053,7 +1053,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_th_h_f_num)
         {
             r1_th_h_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_HUMI_NUM_ADDR, r1_th_h_f_num); //r1_th_h_f_num
+            E2P_WriteOneByte(RS485_HUMI_NUM_ADDR, r1_th_h_f_num); //r1_th_h_f_num
         }
     }
 
@@ -1063,7 +1063,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_sth_t_f_num)
         {
             r1_sth_t_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_STEMP_NUM_ADDR, r1_sth_t_f_num); //r1_sth_t_f_num
+            E2P_WriteOneByte(RS485_STEMP_NUM_ADDR, r1_sth_t_f_num); //r1_sth_t_f_num
         }
     }
 
@@ -1073,7 +1073,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_sth_h_f_num)
         {
             r1_sth_h_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_SHUMI_NUM_ADDR, r1_sth_h_f_num); //r1_sth_h_f_num
+            E2P_WriteOneByte(RS485_SHUMI_NUM_ADDR, r1_sth_h_f_num); //r1_sth_h_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "e1_t"); //"e1_t"
@@ -1082,7 +1082,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != e1_t_f_num)
         {
             e1_t_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(EXT_TEMP_NUM_ADDR, e1_t_f_num); //e1_t_f_num
+            E2P_WriteOneByte(EXT_TEMP_NUM_ADDR, e1_t_f_num); //e1_t_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_t"); //"r1_t"
@@ -1091,7 +1091,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_t_f_num)
         {
             r1_t_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_T_NUM_ADDR, r1_t_f_num); //r1_t_f_num
+            E2P_WriteOneByte(RS485_T_NUM_ADDR, r1_t_f_num); //r1_t_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_ws"); //"r1_ws"
@@ -1100,7 +1100,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_ws_f_num)
         {
             r1_ws_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_WS_NUM_ADDR, r1_ws_f_num); //r1_ws_f_num
+            E2P_WriteOneByte(RS485_WS_NUM_ADDR, r1_ws_f_num); //r1_ws_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_co2"); //"r1_co2"
@@ -1109,7 +1109,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_co2_f_num)
         {
             r1_co2_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_CO2_NUM_ADDR, r1_co2_f_num); //r1_co2_f_num
+            E2P_WriteOneByte(RS485_CO2_NUM_ADDR, r1_co2_f_num); //r1_co2_f_num
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_ph"); //"r1_ph"
@@ -1118,7 +1118,7 @@ static short Parse_fields_num(char *ptrptr)
         if ((uint8_t)pSubSubSub->valueint != r1_ph_f_num)
         {
             r1_ph_f_num = (uint8_t)pSubSubSub->valueint;
-            AT24CXX_WriteOneByte(RS485_PH_NUM_ADDR, r1_ph_f_num); //r1_ph_f_num
+            E2P_WriteOneByte(RS485_PH_NUM_ADDR, r1_ph_f_num); //r1_ph_f_num
         }
     }
 
@@ -1131,7 +1131,7 @@ static short Parse_fields_num(char *ptrptr)
 void Read_Metadate_E2p(void)
 {
     uint8_t Last_Switch_Status;
-    de_sw_s = AT24CXX_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
+    de_sw_s = E2P_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
     switch (de_sw_s)
     {
     case 0:
@@ -1143,28 +1143,28 @@ void Read_Metadate_E2p(void)
         break;
 
     case 2:
-        Last_Switch_Status = AT24CXX_ReadOneByte(LAST_SWITCH_ADD);
+        Last_Switch_Status = E2P_ReadOneByte(LAST_SWITCH_ADD);
         if (Last_Switch_Status <= 100)
         {
-            Switch_Relay(AT24CXX_ReadOneByte(LAST_SWITCH_ADD));
+            Switch_Relay(E2P_ReadOneByte(LAST_SWITCH_ADD));
         }
         break;
 
     default:
         break;
     }
-    fn_dp = AT24CXX_ReadLenByte(FN_DP_ADD, 4);           //数据发送频率
-    fn_485_t = AT24CXX_ReadLenByte(FN_485_T_ADD, 4);     //
-    fn_485_th = AT24CXX_ReadLenByte(FN_485_TH_ADD, 4);   //
-    fn_485_sth = AT24CXX_ReadLenByte(FN_485_STH_ADD, 4); //485 土壤探头
-    fn_485_ws = AT24CXX_ReadLenByte(FN_485_WS_ADD, 4);   //
-    fn_485_lt = AT24CXX_ReadLenByte(FN_485_LT_ADD, 4);   //
-    fn_485_co2 = AT24CXX_ReadLenByte(FN_485_CO2_ADD, 4); //
-    fn_ext = AT24CXX_ReadLenByte(FN_EXT_ADD, 4);         //18b20
-    fn_sw_e = AT24CXX_ReadLenByte(FN_ENERGY_ADD, 4);     //电能信息：电压/电流/功率
-    fn_sw_pc = AT24CXX_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
-    cg_data_led = AT24CXX_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
-    net_mode = AT24CXX_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+    fn_dp = E2P_ReadLenByte(FN_DP_ADD, 4);           //数据发送频率
+    fn_485_t = E2P_ReadLenByte(FN_485_T_ADD, 4);     //
+    fn_485_th = E2P_ReadLenByte(FN_485_TH_ADD, 4);   //
+    fn_485_sth = E2P_ReadLenByte(FN_485_STH_ADD, 4); //485 土壤探头
+    fn_485_ws = E2P_ReadLenByte(FN_485_WS_ADD, 4);   //
+    fn_485_lt = E2P_ReadLenByte(FN_485_LT_ADD, 4);   //
+    fn_485_co2 = E2P_ReadLenByte(FN_485_CO2_ADD, 4); //
+    fn_ext = E2P_ReadLenByte(FN_EXT_ADD, 4);         //18b20
+    fn_sw_e = E2P_ReadLenByte(FN_ENERGY_ADD, 4);     //电能信息：电压/电流/功率
+    fn_sw_pc = E2P_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
+    cg_data_led = E2P_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
+    net_mode = E2P_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 
     printf("fn_dp:%d\n", fn_dp);
     printf("fn_485_t:%d\n", fn_485_t);
@@ -1183,42 +1183,42 @@ void Read_Metadate_E2p(void)
 void Read_Product_E2p(void)
 {
     printf("FIRMWARE=%s\n", FIRMWARE);
-    AT24CXX_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+    E2P_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
     printf("SerialNum=%s\n", SerialNum);
-    AT24CXX_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+    E2P_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
     printf("ProductId=%s\n", ProductId);
-    AT24CXX_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+    E2P_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
     printf("WEB_SERVER=%s\n", WEB_SERVER);
-    AT24CXX_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+    E2P_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
     printf("ChannelId=%s\n", ChannelId);
-    AT24CXX_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
+    E2P_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
     printf("USER_ID=%s\n", USER_ID);
-    AT24CXX_Read(API_KEY_ADD, (uint8_t *)ApiKey, API_KEY_LEN);
+    E2P_Read(API_KEY_ADD, (uint8_t *)ApiKey, API_KEY_LEN);
     printf("ApiKey=%s\n", ApiKey);
-    AT24CXX_Read(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
-    AT24CXX_Read(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
+    E2P_Read(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
+    E2P_Read(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
     printf("wifi ssid=%s,wifi password=%s\n", wifi_data.wifi_ssid, wifi_data.wifi_pwd);
 }
 
 void Read_Fields_E2p(void)
 {
-    sw_s_f_num = AT24CXX_ReadOneByte(SW_S_F_NUM_ADDR);
-    sw_v_f_num = AT24CXX_ReadOneByte(SW_V_F_NUM_ADDR);
-    sw_c_f_num = AT24CXX_ReadOneByte(SW_C_F_NUM_ADDR);
-    sw_p_f_num = AT24CXX_ReadOneByte(SW_P_F_NUM_ADDR);
-    sw_pc_f_num = AT24CXX_ReadOneByte(SW_PC_F_NUM_ADDR);
-    rssi_w_f_num = AT24CXX_ReadOneByte(RSSI_NUM_ADDR);          //rssi_w
-    rssi_g_f_num = AT24CXX_ReadOneByte(GPRS_RSSI_NUM_ADDR);     //rssi_g
-    r1_light_f_num = AT24CXX_ReadOneByte(RS485_LIGHT_NUM_ADDR); //r1_light
-    r1_th_t_f_num = AT24CXX_ReadOneByte(RS485_TEMP_NUM_ADDR);   //r1_th_t_f_num
-    r1_th_h_f_num = AT24CXX_ReadOneByte(RS485_HUMI_NUM_ADDR);   //r1_th_h_f_num
-    r1_sth_t_f_num = AT24CXX_ReadOneByte(RS485_STEMP_NUM_ADDR); //r1_sth_t_f_num
-    r1_sth_h_f_num = AT24CXX_ReadOneByte(RS485_SHUMI_NUM_ADDR); //r1_sth_h_f_num
-    e1_t_f_num = AT24CXX_ReadOneByte(EXT_TEMP_NUM_ADDR);        //e1_t_f_num
-    r1_t_f_num = AT24CXX_ReadOneByte(RS485_T_NUM_ADDR);         //r1_t_f_num
-    r1_ws_f_num = AT24CXX_ReadOneByte(RS485_WS_NUM_ADDR);       //r1_ws_f_num
-    r1_co2_f_num = AT24CXX_ReadOneByte(RS485_CO2_NUM_ADDR);     //r1_co2_f_num
-    r1_ph_f_num = AT24CXX_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
+    sw_s_f_num = E2P_ReadOneByte(SW_S_F_NUM_ADDR);
+    sw_v_f_num = E2P_ReadOneByte(SW_V_F_NUM_ADDR);
+    sw_c_f_num = E2P_ReadOneByte(SW_C_F_NUM_ADDR);
+    sw_p_f_num = E2P_ReadOneByte(SW_P_F_NUM_ADDR);
+    sw_pc_f_num = E2P_ReadOneByte(SW_PC_F_NUM_ADDR);
+    rssi_w_f_num = E2P_ReadOneByte(RSSI_NUM_ADDR);          //rssi_w
+    rssi_g_f_num = E2P_ReadOneByte(GPRS_RSSI_NUM_ADDR);     //rssi_g
+    r1_light_f_num = E2P_ReadOneByte(RS485_LIGHT_NUM_ADDR); //r1_light
+    r1_th_t_f_num = E2P_ReadOneByte(RS485_TEMP_NUM_ADDR);   //r1_th_t_f_num
+    r1_th_h_f_num = E2P_ReadOneByte(RS485_HUMI_NUM_ADDR);   //r1_th_h_f_num
+    r1_sth_t_f_num = E2P_ReadOneByte(RS485_STEMP_NUM_ADDR); //r1_sth_t_f_num
+    r1_sth_h_f_num = E2P_ReadOneByte(RS485_SHUMI_NUM_ADDR); //r1_sth_h_f_num
+    e1_t_f_num = E2P_ReadOneByte(EXT_TEMP_NUM_ADDR);        //e1_t_f_num
+    r1_t_f_num = E2P_ReadOneByte(RS485_T_NUM_ADDR);         //r1_t_f_num
+    r1_ws_f_num = E2P_ReadOneByte(RS485_WS_NUM_ADDR);       //r1_ws_f_num
+    r1_co2_f_num = E2P_ReadOneByte(RS485_CO2_NUM_ADDR);     //r1_co2_f_num
+    r1_ph_f_num = E2P_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
 
     printf("sw_s_f_num:%d\n", sw_s_f_num);
     printf("sw_v_f_num:%d\n", sw_v_f_num);

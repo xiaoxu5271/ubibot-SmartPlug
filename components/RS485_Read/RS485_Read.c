@@ -11,6 +11,7 @@
 #include "Cache_data.h"
 #include "ServerTimer.h"
 #include "Json_parse.h"
+#include "crc8_16.h"
 
 #include "RS485_Read.h"
 
@@ -57,34 +58,6 @@ float unsignedchar_to_float(char *c_buf)
     return Concentration_val;
 }
 
-/*******************************************************************************
-// CRC16_Modbus Check
-*******************************************************************************/
-static uint16_t CRC16_ModBus(uint8_t *buf, uint8_t buf_len)
-{
-    uint8_t i, j;
-    uint8_t c_val;
-    uint16_t crc16_val = 0xffff;
-    uint16_t crc16_poly = 0xa001; //0x8005
-
-    for (i = 0; i < buf_len; i++)
-    {
-        crc16_val = *buf ^ crc16_val;
-        for (j = 0; j < 8; j++)
-        {
-            c_val = crc16_val & 0x01;
-            crc16_val = crc16_val >> 1;
-            if (c_val)
-            {
-                crc16_val = crc16_val ^ crc16_poly;
-            }
-        }
-        buf++;
-    }
-    // printf("crc16_val=%x\n", ((crc16_val & 0x00ff) << 8) | ((crc16_val & 0xff00) >> 8));
-    return ((crc16_val & 0x00ff) << 8) | ((crc16_val & 0xff00) >> 8);
-}
-
 int RS485_Read(char *Send_485_Buff, uint8_t *Recv_485_buff, uint8_t Uart_mode)
 {
     sw_uart2(Uart_mode);
@@ -115,7 +88,7 @@ void read_485_th_task(void *pvParameters)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
 
-            if ((recv_data[7] * 256 + recv_data[8]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
             {
                 if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
                 {
@@ -181,7 +154,9 @@ void read_485_t_task(void *pvParameters)
     int racv_len;
     while (1)
     {
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
         ulTaskNotifyTake(pdTRUE, -1);
+
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
         racv_len = RS485_Read(Rs485_t_cmd, recv_data, uart2_485);
@@ -189,7 +164,7 @@ void read_485_t_task(void *pvParameters)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
 
-            if ((recv_data[5] * 256 + recv_data[6]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, (racv_len - 2)))
             {
                 if ((recv_data[0] == Rs485_t_cmd[0]) && (recv_data[1] == Rs485_t_cmd[1]))
                 {
@@ -258,7 +233,7 @@ void read_485_ws_task(void *pvParameters)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
 
-            if ((recv_data[5] * 256 + recv_data[6]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, (racv_len - 2)))
             {
                 if ((recv_data[0] == Rs485_ws_cmd[0]) && (recv_data[1] == Rs485_ws_cmd[1]))
                 {
@@ -325,7 +300,7 @@ void read_485_sth_task(void *pvParameters)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
 
-            if ((recv_data[7] * 256 + recv_data[8]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
             {
                 if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
                 {
@@ -407,7 +382,7 @@ void read_485_lt_task(void *pvParameters)
         {
             esp_log_buffer_hex(TAG, recv_data, racv_len);
 
-            if ((recv_data[7] * 256 + recv_data[8]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
             {
                 if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
                 {
@@ -477,13 +452,13 @@ void read_485_co2_task(void *pvParameters)
         if (racv_len > 0)
         {
             // esp_log_buffer_hex("co2_t", recv_data, racv_len);
-            if ((recv_data[6] * 256 + recv_data[7]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+            if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, (racv_len - 2)))
             {
                 racv_len = RS485_Read(Rs485_co2_scmd, recv_data, uart2_co2);
                 if (racv_len > 0)
                 {
                     // esp_log_buffer_hex("co2_s", recv_data, racv_len);
-                    if ((recv_data[6] * 256 + recv_data[7]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+                    if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, (racv_len - 2)))
                     {
                         for (uint8_t i = 0; i < 10; i++)
                         {
@@ -491,14 +466,14 @@ void read_485_co2_task(void *pvParameters)
                             if (racv_len > 0)
                             {
                                 // esp_log_buffer_hex("co2_g", recv_data, racv_len);
-                                if ((recv_data[5] * 256 + recv_data[6]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+                                if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, (racv_len - 2)))
                                 {
                                     racv_len = RS485_Read(Rs485_co2_rcmd, recv_data, uart2_co2);
                                     // esp_log_buffer_hex(TAG, recv_data, racv_len);
                                     if (racv_len > 0)
                                     {
                                         // esp_log_buffer_hex("co2_r", recv_data, racv_len);
-                                        if ((recv_data[15] * 256 + recv_data[16]) == CRC16_ModBus(recv_data, (racv_len - 2)))
+                                        if ((recv_data[15] * 256 + recv_data[16]) == Get_Crc16(recv_data, (racv_len - 2)))
                                         {
 
                                             memcpy(val_buf, recv_data + 3, 4);

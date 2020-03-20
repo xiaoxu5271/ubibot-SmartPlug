@@ -124,7 +124,7 @@ void initialise_mqtt(void)
 uint8_t Send_Mqtt(char *data_buff, uint16_t data_len)
 {
     uint8_t *status_buff = NULL; //],"status":"mac=x","ssid_base64":"x"}
-    uint16_t status_buff_len;
+    // uint16_t status_buff_len;
     char *mqtt_buff = NULL;
 
     if ((status_buff = (uint8_t *)malloc(350)) == NULL)
@@ -133,7 +133,7 @@ uint8_t Send_Mqtt(char *data_buff, uint16_t data_len)
         return 0;
     }
     memset(status_buff, 0, 350);
-    status_buff_len = Create_Status_Json((char *)status_buff); //
+    Create_Status_Json((char *)status_buff); //
 
     if ((mqtt_buff = (char *)malloc(data_len + 350 + 10)) == NULL)
     {

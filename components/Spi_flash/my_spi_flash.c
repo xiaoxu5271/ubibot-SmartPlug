@@ -624,7 +624,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 		}
 		if (i < secremain) //需要擦除
 		{
-			ESP_LOGI("w25_writr", "W25QXX_Erase_Sector");
+			ESP_LOGI("w25_writr", "W25QXX_Erase_Sector:%d", secpos);
 			W25QXX_Erase_Sector(secpos);	//擦除整个扇区
 			for (i = 0; i < secremain; i++) //复制
 			{
@@ -639,7 +639,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 			break; //写入结束了
 		else	   //写入未结束
 		{
-			secpos++;   //扇区地址增1
+			secpos++;	//扇区地址增1
 			secoff = 0; //偏移位置为0
 
 			pBuffer += secremain;		 //指针偏移
@@ -650,7 +650,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 			else
 				secremain = NumByteToWrite; //下一个扇区可以写完了
 		}
-	};
+	}
 }
 
 void SPI_FLASH_Init(void)

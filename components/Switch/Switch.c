@@ -62,6 +62,6 @@ void Switch_Relay(int8_t set_value)
     }
     if (de_sw_s == 2)
     {
-        AT24CXX_WriteOneByte(LAST_SWITCH_ADD, mqtt_json_s.mqtt_switch_status); //写入开关状态
+        E2P_WriteOneByte(LAST_SWITCH_ADD, mqtt_json_s.mqtt_switch_status); //写入开关状态
     }
 }

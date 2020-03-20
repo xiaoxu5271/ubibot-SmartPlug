@@ -64,7 +64,7 @@ void timer_heart_cb(void *arg)
     if (fn_dp)
         if (min_num * 60 % fn_dp == 0)
         {
-            vTaskNotifyGiveFromISR(Binary_dp, NULL);
+            // vTaskNotifyGiveFromISR(Binary_dp, NULL);
         }
     if (fn_485_t)
         if (min_num * 60 % fn_485_t == 0)
@@ -327,21 +327,6 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
     }
 }
 
-// void http_get_task(void *pvParameters)
-// {
-//     xSemaphoreGive(Binary_Http_Send); //先发送一次
-
-//     while (1)
-//     {
-//         //需要把数据发送到平台
-//         xSemaphoreTake(Binary_Http_Send, (fn_dp * 1000) / portTICK_PERIOD_MS);
-//         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
-//                             false, true, -1);
-//         printf("Http send !\n");
-//         // http_send_mes();
-//     }
-// }
-
 void send_heart_task(void *arg)
 {
     char *recv_buf = NULL;
@@ -415,94 +400,6 @@ int32_t http_activate(void)
         }
     }
 }
-
-// uint8_t Last_Led_Status;
-
-// void http_send_mes(void)
-// {
-//     int ret = 0;
-//     int msg_id;
-
-//     if (Led_Status != LED_STA_SEND) //解决两次发送间隔过短，导致LED一直闪烁
-//     {
-//         Last_Led_Status = Led_Status;
-//     }
-//     Led_Status = LED_STA_SEND;
-
-//     char recv_buf[1024] = {0};
-//     char build_po_url[512] = {0};
-//     char build_po_url_json[1024] = {0};
-
-//     // if (LAN_DNS_STATUS == 1)
-//     // {
-//     //     sprintf(NET_INFO, "&net=ethernet");
-//     // }
-
-//     creat_json *pCreat_json1 = malloc(sizeof(creat_json)); //为 pCreat_json1 分配内存  动态内存分配，与free() 配合使用
-//     //创建POST的json格式
-//     create_http_json(pCreat_json1, 0);
-//     if (client != NULL)
-//     {
-//         msg_id = esp_mqtt_client_publish(client, topic_p, pCreat_json1->creat_json_b, 0, 1, 0);
-//         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-//     }
-
-//     if (post_status == POST_NOCOMMAND) //无commID
-//     {
-//         sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nUser-Agent: dalian urban ILS1\r\nContent-Length:%d\r\n\r\n",
-//                 WEB_SERVER,
-//                 ApiKey,
-//                 FIRMWARE,
-//                 WEB_SERVER,
-//                 pCreat_json1->creat_json_c);
-//         // sprintf(build_po_url, "%s%s%s%s%s%s%s%s%s%s%s%s%d%s", http.POST, http.POST_URL1, ApiKey, http.POST_URL_METADATA, http.POST_URL_FIRMWARE, FIRMWARE, http.POST_URL_SSID, NET_NAME,
-//         //         http.HTTP_VERSION11, http.HOST, http.USER_AHENT, http.CONTENT_LENGTH, pCreat_json1->creat_json_c, http.ENTER);
-//     }
-//     else
-//     {
-//         post_status = POST_NOCOMMAND;
-
-//         sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nUser-Agent: dalian urban ILS1\r\nContent-Length:%d\r\n\r\n",
-//                 WEB_SERVER,
-//                 ApiKey,
-//                 FIRMWARE,
-//                 mqtt_json_s.mqtt_command_id,
-//                 WEB_SERVER,
-//                 pCreat_json1->creat_json_c);
-
-//         // sprintf(build_po_url, "%s%s%s%s%s%s%s%s%s%s%s%s%d%s", http.POST, http.POST_URL1, ApiKey, http.POST_URL_METADATA, http.POST_URL_SSID, NET_NAME, http.POST_URL_COMMAND_ID, mqtt_json_s.mqtt_command_id,
-//         //         http.HTTP_VERSION11, http.HOST, http.USER_AHENT, http.CONTENT_LENGTH, pCreat_json1->creat_json_c, http.ENTER);
-//     }
-
-//     sprintf(build_po_url_json, "%s%s", build_po_url, pCreat_json1->creat_json_b);
-
-//     // printf("JSON_test = : %s\n", pCreat_json1->creat_json_b);
-
-//     free(pCreat_json1);
-//     printf("build_po_url_json =\r\n%s\r\n build end \r\n", build_po_url_json);
-
-//     //发送并解析返回数据
-//     /***********調用函數發送***********/
-
-//     if (http_send_buff(build_po_url_json, 1024, recv_buf, 1024) > 0)
-//     {
-//         // printf("解析返回数据！\n");
-//         ESP_LOGI(TAG, "mes recv:%s", recv_buf);
-//         if (parse_objects_http_respond(strchr(recv_buf, '{')))
-//         {
-//             Led_Status = LED_STA_WORK;
-//         }
-//         else
-//         {
-//             Led_Status = LED_STA_ACTIVE_ERR;
-//         }
-//     }
-//     else
-//     {
-//         Led_Status = LED_STA_WIFIERR;
-//         printf("send return : %d \n", ret);
-//     }
-// }
 
 void initialise_http(void)
 {
