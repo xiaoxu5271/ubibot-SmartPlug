@@ -781,8 +781,8 @@ void Create_fields_num(char *read_buf)
 
 esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 {
-    char send_buf[128] = {0};
-    sprintf(send_buf, "{\"status\":0,\"code\": 0}");
+    // char send_buf[128] = {0};
+    // sprintf(send_buf, "{\"status\":0,\"code\": 0}");
     if (NULL == pcCmdBuffer) //null
     {
         return ESP_FAIL;
@@ -792,7 +792,6 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
     if (NULL == pJson)
     {
         cJSON_Delete(pJson); //delete pJson
-
         return ESP_FAIL;
     }
 
@@ -852,11 +851,11 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                     printf("SetupProduct Successed !");
                     printf("{\"status\":0,\"code\": 0}");
 
-                    if (start_AP == 1)
-                    {
-                        printf("%s\n", send_buf);
-                        tcp_send_buff(send_buf, sizeof(send_buf));
-                    }
+                    // if (start_AP == 1)
+                    // {
+                    //     printf("%s\n", send_buf);
+                    //     tcp_send_buff(send_buf, sizeof(send_buf));
+                    // }
                     vTaskDelay(3000 / portTICK_RATE_MS);
                     cJSON_Delete(pJson);
                     fflush(stdout); //使stdout清空，就会立刻输出所有在缓冲区的内容。
