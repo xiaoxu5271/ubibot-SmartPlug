@@ -84,7 +84,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
             {
                 // start_read_num = flash_used_num;
                 start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
-                if (start_read_num > SPI_FLASH_SIZE)
+                if (start_read_num >= SPI_FLASH_SIZE)
                 {
                     start_read_num = 0;
                 }
@@ -128,7 +128,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
                 W25QXX_Write(sava_buff, flash_used_num, Buff_len);
                 flash_used_num += Buff_len;
                 start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
-                if (start_read_num > SPI_FLASH_SIZE)
+                if (start_read_num >= SPI_FLASH_SIZE)
                 {
                     start_read_num = 0;
                 }
@@ -159,7 +159,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
         if (Exhausted_flag == 1) //用尽
         {
             start_read_num = flash_used_num + 4096 - (flash_used_num % 4096);
-            if (start_read_num > SPI_FLASH_SIZE)
+            if (start_read_num >= SPI_FLASH_SIZE)
             {
                 start_read_num = 0;
             }
@@ -173,7 +173,7 @@ void Start_Cache(void)
 {
     Cache_muxtex = xSemaphoreCreateMutex();
     xTaskCreate(Data_Post_Task, "Data_Post_Task", 8192, NULL, 10, &Binary_dp);
-    // xTaskCreate(Write_Flash_Test_task, "Write_Flash_Test_task", 4096, NULL, 10, NULL);
+    xTaskCreate(Write_Flash_Test_task, "Write_Flash_Test_task", 4096, NULL, 10, NULL);
 }
 
 /*******************************************************************************
