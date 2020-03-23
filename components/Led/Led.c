@@ -83,7 +83,7 @@ static void Led_Task(void *arg)
 
             case LED_STA_HEARD_ERR:
                 Led_Off();
-                vTaskDelay(400 / portTICK_RATE_MS);
+                vTaskDelay(100 / portTICK_RATE_MS);
                 Led_B_On();
                 vTaskDelay(100 / portTICK_RATE_MS);
                 break;
