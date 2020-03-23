@@ -64,7 +64,7 @@ void timer_heart_cb(void *arg)
     if (fn_dp)
         if (min_num * 60 % fn_dp == 0)
         {
-            // vTaskNotifyGiveFromISR(Binary_dp, NULL);
+            vTaskNotifyGiveFromISR(Binary_dp, NULL);
         }
     if (fn_485_t)
         if (min_num * 60 % fn_485_t == 0)

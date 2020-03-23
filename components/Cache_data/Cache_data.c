@@ -173,7 +173,7 @@ void Start_Cache(void)
 {
     Cache_muxtex = xSemaphoreCreateMutex();
     xTaskCreate(Data_Post_Task, "Data_Post_Task", 8192, NULL, 10, &Binary_dp);
-    xTaskCreate(Write_Flash_Test_task, "Write_Flash_Test_task", 4096, NULL, 10, NULL);
+    // xTaskCreate(Write_Flash_Test_task, "Write_Flash_Test_task", 4096, NULL, 10, NULL);
 }
 
 /*******************************************************************************
