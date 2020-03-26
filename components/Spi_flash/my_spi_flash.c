@@ -624,12 +624,14 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 		}
 		if (i < secremain) //需要擦除
 		{
-			W25QXX_Erase_Sector(secpos);	//擦除这个扇区
+			ESP_LOGI("w25_writr", "W25QXX_Erase_Sector:%d", secpos);
+			W25QXX_Erase_Sector(secpos);	//擦除整个扇区
 			for (i = 0; i < secremain; i++) //复制
 			{
 				W25QXX_BUF[i + secoff] = pBuffer[i];
 			}
-			W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, 4096); //写入整个扇区
+			// W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, 4096);				 //写入整个扇区 ,包括要写入的扇区后半部分，会导致每次写入都需要擦除
+			W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, secoff + secremain); //只写入前一段，扇区剩余为空，避免每次重复擦除
 		}
 		else
 			W25QXX_Write_NoCheck(pBuffer, WriteAddr, secremain); //写已经擦除了的,直接写入扇区剩余区间.
@@ -637,7 +639,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 			break; //写入结束了
 		else	   //写入未结束
 		{
-			secpos++;   //扇区地址增1
+			secpos++;	//扇区地址增1
 			secoff = 0; //偏移位置为0
 
 			pBuffer += secremain;		 //指针偏移
@@ -648,7 +650,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 			else
 				secremain = NumByteToWrite; //下一个扇区可以写完了
 		}
-	};
+	}
 }
 
 void SPI_FLASH_Init(void)
@@ -694,60 +696,3 @@ void SPI_FLASH_Init(void)
 // const uint8_t TEXT_Buffer2[] = {"123456789"};
 // #define SIZE sizeof(TEXT_Buffer)
 // #define SIZE2 sizeof(TEXT_Buffer2)
-uint8_t datatemp[256] = {0};
-uint8_t testtemp[50] = {0};
-
-void SPIFlash_Test_Process(void)
-{
-	// W25QXX_Write((uint8_t *)TEXT_Buffer2, 4080, SIZE2);
-	// W25QXX_Write((uint8_t *)TEXT_Buffer, 4090, SIZE);
-	// printf("spi flash test write ok!\n");
-
-	char *OutBuffer;
-	uint8_t *SaveBuffer;
-	uint8_t len = 0;
-	uint16_t read_len;
-	cJSON *pJsonRoot;
-	pJsonRoot = cJSON_CreateObject();
-	cJSON_AddStringToObject(pJsonRoot, "created_at", "2020-02-20T08:52:08Z");
-	cJSON_AddNumberToObject(pJsonRoot, "field1", 1.001232);
-	cJSON_AddNumberToObject(pJsonRoot, "field2", 1.00234);
-	cJSON_AddNumberToObject(pJsonRoot, "field2", 1.04303);
-	OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-	cJSON_Delete(pJsonRoot);					   //delete cjson root
-	len = strlen(OutBuffer);
-	printf("len:%d\n%s\n", len, OutBuffer);
-	// SaveBuffer = (uint8_t *)malloc(len);
-	SaveBuffer = (uint8_t *)malloc(len);
-	memcpy(SaveBuffer, OutBuffer, len);
-	W25QXX_Write(SaveBuffer, 0, len);
-	free(SaveBuffer);
-	free(OutBuffer);
-
-	char *OutBuffer2;
-	uint8_t *SaveBuffer2;
-	uint8_t len2 = 0;
-	cJSON *pJsonRoot2;
-	pJsonRoot2 = cJSON_CreateObject();
-	cJSON_AddStringToObject(pJsonRoot2, "created_at", "2020-02-20T08:52:08Z");
-	cJSON_AddNumberToObject(pJsonRoot2, "field1", 1.004);
-	cJSON_AddNumberToObject(pJsonRoot2, "field2", 1.005);
-	cJSON_AddNumberToObject(pJsonRoot2, "field2", 1.006);
-	OutBuffer2 = cJSON_PrintUnformatted(pJsonRoot2); //cJSON_Print(Root)
-	cJSON_Delete(pJsonRoot2);						 //delete cjson root
-	len2 = strlen(OutBuffer2);
-	printf("len2:%d\n%s\n", len2, OutBuffer2);
-	// SaveBuffer = (uint8_t *)malloc(len);
-	SaveBuffer2 = (uint8_t *)malloc(len2);
-	memcpy(SaveBuffer2, OutBuffer2, len2);
-	W25QXX_Write(SaveBuffer2, len, len2);
-	free(SaveBuffer2);
-	free(OutBuffer2);
-
-	// W25QXX_Read((uint8_t *)datatemp, 0, len2 + len);
-	read_len = W25QXX_Read_Data(datatemp, 0, 256);
-	printf("read_len1:%d\n%s\n ", read_len, datatemp);
-	memset(datatemp, 0, 256);
-	read_len = W25QXX_Read_Data(datatemp, read_len + 1, 256);
-	printf("read_len2:%d\n%s\n ", read_len, datatemp);
-}

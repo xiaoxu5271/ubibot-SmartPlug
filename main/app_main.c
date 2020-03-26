@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "nvs_flash.h"
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -64,6 +62,7 @@ void app_main(void)
 		ret = nvs_flash_init();
 	}
 	ESP_ERROR_CHECK(ret);
+
 	init_wifi();
 	ble_app_init();
 	RS485_Init();
