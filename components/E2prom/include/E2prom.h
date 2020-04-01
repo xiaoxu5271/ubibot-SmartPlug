@@ -93,6 +93,10 @@
 #define SW_P_F_NUM_ADDR SW_C_F_NUM_ADDR + 1 + 1           //uint8_t
 #define SW_PC_F_NUM_ADDR SW_P_F_NUM_ADDR + 1 + 1          //uint8_t
 
+#define APN_ADDR SW_PC_F_NUM_ADDR + 1 + 1         //32 B
+#define BEARER_USER_ADDR APN_ADDR + 32 + 1        //32 B
+#define BEARER_PWD_ADDR BEARER_USER_ADDR + 32 + 1 //32 B
+
 void E2prom_Init(void);
 esp_err_t E2P_WriteOneByte(uint16_t reg_addr, uint8_t dat);
 uint8_t E2P_ReadOneByte(uint16_t reg_addr);

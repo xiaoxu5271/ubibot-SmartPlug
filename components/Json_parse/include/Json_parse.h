@@ -25,7 +25,7 @@ esp_err_t creat_object(void);
 #define WORK_FIRE 0x09       //火灾保护状态
 
 #define NET_AUTO 0 //上网模式 自动
-#define NET_LAN 1  //上网模式 网线
+#define NET_4G 1   //上网模式 4G
 #define NET_WIFI 2 //上网模式 wifi
 
 struct

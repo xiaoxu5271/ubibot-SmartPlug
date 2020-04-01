@@ -71,6 +71,9 @@ char ChannelId[CHANNEL_ID_LEN] = {0};
 char USER_ID[USER_ID_LEN] = {0};
 char WEB_SERVER[WEB_HOST_LEN] = {0};
 char BleName[17] = {0};
+char SIM_APN[32] = {0};
+char SIM_USER[32] = {0};
+char SIM_PWD[32] = {0};
 
 static short Parse_fields_num(char *ptrptr);
 void Create_fields_num(char *read_buf);
@@ -875,6 +878,8 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 strcpy(wifi_data.wifi_ssid, pSub->valuestring);
                 E2P_Write(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
                 printf("WIFI_SSID = %s\r\n", pSub->valuestring);
+                E2P_WriteOneByte(NET_MODE_ADD, NET_WIFI); //写入net_mode
+                net_mode = NET_WIFI;
             }
 
             pSub = cJSON_GetObjectItem(pJson, "password"); //"password"
@@ -885,11 +890,45 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 E2P_Write(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
                 printf("WIFI_PWD = %s\r\n", pSub->valuestring);
             }
-            E2P_WriteOneByte(NET_MODE_ADD, NET_WIFI); //写入net_mode
-            net_mode = NET_WIFI;
-            start_user_wifi();
 
+            pSub = cJSON_GetObjectItem(pJson, "apn"); //"apns"
+            if (NULL != pSub)
+            {
+                bzero(SIM_APN, sizeof(SIM_APN));
+                strcpy(SIM_APN, pSub->valuestring);
+                E2P_Write(APN_ADDR, (uint8_t *)SIM_APN, sizeof(SIM_APN));
+                printf("apn = %s\r\n", SIM_APN);
+                net_mode = NET_4G;
+            }
+
+            pSub = cJSON_GetObjectItem(pJson, "user"); //"user"
+            if (NULL != pSub)
+            {
+                bzero(SIM_USER, sizeof(SIM_USER));
+                strcpy(SIM_USER, pSub->valuestring);
+                E2P_Write(BEARER_USER_ADDR, (uint8_t *)SIM_USER, sizeof(SIM_USER));
+                printf("user = %s\r\n", SIM_USER);
+            }
+
+            pSub = cJSON_GetObjectItem(pJson, "pwd"); //"pwd"
+            if (NULL != pSub)
+            {
+                bzero(SIM_PWD, sizeof(SIM_PWD));
+                strcpy(SIM_PWD, pSub->valuestring);
+                E2P_Write(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
+                printf("pwd = %s\r\n", SIM_PWD);
+            }
             cJSON_Delete(pJson); //delete pJson
+
+            //重置网络
+            if (net_mode == NET_WIFI)
+            {
+                start_user_wifi();
+            }
+            else if (net_mode == NET_4G)
+            {
+                /* code */
+            }
 
             return 1;
         }
@@ -1197,6 +1236,11 @@ void Read_Product_E2p(void)
     E2P_Read(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
     E2P_Read(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
     printf("wifi ssid=%s,wifi password=%s\n", wifi_data.wifi_ssid, wifi_data.wifi_pwd);
+
+    E2P_Read(APN_ADDR, (uint8_t *)SIM_APN, sizeof(SIM_APN));
+    E2P_Read(BEARER_USER_ADDR, (uint8_t *)SIM_USER, sizeof(SIM_USER));
+    E2P_Read(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
+    printf("APN=%s,USER=%s,PWD=%s\n", SIM_APN, SIM_USER, SIM_PWD);
 }
 
 void Read_Fields_E2p(void)

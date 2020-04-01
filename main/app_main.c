@@ -30,6 +30,7 @@
 #include "user_app.h"
 #include "my_spi_flash.h"
 #include "Cache_data.h"
+#include "EC20.h"
 
 void app_main(void)
 {
@@ -65,6 +66,7 @@ void app_main(void)
 
 	init_wifi();
 	ble_app_init();
+	EC20_Start();
 	RS485_Init();
 	CSE7759B_Init();
 	start_ds18b20();
