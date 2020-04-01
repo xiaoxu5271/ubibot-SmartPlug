@@ -25,6 +25,7 @@
 #include "CSE7759B.h"
 #include "Switch.h"
 #include "Mqtt.h"
+#include "EC20.h"
 
 #include "Json_parse.h"
 
@@ -74,6 +75,8 @@ char BleName[17] = {0};
 char SIM_APN[32] = {0};
 char SIM_USER[32] = {0};
 char SIM_PWD[32] = {0};
+
+extern TaskHandle_t EC20_Task_Handle;
 
 static short Parse_fields_num(char *ptrptr);
 void Create_fields_num(char *read_buf);
@@ -927,7 +930,12 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             }
             else if (net_mode == NET_4G)
             {
-                /* code */
+                eTaskState TASK_STA = eTaskGetState(EC20_Task_Handle);
+                printf("EC20_Task state is %d\n", TASK_STA);
+                if (TASK_STA == eSuspended)
+                {
+                    vTaskResume(EC20_Task_Handle);
+                }
             }
 
             return 1;

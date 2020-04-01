@@ -13,6 +13,7 @@
 #define UART1_RXD (GPIO_NUM_22)
 
 static const char *TAG = "EC20";
+TaskHandle_t EC20_Task_Handle;
 
 #define EC20_SW 25
 #define BUF_SIZE 1024
@@ -55,7 +56,16 @@ void EC20_Start(void)
     uart1_xq = xQueueCreate(1, sizeof(Data_t));
 
     xTaskCreate(Uart1_Task, "Uart1_Task", 4096, NULL, 8, NULL);
-    xTaskCreate(EC20_Task, "EC20_Task", 4096, NULL, 9, NULL);
+    xTaskCreate(EC20_Task, "EC20_Task", 4096, NULL, 9, &EC20_Task_Handle);
+}
+
+void EC20_Power_On(void)
+{
+    //开机
+    gpio_set_level(EC20_SW, 1); //
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    gpio_set_level(EC20_SW, 0); //
+    vTaskDelay(8000 / portTICK_PERIOD_MS);
 }
 
 void Uart1_Task(void *arg)
@@ -93,20 +103,20 @@ void EC20_Task(void *arg)
         ret = EC20_Init();
         if (ret == 0)
         {
+            EC20_Power_On();
             continue;
         }
-
+        ret = EC20_Http_CFG();
+        if (ret == 0)
+        {
+            continue;
+        }
         ret = EC20_MQTT();
         if (ret == 0)
         {
             continue;
         }
 
-        ret = EC20_Http_CFG();
-        if (ret == 0)
-        {
-            continue;
-        }
         // ret = EC20_Active();
         // if (ret == 0)
         // {
@@ -138,7 +148,6 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint16_t time_out, uint8_t tr
     for (i = 0; i < try_num; i++)
     {
         uart_write_bytes(UART_NUM_1, cmd_buf, strlen(cmd_buf));
-
         for (j = 0; j < 10; j++)
         {
             if (xQueueReceive(uart1_xq, (void *)&at_recv, time_out / portTICK_RATE_MS) == pdPASS)
@@ -169,11 +178,6 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint16_t time_out, uint8_t tr
 uint8_t EC20_Init(void)
 {
     char *ret;
-    //开机
-    gpio_set_level(EC20_SW, 1); //
-    vTaskDelay(200 / portTICK_PERIOD_MS);
-    gpio_set_level(EC20_SW, 0); //
-    vTaskDelay(8000 / portTICK_PERIOD_MS);
 
     ret = AT_Cmd_Send("AT\r\n", "OK", 100, 10);
     if (ret == NULL)
@@ -222,7 +226,7 @@ uint8_t EC20_Init(void)
         ESP_LOGI(TAG, "ICCID=%s", ICCID);
     }
 
-    ret = AT_Cmd_Send("AT+CGATT?\r\n", "+CGATT: 1", 100, 100);
+    ret = AT_Cmd_Send("AT+CGATT?\r\n", "+CGATT: 1", 1000, 10);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
@@ -273,7 +277,7 @@ uint8_t EC20_Http_CFG(void)
         return 1;
     }
 
-    ret = AT_Cmd_Send("AT+QICSGP=1,1,\"CMNET\",\"\",\"\" ,1\r\n", "OK", 100, 5);
+    ret = AT_Cmd_Send("AT+QICSGP=1,1,\"CMNET\",\"\",\"\",1\r\n", "OK", 100, 5);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
@@ -285,6 +289,13 @@ uint8_t EC20_Http_CFG(void)
     {
         ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
         goto end;
+    }
+
+    ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
+    if (ret != NULL)
+    {
+        // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+        return 1;
     }
 
 end:
