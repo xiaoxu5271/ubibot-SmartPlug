@@ -5,6 +5,7 @@
 #include "esp_log.h"
 
 #include "driver/uart.h"
+#include "soc/uart_periph.h"
 #include "driver/gpio.h"
 
 #include "EC20.h"
@@ -14,36 +15,99 @@
 
 static const char *TAG = "EC20";
 TaskHandle_t EC20_Task_Handle;
+TaskHandle_t Uart1_Task_Handle;
 
 #define EC20_SW 25
 #define BUF_SIZE 1024
 
-char ICCID[24] = {0};
+#define EX_UART_NUM UART_NUM_1
 
-typedef struct
-{
-    uint8_t ucValue;
-    char EC20_RECV[BUF_SIZE];
-} Data_t;
+static QueueHandle_t EC_uart_queue;
+SemaphoreHandle_t SEMA_UART;
+
+char EC20_RECV[BUF_SIZE];
+char ICCID[24] = {0};
 
 void Uart1_Task(void *arg);
 void EC20_Task(void *arg);
 
-QueueHandle_t uart1_xq;
+static void uart_event_task(void *pvParameters)
+{
+    char *rst_val;
+    uart_event_t event;
+    size_t buffered_size;
+    // uint8_t *dtmp = (uint8_t *)malloc(BUF_SIZE);
+    for (;;)
+    {
+        //Waiting for UART event.
+        if (xQueueReceive(EC_uart_queue, (void *)&event, (portTickType)portMAX_DELAY))
+        {
+            // bzero(dtmp, BUF_SIZE);
+            bzero(EC20_RECV, BUF_SIZE);
+            switch (event.type)
+            {
+
+            case UART_DATA:
+                ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
+                if (event.size > 1)
+                {
+                    uart_read_bytes(EX_UART_NUM, (uint8_t *)EC20_RECV, event.size, portMAX_DELAY);
+                    // ESP_LOGI(TAG, "[DATA EVT]:\n%s", dtmp);
+
+                    rst_val = strstr((char *)EC20_RECV, "+QMTRECV:"); //
+                    if (rst_val != NULL)
+                    {
+                        ESP_LOGI("MQTT", "%s\n", EC20_RECV);
+                    }
+                    else
+                    {
+                        // ESP_LOGI("OTHER", "%s\n", EC20_RECV);
+                        xSemaphoreGive(SEMA_UART);
+                        // xQueueSendFromISR(uart1_xq, (void *)dtmp, 0);
+                    }
+                }
+
+                break;
+
+            case UART_FIFO_OVF:
+                ESP_LOGI(TAG, "hw fifo overflow");
+                uart_flush_input(EX_UART_NUM);
+                xQueueReset(EC_uart_queue);
+                break;
+
+            case UART_BUFFER_FULL:
+                ESP_LOGI(TAG, "ring buffer full");
+                uart_flush_input(EX_UART_NUM);
+                xQueueReset(EC_uart_queue);
+                break;
+
+            //Others
+            default:
+                ESP_LOGI(TAG, "uart event type: %d", event.type);
+                break;
+            }
+        }
+    }
+    // free(dtmp);
+    // dtmp = NULL;
+    vTaskDelete(NULL);
+}
 
 void EC20_Start(void)
 {
-    uart_config_t uart1_config = {
+
+    uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
-
-    uart_param_config(UART_NUM_1, &uart1_config);
-    uart_set_pin(UART_NUM_1, UART1_TXD, UART1_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
-
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+    //Install UART driver, and get the queue.
+    uart_driver_install(EX_UART_NUM, BUF_SIZE * 2, 0, 20, &EC_uart_queue, 0);
+    uart_param_config(EX_UART_NUM, &uart_config);
+    uart_set_pin(EX_UART_NUM, UART1_TXD, UART1_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     // //uart2 switch io
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
@@ -53,9 +117,10 @@ void EC20_Start(void)
     io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
 
-    uart1_xq = xQueueCreate(1, sizeof(Data_t));
+    SEMA_UART = xSemaphoreCreateBinary();
 
-    xTaskCreate(Uart1_Task, "Uart1_Task", 4096, NULL, 8, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
+    // xTaskCreate(Uart1_Task, "Uart1_Task", 4096, NULL, 20, &Uart1_Task_Handle);
     xTaskCreate(EC20_Task, "EC20_Task", 4096, NULL, 9, &EC20_Task_Handle);
 }
 
@@ -66,32 +131,6 @@ void EC20_Power_On(void)
     vTaskDelay(200 / portTICK_PERIOD_MS);
     gpio_set_level(EC20_SW, 0); //
     vTaskDelay(8000 / portTICK_PERIOD_MS);
-}
-
-void Uart1_Task(void *arg)
-{
-    Data_t uart_recv;
-    int len;
-    char *rst_val;
-    while (1)
-    {
-        memset(uart_recv.EC20_RECV, 0, BUF_SIZE);
-        len = uart_read_bytes(UART_NUM_1, (uint8_t *)uart_recv.EC20_RECV, BUF_SIZE, 20 / portTICK_RATE_MS);
-        if (len > 0) //
-        {
-
-            rst_val = strstr(uart_recv.EC20_RECV, "+QMTRECV:"); //
-            if (rst_val != NULL)
-            {
-                ESP_LOGI("MQTT", "%s\n", uart_recv.EC20_RECV);
-            }
-            else
-            {
-                // ESP_LOGI("OTHER", "%s\n", uart_recv.EC20_RECV);
-                xQueueSend(uart1_xq, (void *)&uart_recv, 0);
-            }
-        }
-    }
 }
 
 void EC20_Task(void *arg)
@@ -141,8 +180,6 @@ void EC20_Task(void *arg)
 char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint16_t time_out, uint8_t try_num)
 {
     char *rst_val = NULL;
-    Data_t at_recv;
-    int len0;
     uint8_t i, j;
 
     for (i = 0; i < try_num; i++)
@@ -150,10 +187,10 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint16_t time_out, uint8_t tr
         uart_write_bytes(UART_NUM_1, cmd_buf, strlen(cmd_buf));
         for (j = 0; j < 10; j++)
         {
-            if (xQueueReceive(uart1_xq, (void *)&at_recv, time_out / portTICK_RATE_MS) == pdPASS)
+            if (xSemaphoreTake(SEMA_UART, time_out / portTICK_RATE_MS) == pdPASS)
             {
-                ESP_LOGI(TAG, "%s\n", at_recv.EC20_RECV);
-                rst_val = strstr(at_recv.EC20_RECV, check_buff); //
+                ESP_LOGI(TAG, "%s\n", EC20_RECV);
+                rst_val = strstr((char *)EC20_RECV, check_buff); //
                 if (rst_val != NULL)
                 {
                     break;

@@ -532,6 +532,8 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     if (json_data_string_parse != NULL)
     {
         json_data_command_id_parse = cJSON_GetObjectItem(json_data_parse, "command_id");
+
+        memset(mqtt_json_s.mqtt_command_id, 0, sizeof(mqtt_json_s.mqtt_command_id));
         strncpy(mqtt_json_s.mqtt_command_id, json_data_command_id_parse->valuestring, strlen(json_data_command_id_parse->valuestring));
         // strncpy(mqtt_json_s.mqtt_string, json_data_string_parse->valuestring, strlen(json_data_string_parse->valuestring));
 

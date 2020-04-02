@@ -8,13 +8,13 @@
             "type": "shell",
             "command": "make",
             "args": [
-                "all"
+                "-j4"
             ]
         },
         {
             "label": "flash",
             "type": "shell",
-            "command": "make",
+            "command": "make j4",
             "args": [
                 "flash"
             ]
@@ -24,6 +24,7 @@
             "type": "shell",
             "command": "make",
             "args": [
+                "-j4",
                 "flash",
                 "monitor"
             ]
