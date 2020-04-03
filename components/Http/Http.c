@@ -330,7 +330,6 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
 void send_heart_task(void *arg)
 {
     char *recv_buf = NULL;
-
     while (1)
     {
         // xSemaphoreTake(Binary_Heart_Send, -1);
@@ -348,7 +347,7 @@ void send_heart_task(void *arg)
         if ((http_send_buff(build_heart_url, 256, recv_buf, HTTP_RECV_BUFF_LEN)) > 0)
         {
             ESP_LOGI(TAG, "hart recv:%s", recv_buf);
-            if (parse_objects_heart(strchr(recv_buf, '{')))
+            if (parse_objects_heart(recv_buf))
             {
                 //successed
                 Led_Status = LED_STA_WORK;
@@ -388,7 +387,7 @@ int32_t http_activate(void)
     else
     {
         ESP_LOGI(TAG, "active recv:%s", recv_buf);
-        if (parse_objects_http_active(strchr(recv_buf, '{')))
+        if (parse_objects_http_active(recv_buf))
         {
             Led_Status = LED_STA_WORK;
             return 1;

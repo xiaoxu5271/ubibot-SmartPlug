@@ -255,19 +255,17 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
 {
     cJSON *cjson_blu_data_parse = NULL;
     cJSON *cjson_blu_data_parse_command = NULL;
-    // cJSON *cjson_blu_data_parse_wifissid = NULL;
-    // cJSON *cjson_blu_data_parse_wifipwd = NULL;
-    // cJSON *cjson_blu_data_parse_ob = NULL;
-    //cJSON *cjson_blu_data_parse_devicepwd = NULL;
-
     printf("start_ble_parse_json：\r\n%s\n", blu_json_data);
-    if (blu_json_data[0] != '{')
+
+    char *resp_val = NULL;
+    resp_val = strstr(blu_json_data, "{");
+    if (resp_val == NULL)
     {
-        printf("blu_json_data Json Formatting error\n");
+        ESP_LOGE("JSON", "DATA NO JSON");
         return 0;
     }
+    cjson_blu_data_parse = cJSON_Parse(resp_val);
 
-    cjson_blu_data_parse = cJSON_Parse(blu_json_data);
     if (cjson_blu_data_parse == NULL) //如果数据包不为JSON则退出
     {
         printf("Json Formatting error2\n");
@@ -315,15 +313,15 @@ esp_err_t parse_objects_http_active(char *http_json_data)
     //char *json_print;
 
     // printf("start_parse_active_http_json\r\n");
-
-    if (http_json_data[0] != '{')
+    char *resp_val = NULL;
+    resp_val = strstr(http_json_data, "{\"result\":\"success\",");
+    if (resp_val == NULL)
     {
-        printf("http_json_data Json Formatting error\n");
-
+        ESP_LOGE("JSON", "DATA NO JSON");
         return 0;
     }
+    json_data_parse = cJSON_Parse(resp_val);
 
-    json_data_parse = cJSON_Parse(http_json_data);
     if (json_data_parse == NULL)
     {
         printf("Json Formatting error3\n");
@@ -400,13 +398,15 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
     cJSON *json_data_parse_value = NULL;
     cJSON *json_data_parse_errorcode = NULL;
 
-    if (http_json_data[0] != '{')
+    char *resp_val = NULL;
+    resp_val = strstr(http_json_data, "{\"result\":\"success\",");
+    if (resp_val == NULL)
     {
-        printf("http_respond_json_data Json Formatting error\n");
+        ESP_LOGE("JSON", "DATA NO JSON");
         return 0;
     }
+    json_data_parse = cJSON_Parse(resp_val);
 
-    json_data_parse = cJSON_Parse(http_json_data);
     if (json_data_parse == NULL)
     {
 
@@ -460,14 +460,15 @@ esp_err_t parse_objects_heart(char *json_data)
 {
     cJSON *json_data_parse = NULL;
     cJSON *json_data_parse_value = NULL;
-    json_data_parse = cJSON_Parse(json_data);
 
-    if (json_data[0] != '{')
+    char *resp_val = NULL;
+    resp_val = strstr(json_data, "{\"result\":\"success\",");
+    if (resp_val == NULL)
     {
-        printf("heart Json Formatting error\n");
-
+        ESP_LOGE("JSON", "DATA NO JSON");
         return 0;
     }
+    json_data_parse = cJSON_Parse(resp_val);
 
     if (json_data_parse == NULL) //如果数据包不为JSON则退出
     {
@@ -508,16 +509,14 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     cJSON *json_data_url = NULL;
     cJSON *json_data_vesion = NULL;
     cJSON *json_data_set_state = NULL;
-
-    json_data_parse = cJSON_Parse(mqtt_json_data);
-    // printf("%s", cJSON_Print(json_data_parse));
-
-    if (mqtt_json_data[0] != '{')
+    char *resp_val = NULL;
+    resp_val = strstr(mqtt_json_data, "{");
+    if (resp_val == NULL)
     {
-        printf("mqtt_json_data Json Formatting error\n");
-
+        ESP_LOGE("JSON", "DATA NO JSON");
         return 0;
     }
+    json_data_parse = cJSON_Parse(resp_val);
 
     if (json_data_parse == NULL) //如果数据包不为JSON则退出
     {

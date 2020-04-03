@@ -340,7 +340,7 @@ static uint8_t Http_post_fun(void)
         }
         // printf("解析返回数据！\n");
         ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
-        if (parse_objects_http_respond(strchr(recv_buff, '{')))
+        if (parse_objects_http_respond(recv_buff))
         {
             Led_Status = LED_STA_WORK;
         }

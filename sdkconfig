@@ -452,7 +452,7 @@ CONFIG_ADC_DISABLE_DAC=y
 #
 # UART configuration
 #
-# CONFIG_UART_ISR_IN_IRAM is not set
+CONFIG_UART_ISR_IN_IRAM=y
 # end of UART configuration
 
 #
