@@ -33,7 +33,7 @@
 全局变量定义
 =========================== 
 */
-// EventGroupHandle_t wifi_event_group; //wifi建立成功信号量
+// EventGroupHandle_t Net_sta_group; //wifi建立成功信号量
 //socket
 static int server_socket = 0;                      //服务器socket
 static struct sockaddr_in server_addr;             //server地址

@@ -113,5 +113,8 @@ extern char ChannelId[CHANNEL_ID_LEN];
 extern char USER_ID[USER_ID_LEN];
 extern char WEB_SERVER[WEB_HOST_LEN];
 extern char BleName[17];
+extern char SIM_APN[32];
+extern char SIM_USER[32];
+extern char SIM_PWD[32];
 
 #endif

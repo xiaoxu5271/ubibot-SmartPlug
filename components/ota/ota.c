@@ -81,7 +81,7 @@ static void wifi_ota_task(void *pvParameter)
     /* Wait for the callback to set the CONNECTED_BIT in the
        event group.
     */
-    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+    xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
     ESP_LOGI(TAG, "Connect to Wifi ! Start to Connect to Server....");
 

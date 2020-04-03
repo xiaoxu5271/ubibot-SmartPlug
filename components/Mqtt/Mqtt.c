@@ -114,7 +114,7 @@ void initialise_mqtt(void)
     };
 
     // xTaskCreate(mqtt_send_task, "mqtt_send_task", 4096, NULL, 7, &Binary_mqtt);
-    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+    xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);

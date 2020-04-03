@@ -10,30 +10,28 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
-
 #include "nvs_flash.h"
-// #include "tcpip_adapter.h"
 #include "esp_smartconfig.h"
 /*  user include */
-#include "Smartconfig.h"
 #include "esp_log.h"
 #include "Led.h"
 #include "tcp_bsp.h"
 // #include "w5500_driver.h"
 #include "Json_parse.h"
 #include "Bluetooth.h"
+#include "EC20.h"
 
+#include "Smartconfig.h"
 #define TAG "USER WIFI"
 
 TaskHandle_t my_tcp_connect_Handle;
-EventGroupHandle_t wifi_event_group;
+EventGroupHandle_t Net_sta_group;
 EventGroupHandle_t tcp_event_group;
 
-// uint8_t wifi_connect_sta = connect_N;
-// uint8_t wifi_work_sta = turn_on;
 uint8_t start_AP = 0;
 uint8_t bl_flag = 0; //蓝牙配网模式
 uint16_t Wifi_ErrCode = 0;
+bool WIFI_STA = false;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
@@ -44,8 +42,14 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        Led_Status = LED_STA_WIFIERR;
-        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+
+        WIFI_STA = false;
+        if (EC20_NET_STA == false)
+        {
+            Led_Status = LED_STA_WIFIERR;
+            xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
+        }
+
         esp_wifi_connect();
         wifi_event_sta_disconnected_t *event = (wifi_event_sta_disconnected_t *)event_data;
         Wifi_ErrCode = event->reason;
@@ -57,7 +61,8 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        WIFI_STA = true;
+        xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
     }
@@ -67,7 +72,7 @@ void init_wifi(void) //
 {
     start_AP = 0;
     // tcpip_adapter_init();
-    wifi_event_group = xEventGroupCreate();
+    Net_sta_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
@@ -87,11 +92,12 @@ void init_wifi(void) //
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
 
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    // ESP_ERROR_CHECK(esp_wifi_start());
 }
 
 void stop_user_wifi(void)
 {
+    WIFI_STA = false;
     esp_err_t err = esp_wifi_stop();
     if (err == ESP_ERR_WIFI_NOT_INIT)
     {
@@ -167,7 +173,7 @@ void start_user_wifi(void)
 // */
 // void wifi_init_apsta(void)
 // {
-//     wifi_event_group = xEventGroupCreate();
+//     Net_sta_group = xEventGroupCreate();
 //     tcpip_adapter_init();
 //     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
 //     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();

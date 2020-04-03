@@ -305,26 +305,15 @@ int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
 int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)
 {
     xSemaphoreTake(xMutex_Http_Send, -1);
-    // xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+    // xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
     //                     false, true, -1); //等网络连接
 
     int32_t ret;
-    // if (LAN_DNS_STATUS == 1)
-    // {
-    //     printf("lan send!!!\n");
-    //     ret = lan_http_send(send_buff, send_size, recv_buff, recv_size);
-    //     // printf("lan_http_send return :%d\n", ret);
-    //     xSemaphoreGive(xMutex_Http_Send);
-    //     return ret;
-    // }
 
-    // else
-    {
-        printf("wifi send!!!\n");
-        ret = wifi_http_send(send_buff, send_size, recv_buff, recv_size);
-        xSemaphoreGive(xMutex_Http_Send);
-        return ret;
-    }
+    printf("wifi send!!!\n");
+    ret = wifi_http_send(send_buff, send_size, recv_buff, recv_size);
+    xSemaphoreGive(xMutex_Http_Send);
+    return ret;
 }
 
 void send_heart_task(void *arg)
@@ -338,7 +327,7 @@ void send_heart_task(void *arg)
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
 
-        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, -1); //等网络连接
+        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
         if ((recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN)) == NULL)
         {
             ESP_LOGE(TAG, "recv_buf malloc fail");
@@ -372,31 +361,35 @@ int32_t http_activate(void)
     char build_http[256];
     char recv_buf[1024];
 
-    sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
-    //http.HTTP_VERSION10, http.HOST, http.USER_AHENT, http.ENTER);
+    xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
 
-    ESP_LOGI(TAG, "build_http=%s\n", build_http);
-
-    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, -1); //等网络连接
-
-    if (http_send_buff(build_http, 256, recv_buf, 1024) < 0)
+    if (WIFI_STA == true)
     {
-        Led_Status = LED_STA_WIFIERR;
-        return 101;
-    }
-    else
-    {
-        ESP_LOGI(TAG, "active recv:%s", recv_buf);
-        if (parse_objects_http_active(recv_buf))
+        sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
+        if (http_send_buff(build_http, 256, recv_buf, 1024) < 0)
         {
-            Led_Status = LED_STA_WORK;
-            return 1;
+            Led_Status = LED_STA_WIFIERR;
+            return 101;
         }
         else
         {
-            Led_Status = LED_STA_ACTIVE_ERR;
-            return 102;
+            ESP_LOGI(TAG, "active recv:%s", recv_buf);
+            if (parse_objects_http_active(recv_buf))
+            {
+                Led_Status = LED_STA_WORK;
+                return 1;
+            }
+            else
+            {
+                Led_Status = LED_STA_ACTIVE_ERR;
+                return 102;
+            }
         }
+    }
+    else
+    {
+
+        return 1;
     }
 }
 

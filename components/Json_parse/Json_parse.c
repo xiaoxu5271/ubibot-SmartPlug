@@ -223,6 +223,20 @@ static short Parse_metadata(char *ptrptr)
     {
         if ((uint8_t)pSubSubSub->valueint != net_mode)
         {
+            // switch (net_mode)
+            // {
+            // case NET_AUTO:
+            //     if ((uint8_t)pSubSubSub->valueint == NET_WIFI)
+            //     {
+
+            //     }
+
+            //     break;
+
+            // default:
+            //     break;
+            // }
+
             net_mode = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
             printf("net_mode = %d\n", net_mode);
@@ -281,7 +295,7 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
     }
     cJSON_Delete(cjson_blu_data_parse);
 
-    if (xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS))
+    if (xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS))
     {
         return http_activate();
     }
@@ -931,9 +945,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             }
             else if (net_mode == NET_4G)
             {
-                eTaskState TASK_STA = eTaskGetState(EC20_Task_Handle);
-                printf("EC20_Task state is %d\n", TASK_STA);
-                if (TASK_STA == eSuspended)
+                if (eTaskGetState(EC20_Task_Handle) == eSuspended)
                 {
                     vTaskResume(EC20_Task_Handle);
                 }

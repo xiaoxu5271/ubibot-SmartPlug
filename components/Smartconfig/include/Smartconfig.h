@@ -14,13 +14,13 @@ extern uint8_t wifi_connect_sta; //wifi连接状态
 // extern uint8_t wifi_work_sta;    //wifi开启状态
 extern uint8_t start_AP;
 extern uint16_t Wifi_ErrCode; //
-
+extern bool WIFI_STA;
 extern uint8_t bl_flag; //蓝牙配网模式
 
 static const int CONNECTED_BIT = BIT0;
 static const int AP_STACONNECTED_BIT = BIT0;
 extern TaskHandle_t my_tcp_connect_Handle;
-extern EventGroupHandle_t wifi_event_group;
+extern EventGroupHandle_t Net_sta_group;
 extern EventGroupHandle_t tcp_event_group;
 
 #define WIFISTATUS_CONNET 0X01

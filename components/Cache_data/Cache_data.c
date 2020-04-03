@@ -42,7 +42,7 @@ void Data_Post_Task(void *pvParameters)
                  esp_get_free_heap_size());
         //发送成功后，判断当前使用flash是否大一个扇区，大于的话再擦除
         ulTaskNotifyTake(pdTRUE, -1);
-        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
                             false, true, -1);
         Create_NET_Json();
         if (!Http_post_fun())

@@ -7,6 +7,9 @@
 #include "driver/uart.h"
 #include "soc/uart_periph.h"
 #include "driver/gpio.h"
+#include "Json_parse.h"
+#include "Smartconfig.h"
+#include "Led.h"
 
 #include "EC20.h"
 
@@ -21,6 +24,8 @@ TaskHandle_t Uart1_Task_Handle;
 #define BUF_SIZE 1024
 
 #define EX_UART_NUM UART_NUM_1
+
+bool EC20_NET_STA = false;
 
 static QueueHandle_t EC_uart_queue;
 static QueueHandle_t EC_at_queue;
@@ -44,7 +49,6 @@ static void uart_event_task(void *pvParameters)
         //Waiting for UART event.
         if (xQueueReceive(EC_uart_queue, (void *)&event, (portTickType)portMAX_DELAY))
         {
-
             switch (event.type)
             {
             case UART_DATA:
@@ -75,15 +79,30 @@ static void uart_event_task(void *pvParameters)
                         all_read_len = 0;
                         flow_num = 0;
                         // ESP_LOGI("RECV", "%s\n", EC20_RECV);
-                        rst_val = strstr((char *)EC20_RECV, "+QMTRECV:"); //
-                        if (rst_val != NULL)
+                        ; //
+                        if (strstr((char *)EC20_RECV, "+QMTRECV:") != NULL)
                         {
                             ESP_LOGI("MQTT", "%s\n", EC20_RECV);
+                        }
+                        else if (strstr((char *)EC20_RECV, "+QMTSTAT:") != NULL)
+                        {
+                            ESP_LOGE("MQTT", "%s\n", EC20_RECV);
+                            if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+                            {
+                                vTaskResume(EC20_Task_Handle);
+                            }
+                        }
+                        else if (strstr((char *)EC20_RECV, "+QMTPING:") != NULL)
+                        {
+                            ESP_LOGE("MQTT", "%s\n", EC20_RECV);
+                            if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+                            {
+                                vTaskResume(EC20_Task_Handle);
+                            }
                         }
                         else
                         {
                             xQueueSend(EC_at_queue, (void *)EC20_RECV, 0);
-                            // xSemaphoreGive(SEMA_UART);
                         }
                         uart_flush(EX_UART_NUM);
                     }
@@ -146,9 +165,18 @@ void EC20_Power_On(void)
 {
     //开机
     gpio_set_level(EC20_SW, 1); //
-    vTaskDelay(200 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     gpio_set_level(EC20_SW, 0); //
-    vTaskDelay(8000 / portTICK_PERIOD_MS);
+    vTaskDelay(15000 / portTICK_PERIOD_MS);
+}
+
+void EC20_Rest(void)
+{
+    if (AT_Cmd_Send("AT+QPOWD=0\r\n", "POWERED DOWN", 1000, 1) != NULL)
+    {
+        vTaskDelay(30000 / portTICK_PERIOD_MS);
+    }
+    EC20_Power_On();
 }
 
 void EC20_Task(void *arg)
@@ -157,33 +185,40 @@ void EC20_Task(void *arg)
 
     while (1)
     {
-        ret = EC20_Init();
-        if (ret == 0)
+        EC20_NET_STA = false;
+        if (WIFI_STA == false)
         {
-            continue;
+            Led_Status = LED_STA_WIFIERR;
+            xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
         }
-        ret = EC20_Http_CFG();
-        if (ret == 0)
+        if (net_mode != NET_WIFI)
         {
-            continue;
-        }
-        ret = EC20_MQTT();
-        if (ret == 0)
-        {
-            continue;
+            ret = EC20_Init();
+            if (ret == 0)
+            {
+                continue;
+            }
+            ret = EC20_Http_CFG();
+            if (ret == 0)
+            {
+                continue;
+            }
+            ret = EC20_MQTT();
+            if (ret == 0)
+            {
+                continue;
+            }
+
+            ret = EC20_Active();
+            if (ret == 0)
+            {
+                continue;
+            }
+
+            EC20_NET_STA = true;
+            xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
         }
 
-        ret = EC20_Active();
-        if (ret == 0)
-        {
-            continue;
-        }
-
-        // ret = EC20_Post_Data();
-        // if (ret == 0)
-        // {
-        //     continue;
-        // }
         vTaskSuspend(NULL);
     }
 }
@@ -236,21 +271,7 @@ uint8_t EC20_Init(void)
 {
     char *ret;
 
-    ret = AT_Cmd_Send("AT\r\n", "OK", 1000, 10);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        EC20_Power_On();
-        goto end;
-    }
-
-    // ret = AT_Cmd_Send("AT+CFUN=1,1\r\n", "RDY", 60000, 1);
-    // if (ret == NULL)
-    // {
-    //     ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-    //     goto end;
-    // }
-    // vTaskDelay(5000 / portTICK_PERIOD_MS);
+    EC20_Rest();
 
     ret = AT_Cmd_Send("ATE0\r\n", "OK", 100, 5); //回显
     if (ret == NULL)
@@ -308,6 +329,8 @@ end:
 uint8_t EC20_Http_CFG(void)
 {
     char *ret;
+    char *cmd_buf = (char *)malloc(120);
+
     ret = AT_Cmd_Send("AT+QHTTPCFG=\"contextid\",1\r\n", "OK", 100, 5);
     if (ret == NULL)
     {
@@ -336,7 +359,8 @@ uint8_t EC20_Http_CFG(void)
         return 1;
     }
 
-    ret = AT_Cmd_Send("AT+QICSGP=1,1,\"CMNET\",\"\",\"\",1\r\n", "OK", 100, 5);
+    sprintf(cmd_buf, "AT+QICSGP=1,1,\"%s\",\"%s\",\"%s\",1\r\n", SIM_APN, SIM_USER, SIM_PWD);
+    ret = AT_Cmd_Send(cmd_buf, "OK", 100, 5);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
@@ -359,7 +383,7 @@ uint8_t EC20_Http_CFG(void)
 
 end:
     // free(active_url);
-    // free(cmd_buf);
+    free(cmd_buf);
     if (ret == NULL)
     {
         return 0;
@@ -516,17 +540,17 @@ uint8_t EC20_MQTT(void)
     cmd_buf = (char *)malloc(CMD_LEN);
     memset(cmd_buf, 0, CMD_LEN);
 
-    // ret = AT_Cmd_Send("AT+QMTCFG=\"version\",0,3\r\n", "OK", 100, 5);
-    // if (ret == NULL)
-    // {
-    //     ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-    //     goto end;
-    // }
-
     ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 1000, 5);
     if (ret != NULL)
     {
         ESP_LOGI(TAG, "EC20_MQTT already open");
+        goto end;
+    }
+
+    ret = AT_Cmd_Send("AT+QMTCFG=\"version\",0,3\r\n", "OK", 100, 5);
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
         goto end;
     }
 
