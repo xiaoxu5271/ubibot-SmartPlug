@@ -226,10 +226,9 @@ static uint8_t Http_post_fun(void)
     socket_num = http_post_init(post_data_len);
     if (socket_num > 0)
     {
-        if (write(socket_num, post_header, strlen((const char *)post_header)) < 0) //step4：发送http Header
+        // if (write(socket_num, post_header, strlen((const char *)post_header)) < 0) //step4：发送http Header
+        if (http_send_post(socket_num, post_header, false) != 1)
         {
-            ESP_LOGE(TAG, "... socket send failed");
-            close(socket_num);
             free(status_buff);
             xSemaphoreGive(Cache_muxtex);
             return 0;
@@ -280,12 +279,10 @@ static uint8_t Http_post_fun(void)
                 }
 
                 // ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
-                if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
+                // if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
+                if (http_send_post(socket_num, (char *)one_post_buff, false) != 1)
                 {
-                    ESP_LOGE(TAG, "... socket send failed");
-                    close(socket_num);
                     free(status_buff);
-                    free(one_post_buff);
                     xSemaphoreGive(Cache_muxtex);
                     return 0;
                 }
@@ -314,21 +311,14 @@ static uint8_t Http_post_fun(void)
         }
         free(one_post_buff);
 
-        if (write(socket_num, status_buff, strlen((const char *)status_buff)) < 0) //status_buff
+        if (http_send_post(socket_num, status_buff, false) != 1)
         {
-            ESP_LOGE(TAG, "... socket send failed");
-            close(socket_num);
             free(status_buff);
             xSemaphoreGive(Cache_muxtex);
             return 0;
         }
 
-        if ((recv_buff = (char *)malloc(HTTP_RECV_BUFF_LEN)) == NULL)
-        {
-            ESP_LOGE(TAG, "recv_buff malloc fail! ");
-            free(status_buff);
-            return 0;
-        }
+        recv_buff = (char *)malloc(HTTP_RECV_BUFF_LEN);
         memset(recv_buff, 0, HTTP_RECV_BUFF_LEN);
         if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) < 0)
         {

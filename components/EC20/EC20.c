@@ -39,7 +39,6 @@ void EC20_Task(void *arg);
 
 static void uart_event_task(void *pvParameters)
 {
-    char *rst_val;
     uart_event_t event;
     uint8_t flow_num = 0;
     uint16_t all_read_len = 0;
@@ -209,11 +208,11 @@ void EC20_Task(void *arg)
                 continue;
             }
 
-            ret = EC20_Active();
-            if (ret == 0)
-            {
-                continue;
-            }
+            // ret = EC20_Active();
+            // if (ret == 0)
+            // {
+            //     continue;
+            // }
 
             EC20_NET_STA = true;
             xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
@@ -394,19 +393,15 @@ end:
     }
 }
 
-uint8_t EC20_Active(void)
+uint8_t EC20_Active(char *active_url, char *recv_buf)
 {
     char *ret;
     char *cmd_buf;
-    char *active_url;
     uint8_t active_len;
-    active_url = (char *)malloc(80);
     cmd_buf = (char *)malloc(24);
     memset(cmd_buf, 0, 24);
-    memset(active_url, 0, 80);
-    sprintf(active_url, "http://api.ubibot.cn/products/ubibot-sp1/devices/AAAA0004SP1/activate\r\n");
-    active_len = strlen(active_url);
-    sprintf(cmd_buf, "AT+QHTTPURL=%d,10\r\n", 69);
+    active_len = strlen(active_url) - 2; //不包含换行符
+    sprintf(cmd_buf, "AT+QHTTPURL=%d,10\r\n", active_len);
     ret = AT_Cmd_Send(cmd_buf, "CONNECT", 100, 5);
     if (ret == NULL)
     {
@@ -427,15 +422,15 @@ uint8_t EC20_Active(void)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "+QHTTPREAD: 0", 100, 1);
+    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 100, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
         goto end;
     }
+    memcpy(recv_buf, ret, BUF_SIZE);
 
 end:
-    free(active_url);
     free(cmd_buf);
     if (ret == NULL)
     {
@@ -453,8 +448,8 @@ uint8_t EC20_Post_Data(void)
     char *cmd_buf;
     char *post_buf;
     char *post_url;
-    uint16_t post_len;
-    uint16_t url_len;
+    // uint16_t post_len;
+    // uint16_t url_len;
 
     post_url = (char *)malloc(80);
     cmd_buf = (char *)malloc(30);
@@ -525,6 +520,33 @@ end:
     {
         return 1;
     }
+}
+
+uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
+{
+    uart_write_bytes(EX_UART_NUM, post_buf, strlen(post_buf));
+    if (end_flag == true)
+    {
+        if (AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 60000, 1) == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size)
+{
+    char *rst_val;
+    rst_val = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 60000, 1);
+    if (rst_val == NULL)
+    {
+        ESP_LOGE(TAG, "EC20_read %d", __LINE__);
+        return 0;
+    }
+    memcpy(recv_buff, rst_val, buff_size);
+    return 1;
 }
 
 #define API_KEY "30f29fe61a17c644315338535f91fa78"
