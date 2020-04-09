@@ -119,6 +119,7 @@ void initialise_mqtt(void)
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
     esp_mqtt_client_start(client);
+    esp_mqtt_client_start(client);
 }
 
 uint8_t Send_Mqtt(char *data_buff, uint16_t data_len)

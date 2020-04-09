@@ -25,8 +25,6 @@
 #include "Http.h"
 #include "Mqtt.h"
 
-SemaphoreHandle_t xMutex_Http_Send = NULL;
-
 TaskHandle_t Binary_Heart_Send = NULL;
 TaskHandle_t Binary_dp = NULL;
 TaskHandle_t Binary_485_t = NULL;
@@ -266,7 +264,7 @@ int32_t http_post_init(uint32_t Content_Length)
             close(s);
             freeaddrinfo(res);
             // vTaskDelay(4000 / portTICK_PERIOD_MS);
-            return -1;
+            ret = -1;
             goto end;
         }
 
@@ -285,6 +283,7 @@ int32_t http_post_init(uint32_t Content_Length)
     }
     else
     {
+        ESP_LOGI(TAG, "EC20 POST INIT");
         if (post_status == POST_NOCOMMAND) //无commID
         {
             sprintf(build_po_url, "http://%s/update.json?api_key=%s&metadata=true&firmware=%s\r\n",
@@ -302,15 +301,22 @@ int32_t http_post_init(uint32_t Content_Length)
                     mqtt_json_s.mqtt_command_id);
         }
 
-        sprintf(cmd_buf, "AT+QHTTPURL=%d,60\r\n", (strlen(build_po_url) - 2));
-        if (AT_Cmd_Send(cmd_buf, "CONNECT", 100, 5) == NULL)
+        if (EC20_Net_Check() == 0)
         {
             ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
             ret = -1;
             goto end;
         }
 
-        if (AT_Cmd_Send(build_po_url, "OK", 100, 5) == NULL)
+        sprintf(cmd_buf, "AT+QHTTPURL=%d,60\r\n", (strlen(build_po_url) - 2));
+        if (AT_Cmd_Send(cmd_buf, "CONNECT", 1000, 1) == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+            ret = -1;
+            goto end;
+        }
+
+        if (AT_Cmd_Send(build_po_url, "OK", 60000, 1) == NULL)
         {
             ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
             ret = -1;
@@ -319,7 +325,7 @@ int32_t http_post_init(uint32_t Content_Length)
 
         bzero(cmd_buf, 30);
         sprintf(cmd_buf, "AT+QHTTPPOST=%d,%d,%d\r\n", Content_Length, 60, 60);
-        if (AT_Cmd_Send(cmd_buf, "CONNECT", 10000, 1) == NULL)
+        if (AT_Cmd_Send(cmd_buf, "CONNECT", 6000, 1) == NULL)
         {
             ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
             ret = -1;
@@ -349,9 +355,10 @@ int8_t http_send_post(int32_t s, char *post_buf, bool end_flag)
     }
     else
     {
+        ESP_LOGI(TAG, "EC20 POST SEND");
         if (EC20_Send_Post_Data(post_buf, end_flag) != 1)
         {
-            ESP_LOGE(TAG, "... socket send failed");
+            ESP_LOGE(TAG, "EC20 send failed");
             ret = -1;
         }
     }
@@ -386,6 +393,7 @@ int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
     }
     else
     {
+        ESP_LOGI(TAG, "EC20 POST READ");
         ret = EC20_Read_Post_Data(recv_buff, buff_size);
     }
 
@@ -394,7 +402,6 @@ int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
 
 int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)
 {
-    xSemaphoreTake(xMutex_Http_Send, -1);
     // xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
     //                     false, true, -1); //等网络连接
 
@@ -402,7 +409,7 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
 
     printf("wifi send!!!\n");
     ret = wifi_http_send(send_buff, send_size, recv_buff, recv_size);
-    xSemaphoreGive(xMutex_Http_Send);
+
     return ret;
 }
 
@@ -413,15 +420,15 @@ void send_heart_task(void *arg)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
+        ESP_LOGW("heart_memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
 
         xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
 
+        xSemaphoreTake(xMutex_Http_Send, -1);
         build_heart_url = (char *)malloc(256);
         recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
-
         if (WIFI_STA == true)
         {
 
@@ -469,7 +476,7 @@ void send_heart_task(void *arg)
                 }
             }
         }
-
+        xSemaphoreGive(xMutex_Http_Send);
         free(recv_buf);
         free(build_heart_url);
     }
@@ -483,11 +490,12 @@ int32_t http_activate(void)
     uint8_t ret;
 
     xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
-
+    xSemaphoreTake(xMutex_Http_Send, -1);
     if (WIFI_STA == true)
     {
+
         sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
-        if (http_send_buff(build_http, 256, recv_buf, 1024) < 0)
+        if (wifi_http_send(build_http, 256, recv_buf, 1024) < 0)
         {
             Led_Status = LED_STA_WIFIERR;
             ret = 101;
@@ -530,7 +538,7 @@ int32_t http_activate(void)
             }
         }
     }
-
+    xSemaphoreGive(xMutex_Http_Send);
     free(build_http);
     free(recv_buf);
     return ret;
@@ -538,15 +546,14 @@ int32_t http_activate(void)
 
 void initialise_http(void)
 {
-    while (http_activate() != 1) //激活
+    xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
+    while (http_activate() != 1)                //激活
     {
         ESP_LOGE(TAG, "activate fail\n");
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
 
     xTaskCreate(send_heart_task, "send_heart_task", 8192, NULL, 5, &Binary_Heart_Send);
-
-    xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
 
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
 
@@ -557,6 +564,4 @@ void initialise_http(void)
     {
         printf("timer heart create err code:%d\n", err);
     }
-
-    // xTaskCreate(&http_get_task, "http_get_task", 8192, NULL, 6, &httpHandle);
 }

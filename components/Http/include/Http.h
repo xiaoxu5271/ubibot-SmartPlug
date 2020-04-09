@@ -30,6 +30,8 @@
 
 #define HTTP_RECV_BUFF_LEN 1024
 
+SemaphoreHandle_t xMutex_Http_Send;
+
 //需要发送的二值信号量
 extern TaskHandle_t Binary_Heart_Send;
 extern TaskHandle_t Binary_dp;

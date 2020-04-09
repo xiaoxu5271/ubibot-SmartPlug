@@ -197,14 +197,13 @@ static uint8_t Http_post_fun(void)
     bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
     char *recv_buff = NULL;                   //post 返回
 
-    if ((status_buff = (char *)malloc(350)) == NULL)
-    {
-        ESP_LOGE(TAG, "status_buff malloc fail! ");
-        return 0;
-    }
+    status_buff = (char *)malloc(350);
+    one_post_buff = (uint8_t *)malloc(ONE_POST_BUFF_LEN);
+    recv_buff = (char *)malloc(HTTP_RECV_BUFF_LEN);
 
     memset(status_buff, 0, 350);
     xSemaphoreTake(Cache_muxtex, -1);
+    xSemaphoreTake(xMutex_Http_Send, -1);
     status_buff_len = Create_Status_Json(status_buff); //
     ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
@@ -215,147 +214,133 @@ static uint8_t Http_post_fun(void)
 
     if (cache_data_len == 0)
     {
-        free(status_buff);
-        xSemaphoreGive(Cache_muxtex);
-        return 0;
+        ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        goto end;
     }
 
     post_data_len = strlen(post_header) + strlen(status_buff) + cache_data_len;
     ESP_LOGI(TAG, "post_data_len=%d,cache_data_len=%d", post_data_len, cache_data_len);
 
     socket_num = http_post_init(post_data_len);
-    if (socket_num > 0)
+    if (socket_num < 0)
     {
-        // if (write(socket_num, post_header, strlen((const char *)post_header)) < 0) //step4：发送http Header
-        if (http_send_post(socket_num, post_header, false) != 1)
-        {
-            free(status_buff);
-            xSemaphoreGive(Cache_muxtex);
-            return 0;
-        }
+        ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        goto end;
+    }
 
-        //如果跨区，则分两次读
-        if (start_read_num > end_read_num)
-        {
-            end_read_num_one = SPI_FLASH_SIZE;
-        }
-        else
-        {
-            end_read_num_one = end_read_num;
-        }
+    // if (write(socket_num, post_header, strlen((const char *)post_header)) < 0) //step4：发送http Header
+    if (http_send_post(socket_num, (char *)post_header, false) != 1)
+    {
+        ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        goto end;
+    }
 
-        if ((one_post_buff = (uint8_t *)malloc(ONE_POST_BUFF_LEN)) == NULL)
-        {
-            ESP_LOGE(TAG, "one_post_buff malloc fail! ");
-            return 0;
-        }
-        while (send_status == false)
-        {
-            memset(one_post_buff, 0, ONE_POST_BUFF_LEN);
-            one_data_len = W25QXX_Read_Data(one_post_buff, start_read_num_oen, ONE_POST_BUFF_LEN);
-            if (one_data_len > 0)
-            {
-                start_read_num_oen = start_read_num_oen + one_data_len;
-                if (start_read_num_oen >= end_read_num_one)
-                {
-                    //跨区 后半段读取完成
-                    if (start_read_num > end_read_num && end_read_num_one == SPI_FLASH_SIZE)
-                    {
-                        start_read_num_oen = 0;
-                        end_read_num_one = end_read_num;
-                        one_post_buff[strlen((const char *)one_post_buff)] = ',';
-                        ESP_LOGI(TAG, "first half post/read over");
-                    }
-                    else
-                    {
-                        //数据读完
-                        send_status = true;
-                        ESP_LOGI(TAG, "All data post/read over");
-                    }
-                }
-                else
-                {
-                    one_post_buff[strlen((const char *)one_post_buff)] = ',';
-                }
-
-                // ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
-                // if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
-                if (http_send_post(socket_num, (char *)one_post_buff, false) != 1)
-                {
-                    free(status_buff);
-                    xSemaphoreGive(Cache_muxtex);
-                    return 0;
-                }
-            }
-            else //当前读取的缓存中没有正确数组
-            {
-                start_read_num_oen += ONE_POST_BUFF_LEN; //跳过无数据的地址，继续读取
-
-                if (start_read_num_oen >= end_read_num_one)
-                {
-                    //跨区 后半段读取完成
-                    if (start_read_num > end_read_num && end_read_num_one == SPI_FLASH_SIZE)
-                    {
-                        start_read_num_oen = 0;
-                        end_read_num_one = end_read_num;
-                        ESP_LOGI(TAG, "first half post/read over");
-                    }
-                    else
-                    {
-                        //数据读完
-                        send_status = true;
-                        ESP_LOGI(TAG, "All data post/read over");
-                    }
-                }
-            }
-        }
-        free(one_post_buff);
-
-        if (http_send_post(socket_num, status_buff, false) != 1)
-        {
-            free(status_buff);
-            xSemaphoreGive(Cache_muxtex);
-            return 0;
-        }
-
-        recv_buff = (char *)malloc(HTTP_RECV_BUFF_LEN);
-        memset(recv_buff, 0, HTTP_RECV_BUFF_LEN);
-        if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) < 0)
-        {
-            ESP_LOGE(TAG, "POST READ ERR");
-            free(status_buff);
-            free(recv_buff);
-            xSemaphoreGive(Cache_muxtex);
-            return 0;
-        }
-        // printf("解析返回数据！\n");
-        ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
-        if (parse_objects_http_respond(recv_buff))
-        {
-            Led_Status = LED_STA_WORK;
-        }
-        else
-        {
-            Led_Status = LED_STA_ACTIVE_ERR;
-        }
+    //如果跨区，则分两次读
+    if (start_read_num > end_read_num)
+    {
+        end_read_num_one = SPI_FLASH_SIZE;
     }
     else
     {
-        ESP_LOGE(TAG, "http_post_init ERR");
-        close(socket_num);
-        free(status_buff);
-        xSemaphoreGive(Cache_muxtex);
-        return 0;
+        end_read_num_one = end_read_num;
     }
+
+    while (send_status == false)
+    {
+        memset(one_post_buff, 0, ONE_POST_BUFF_LEN);
+        one_data_len = W25QXX_Read_Data(one_post_buff, start_read_num_oen, ONE_POST_BUFF_LEN);
+        if (one_data_len > 0)
+        {
+            start_read_num_oen = start_read_num_oen + one_data_len;
+            if (start_read_num_oen >= end_read_num_one)
+            {
+                //跨区 后半段读取完成
+                if (start_read_num > end_read_num && end_read_num_one == SPI_FLASH_SIZE)
+                {
+                    start_read_num_oen = 0;
+                    end_read_num_one = end_read_num;
+                    one_post_buff[strlen((const char *)one_post_buff)] = ',';
+                    ESP_LOGI(TAG, "first half post/read over");
+                }
+                else
+                {
+                    //数据读完
+                    send_status = true;
+                    ESP_LOGI(TAG, "All data post/read over");
+                }
+            }
+            else
+            {
+                one_post_buff[strlen((const char *)one_post_buff)] = ',';
+            }
+
+            // ESP_LOGI(TAG, "post_buff:\n%s\nstrlen=%d,data_len=%d", one_post_buff, strlen((const char *)one_post_buff), one_data_len);
+            // if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
+            if (http_send_post(socket_num, (char *)one_post_buff, false) != 1)
+            {
+                ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+                goto end;
+            }
+        }
+        else //当前读取的缓存中没有正确数组
+        {
+            start_read_num_oen += ONE_POST_BUFF_LEN; //跳过无数据的地址，继续读取
+
+            if (start_read_num_oen >= end_read_num_one)
+            {
+                //跨区 后半段读取完成
+                if (start_read_num > end_read_num && end_read_num_one == SPI_FLASH_SIZE)
+                {
+                    start_read_num_oen = 0;
+                    end_read_num_one = end_read_num;
+                    ESP_LOGI(TAG, "first half post/read over");
+                }
+                else
+                {
+                    //数据读完
+                    send_status = true;
+                    ESP_LOGI(TAG, "All data post/read over");
+                }
+            }
+        }
+    }
+
+    if (http_send_post(socket_num, status_buff, true) != 1)
+    {
+        ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        goto end;
+    }
+
+    memset(recv_buff, 0, HTTP_RECV_BUFF_LEN);
+    if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) <= 0)
+    {
+        ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        goto end;
+    }
+    // printf("解析返回数据！\n");
+    ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
+    if (parse_objects_http_respond(recv_buff))
+    {
+        Led_Status = LED_STA_WORK;
+    }
+    else
+    {
+        Led_Status = LED_STA_ACTIVE_ERR;
+    }
+
     E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
     if (Exhausted_flag == 1)
     {
         Exhausted_flag = 0;
         E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
     }
+
+end:
     free(status_buff);
     free(recv_buff);
+    free(one_post_buff);
     xSemaphoreGive(Cache_muxtex);
+    xSemaphoreGive(xMutex_Http_Send);
     return 1;
 }
 

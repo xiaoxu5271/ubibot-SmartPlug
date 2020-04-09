@@ -92,7 +92,7 @@ void init_wifi(void) //
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
 
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
-    // ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_start());
 }
 
 void stop_user_wifi(void)

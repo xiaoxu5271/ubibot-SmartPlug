@@ -28,10 +28,10 @@ TaskHandle_t Uart1_Task_Handle;
 bool EC20_NET_STA = false;
 
 static QueueHandle_t EC_uart_queue;
-static QueueHandle_t EC_at_queue;
-SemaphoreHandle_t SEMA_UART;
+// static QueueHandle_t EC_at_queue;
+static SemaphoreHandle_t EC20_at_Binary;
 
-char EC20_RECV[BUF_SIZE];
+uint8_t EC20_RECV[BUF_SIZE];
 char ICCID[24] = {0};
 
 void Uart1_Task(void *arg);
@@ -40,7 +40,6 @@ void EC20_Task(void *arg);
 static void uart_event_task(void *pvParameters)
 {
     uart_event_t event;
-    uint8_t flow_num = 0;
     uint16_t all_read_len = 0;
 
     for (;;)
@@ -54,31 +53,18 @@ static void uart_event_task(void *pvParameters)
                 // ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
                 if (event.size > 1)
                 {
-                    if (flow_num == 0)
-                    {
-                        bzero(EC20_RECV, BUF_SIZE);
-                    }
-                    uart_read_bytes(EX_UART_NUM, (uint8_t *)(EC20_RECV + flow_num * 120), event.size, portMAX_DELAY);
-                    all_read_len += event.size;
-                    if (all_read_len > BUF_SIZE)
+                    if (all_read_len + event.size >= BUF_SIZE)
                     {
                         ESP_LOGE(TAG, "read len flow");
-                        uart_flush(EX_UART_NUM);
                         all_read_len = 0;
-                        flow_num = 0;
-                        break;
+                        memset(EC20_RECV, 0, BUF_SIZE);
                     }
+                    uart_read_bytes(EX_UART_NUM, EC20_RECV + all_read_len, event.size, portMAX_DELAY);
+                    all_read_len += event.size;
 
-                    if (event.size == 120)
+                    EC20_RECV[all_read_len] = 0; //去掉字符串结束符，防止字符串拼接不成功
+                    if (EC20_RECV[all_read_len - 1] == '\n')
                     {
-                        flow_num += 1;
-                    }
-                    else
-                    {
-                        all_read_len = 0;
-                        flow_num = 0;
-                        // ESP_LOGI("RECV", "%s\n", EC20_RECV);
-                        ; //
                         if (strstr((char *)EC20_RECV, "+QMTRECV:") != NULL)
                         {
                             ESP_LOGI("MQTT", "%s\n", EC20_RECV);
@@ -99,10 +85,21 @@ static void uart_event_task(void *pvParameters)
                                 vTaskResume(EC20_Task_Handle);
                             }
                         }
+                        else if (strstr((char *)EC20_RECV, "+CME ERROR:") != NULL)
+                        {
+                            ESP_LOGE("MQTT", "%s\n", EC20_RECV);
+                            if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+                            {
+                                vTaskResume(EC20_Task_Handle);
+                            }
+                        }
                         else
                         {
-                            xQueueSend(EC_at_queue, (void *)EC20_RECV, 0);
+                            // xQueueSend(EC_at_queue, (void *)EC20_RECV, 0);
+                            xSemaphoreGive(EC20_at_Binary);
                         }
+                        all_read_len = 0;
+                        memset(EC20_RECV, 0, BUF_SIZE);
                         uart_flush(EX_UART_NUM);
                     }
                 }
@@ -141,7 +138,7 @@ void EC20_Start(void)
         .source_clk = UART_SCLK_APB,
     };
     //Install UART driver, and get the queue.
-    uart_driver_install(EX_UART_NUM, BUF_SIZE * 2, 0, 10, &EC_uart_queue, 0);
+    uart_driver_install(EX_UART_NUM, BUF_SIZE * 2, 0, 2, &EC_uart_queue, 0);
     uart_param_config(EX_UART_NUM, &uart_config);
     uart_set_pin(EX_UART_NUM, UART1_TXD, UART1_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     // //uart2 switch io
@@ -153,10 +150,10 @@ void EC20_Start(void)
     io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
 
-    EC_at_queue = xQueueCreate(10, BUF_SIZE);
-    SEMA_UART = xSemaphoreCreateBinary();
+    EC20_at_Binary = xSemaphoreCreateBinary();
+    // EC_at_queue = xQueueCreate(2, BUF_SIZE);
 
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
     xTaskCreate(EC20_Task, "EC20_Task", 2048, NULL, 9, &EC20_Task_Handle);
 }
 
@@ -166,7 +163,8 @@ void EC20_Power_On(void)
     gpio_set_level(EC20_SW, 1); //
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     gpio_set_level(EC20_SW, 0); //
-    vTaskDelay(15000 / portTICK_PERIOD_MS);
+    // vTaskDelay(15000 / portTICK_PERIOD_MS);
+    AT_Cmd_Send(NULL, "RDY", 10000, 1);
 }
 
 void EC20_Rest(void)
@@ -181,7 +179,6 @@ void EC20_Rest(void)
 void EC20_Task(void *arg)
 {
     uint8_t ret;
-
     while (1)
     {
         EC20_NET_STA = false;
@@ -202,13 +199,7 @@ void EC20_Task(void *arg)
             {
                 continue;
             }
-            ret = EC20_MQTT();
-            if (ret == 0)
-            {
-                continue;
-            }
-
-            // ret = EC20_Active();
+            // ret = EC20_MQTT();
             // if (ret == 0)
             // {
             //     continue;
@@ -228,23 +219,27 @@ void EC20_Task(void *arg)
 //Check AT Command Respon result，
 // 
 *******************************************************************************/
-char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint16_t time_out, uint8_t try_num)
+char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t try_num)
 {
     char *rst_val = NULL;
     uint8_t i, j;
-    char *recv_buf = (char *)malloc(BUF_SIZE);
+    // char *recv_buf = (char *)malloc(BUF_SIZE);
 
     for (i = 0; i < try_num; i++)
     {
-        xQueueReset(EC_at_queue);
-        uart_write_bytes(UART_NUM_1, cmd_buf, strlen(cmd_buf));
+        // xQueueReset(EC_at_queue);
+        uart_flush(EX_UART_NUM);
+        if (cmd_buf != NULL)
+        {
+            uart_write_bytes(EX_UART_NUM, cmd_buf, strlen(cmd_buf));
+        }
+
         for (j = 0; j < 10; j++)
         {
-            if (xQueueReceive(EC_at_queue, (void *)recv_buf, time_out / portTICK_RATE_MS) == pdPASS)
-            // if (xSemaphoreTake(SEMA_UART, time_out / portTICK_RATE_MS) == pdPASS)
+            // if (xQueueReceive(EC_at_queue, (void *)recv_buf, time_out / portTICK_RATE_MS) == pdPASS)
+            if (xSemaphoreTake(EC20_at_Binary, time_out / portTICK_RATE_MS) == pdTRUE)
             {
-                ESP_LOGI(TAG, "%s\n", recv_buf);
-                rst_val = strstr((char *)recv_buf, check_buff); //
+                rst_val = strstr((char *)EC20_RECV, check_buff); //
                 if (rst_val != NULL)
                 {
                     break;
@@ -252,6 +247,7 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint16_t time_out, uint8_t tr
             }
             else //未等到数据
             {
+                ESP_LOGI(TAG, "LINE %d", __LINE__);
                 break;
             }
         }
@@ -261,8 +257,36 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint16_t time_out, uint8_t tr
             break;
         }
     }
-    free(recv_buf);
+    // free(recv_buf);
     return rst_val; //
+}
+
+uint8_t EC20_Net_Check(void)
+{
+    uint8_t ret = 0;
+    for (uint8_t i = 0; i < 15; i++)
+    {
+        ESP_LOGI(TAG, "EC20 Net_ChecK");
+        if (AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5) != NULL)
+        {
+            ret = 1;
+            break;
+        }
+        if (AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 100, 5) == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+        }
+    }
+
+    if (ret == 0) //重启
+    {
+        if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+        {
+            vTaskResume(EC20_Task_Handle);
+        }
+    }
+
+    return ret;
 }
 
 //EC20 init
@@ -272,12 +296,12 @@ uint8_t EC20_Init(void)
 
     EC20_Rest();
 
-    ret = AT_Cmd_Send("ATE0\r\n", "OK", 100, 5); //回显
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "ATE0  ");
-        return 0;
-    }
+    // ret = AT_Cmd_Send("ATE0\r\n", "OK", 100, 5); //回显
+    // if (ret == NULL)
+    // {
+    //     ESP_LOGE(TAG, "ATE0  ");
+    //     return 0;
+    // }
 
     ret = AT_Cmd_Send("AT+IPR=115200\r\n", "OK", 100, 5);
     if (ret == NULL)
@@ -355,7 +379,7 @@ uint8_t EC20_Http_CFG(void)
     if (ret != NULL)
     {
         // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        return 1;
+        goto end;
     }
 
     sprintf(cmd_buf, "AT+QICSGP=1,1,\"%s\",\"%s\",\"%s\",1\r\n", SIM_APN, SIM_USER, SIM_PWD);
@@ -377,7 +401,7 @@ uint8_t EC20_Http_CFG(void)
     if (ret != NULL)
     {
         // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        return 1;
+        goto end;
     }
 
 end:
@@ -395,34 +419,37 @@ end:
 
 uint8_t EC20_Active(char *active_url, char *recv_buf)
 {
+
+    // xSemaphoreTake(EC20_muxtex, -1);
+
     char *ret;
     char *cmd_buf;
     uint8_t active_len;
     cmd_buf = (char *)malloc(24);
     memset(cmd_buf, 0, 24);
     active_len = strlen(active_url) - 2; //不包含换行符
-    sprintf(cmd_buf, "AT+QHTTPURL=%d,10\r\n", active_len);
-    ret = AT_Cmd_Send(cmd_buf, "CONNECT", 100, 5);
+    sprintf(cmd_buf, "AT+QHTTPURL=%d,60\r\n", active_len);
+    ret = AT_Cmd_Send(cmd_buf, "CONNECT", 1000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
         goto end;
     }
-    ret = AT_Cmd_Send(active_url, "OK", 100, 5);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
-        goto end;
-    }
-
-    ret = AT_Cmd_Send("AT+QHTTPGET=60\r\n", "+QHTTPGET: 0,200", 60000, 1);
+    ret = AT_Cmd_Send(active_url, "OK", 60000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 100, 1);
+    ret = AT_Cmd_Send("AT+QHTTPGET=60\r\n", "+QHTTPGET: 0,200", 6000, 1);
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+        goto end;
+    }
+
+    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 1000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
@@ -431,6 +458,7 @@ uint8_t EC20_Active(char *active_url, char *recv_buf)
     memcpy(recv_buf, ret, BUF_SIZE);
 
 end:
+    // xSemaphoreGive(EC20_muxtex);
     free(cmd_buf);
     if (ret == NULL)
     {
@@ -495,7 +523,7 @@ uint8_t EC20_Post_Data(void)
     uart_write_bytes(UART_NUM_1, post_buf2, strlen(post_buf2));
     uart_write_bytes(UART_NUM_1, post_buf3, strlen(post_buf3));
 
-    ret = AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 60000, 1);
+    ret = AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 6000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
@@ -512,6 +540,7 @@ uint8_t EC20_Post_Data(void)
 end:
     free(post_url);
     free(cmd_buf);
+    free(post_buf);
     if (ret == NULL)
     {
         return 0;
@@ -527,7 +556,7 @@ uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
     uart_write_bytes(EX_UART_NUM, post_buf, strlen(post_buf));
     if (end_flag == true)
     {
-        if (AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 60000, 1) == NULL)
+        if (AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 6000, 1) == NULL)
         {
             ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
             return 0;
@@ -539,7 +568,7 @@ uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
 uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size)
 {
     char *rst_val;
-    rst_val = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 60000, 1);
+    rst_val = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 100, 1);
     if (rst_val == NULL)
     {
         ESP_LOGE(TAG, "EC20_read %d", __LINE__);
@@ -562,7 +591,7 @@ uint8_t EC20_MQTT(void)
     cmd_buf = (char *)malloc(CMD_LEN);
     memset(cmd_buf, 0, CMD_LEN);
 
-    ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 1000, 5);
+    ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 6000, 5);
     if (ret != NULL)
     {
         ESP_LOGI(TAG, "EC20_MQTT already open");
@@ -598,7 +627,7 @@ uint8_t EC20_MQTT(void)
     }
 
     sprintf(cmd_buf, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, C_ID, API_KEY);
-    ret = AT_Cmd_Send(cmd_buf, "+QMTCONN: 0,0,0", 60000, 1);
+    ret = AT_Cmd_Send(cmd_buf, "+QMTCONN: 0,0,0", 6000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
@@ -606,7 +635,7 @@ uint8_t EC20_MQTT(void)
     }
     memset(cmd_buf, 0, CMD_LEN);
     sprintf(cmd_buf, "AT+QMTSUB=0,1,\"%s\",0\r\n", TOP_IC);
-    ret = AT_Cmd_Send(cmd_buf, "+QMTSUB: ", 60000, 1);
+    ret = AT_Cmd_Send(cmd_buf, "+QMTSUB: ", 6000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
@@ -644,7 +673,7 @@ uint8_t EC20_MQTT_PUB(void)
 
     memset(cmd_buf, 0, CMD_LEN);
     sprintf(cmd_buf, "This is test data, hello MQTT.\r\n");
-    ret = AT_Cmd_Send(cmd_buf, "+QMTPUBEX: 0,0,0", 60000, 1);
+    ret = AT_Cmd_Send(cmd_buf, "+QMTPUBEX: 0,0,0", 6000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
