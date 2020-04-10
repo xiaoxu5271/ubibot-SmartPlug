@@ -24,6 +24,7 @@
 #include "Bluetooth.h"
 #include "Led.h"
 #include "Http.h"
+#include "EC20.h"
 
 static const char *TAG = "MQTT";
 
@@ -124,31 +125,31 @@ void initialise_mqtt(void)
 
 uint8_t Send_Mqtt(char *data_buff, uint16_t data_len)
 {
-    uint8_t *status_buff = NULL; //],"status":"mac=x","ssid_base64":"x"}
-    // uint16_t status_buff_len;
-    char *mqtt_buff = NULL;
+    if (WIFI_STA == true)
+    {
+        uint8_t *status_buff = NULL; //],"status":"mac=x","ssid_base64":"x"}
+        // uint16_t status_buff_len;
+        char *mqtt_buff = NULL;
+        status_buff = (uint8_t *)malloc(350);
+        memset(status_buff, 0, 350);
+        Create_Status_Json((char *)status_buff); //
 
-    if ((status_buff = (uint8_t *)malloc(350)) == NULL)
-    {
-        ESP_LOGE(TAG, "status_buff malloc fail! ");
-        return 0;
-    }
-    memset(status_buff, 0, 350);
-    Create_Status_Json((char *)status_buff); //
+        mqtt_buff = (char *)malloc(data_len + 350 + 10);
 
-    if ((mqtt_buff = (char *)malloc(data_len + 350 + 10)) == NULL)
-    {
-        ESP_LOGE(TAG, "status_buff malloc fail! ");
-        return 0;
+        memset(mqtt_buff, 0, data_len + 350 + 10);
+        snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s", data_buff, status_buff);
+
+        if (client != NULL)
+        {
+            esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
+        }
+
+        free(status_buff);
+        free(mqtt_buff);
+        return 1;
     }
-    memset(mqtt_buff, 0, data_len + 350 + 10);
-    snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s", data_buff, status_buff);
-    // printf("mqtt buff:\n%s\n", mqtt_buff);
-    if (client != NULL)
+    else if (EC20_NET_STA == true)
     {
-        esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
     }
-    free(status_buff);
-    free(mqtt_buff);
-    return 1;
+    return 0;
 }

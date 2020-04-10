@@ -28,8 +28,8 @@ TaskHandle_t Uart1_Task_Handle;
 bool EC20_NET_STA = false;
 
 static QueueHandle_t EC_uart_queue;
-// static QueueHandle_t EC_at_queue;
-static SemaphoreHandle_t EC20_at_Binary;
+static QueueHandle_t EC_at_queue;
+// SemaphoreHandle_t EC20_at_Binary;
 
 uint8_t EC20_RECV[BUF_SIZE];
 char ICCID[24] = {0};
@@ -95,8 +95,7 @@ static void uart_event_task(void *pvParameters)
                         }
                         else
                         {
-                            // xQueueSend(EC_at_queue, (void *)EC20_RECV, 0);
-                            xSemaphoreGive(EC20_at_Binary);
+                            xQueueSend(EC_at_queue, (void *)EC20_RECV, 0);
                         }
                         all_read_len = 0;
                         memset(EC20_RECV, 0, BUF_SIZE);
@@ -150,8 +149,8 @@ void EC20_Start(void)
     io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
 
-    EC20_at_Binary = xSemaphoreCreateBinary();
-    // EC_at_queue = xQueueCreate(2, BUF_SIZE);
+    // EC20_at_Binary = xSemaphoreCreateBinary();
+    EC_at_queue = xQueueCreate(2, BUF_SIZE);
 
     xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
     xTaskCreate(EC20_Task, "EC20_Task", 2048, NULL, 9, &EC20_Task_Handle);
@@ -223,7 +222,7 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
 {
     char *rst_val = NULL;
     uint8_t i, j;
-    // char *recv_buf = (char *)malloc(BUF_SIZE);
+    uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
 
     for (i = 0; i < try_num; i++)
     {
@@ -236,10 +235,10 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
 
         for (j = 0; j < 10; j++)
         {
-            // if (xQueueReceive(EC_at_queue, (void *)recv_buf, time_out / portTICK_RATE_MS) == pdPASS)
-            if (xSemaphoreTake(EC20_at_Binary, time_out / portTICK_RATE_MS) == pdTRUE)
+            if (xQueueReceive(EC_at_queue, (void *)recv_buf, time_out / portTICK_RATE_MS) == pdPASS)
+            // if (xSemaphoreTake(EC20_at_Binary, time_out / portTICK_RATE_MS) == pdTRUE)
             {
-                rst_val = strstr((char *)EC20_RECV, check_buff); //
+                rst_val = strstr((char *)recv_buf, check_buff); //
                 if (rst_val != NULL)
                 {
                     break;
@@ -257,7 +256,7 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
             break;
         }
     }
-    // free(recv_buf);
+    free(recv_buf);
     return rst_val; //
 }
 
@@ -303,7 +302,7 @@ uint8_t EC20_Init(void)
     //     return 0;
     // }
 
-    ret = AT_Cmd_Send("AT+IPR=115200\r\n", "OK", 100, 5);
+    ret = AT_Cmd_Send("AT+IPR=115200\r\n", "OK", 1000, 5);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);

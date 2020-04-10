@@ -135,9 +135,10 @@ static void vTask_view_Work(void *pvParameters)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        ESP_LOGW("memroy check", "%d: - INTERNAL RAM left %dKB", __LINE__,
-                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024);
-        printf("free Heap:%d\n", esp_get_free_heap_size());
+        ulTaskNotifyTake(pdTRUE, -1);
+        ESP_LOGW("heart_memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
+                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
+                 esp_get_free_heap_size());
         /* K1键按下 打印任务执行情况 */
 
         printf("=======================================================\r\n");

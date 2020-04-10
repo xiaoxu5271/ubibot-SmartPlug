@@ -339,6 +339,7 @@ end:
     free(status_buff);
     free(recv_buff);
     free(one_post_buff);
+
     xSemaphoreGive(Cache_muxtex);
     xSemaphoreGive(xMutex_Http_Send);
     return 1;
