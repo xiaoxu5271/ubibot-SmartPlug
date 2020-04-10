@@ -17,6 +17,7 @@
 #include "lwip/sockets.h"
 #include "Smartconfig.h"
 #include "ServerTimer.h"
+#include "Mqtt.h"
 
 #include "Cache_data.h"
 
@@ -35,6 +36,7 @@ void Write_Flash_Test_task(void *pvParameters);
 
 void Data_Post_Task(void *pvParameters)
 {
+    EventBits_t uxBits;
     while (1)
     {
         ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
@@ -42,13 +44,16 @@ void Data_Post_Task(void *pvParameters)
                  esp_get_free_heap_size());
         //发送成功后，判断当前使用flash是否大一个扇区，大于的话再擦除
         ulTaskNotifyTake(pdTRUE, -1);
-        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
-                            false, true, -1);
         Create_NET_Json();
-        if (!Http_post_fun())
+        uxBits = xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, 1000 / portTICK_PERIOD_MS);
+        if ((uxBits & CONNECTED_BIT) == CONNECTED_BIT)
         {
-            // Led_Status = LED_STA_WIFIERR;
+            if (!Http_post_fun())
+            {
+                // Led_Status = LED_STA_WIFIERR;
+            }
         }
+
         // vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
@@ -63,6 +68,8 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
         ESP_LOGE(TAG, "save err Buff_len:%d,Buff_len_c:%d", Buff_len, Buff_len_c);
         return;
     }
+
+    Send_Mqtt(sava_buff, Buff_len);
 
     flash_used_num = E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
@@ -190,12 +197,12 @@ static uint8_t Http_post_fun(void)
     uint32_t start_read_num_oen;              //单条数据读取的开始地址
     uint32_t end_read_num;                    //本次数据同步 截至地址
     uint32_t end_read_num_one;                //读取一条数据 截至地址
-    uint16_t status_buff_len;                 //],"status":"mac=x","ssid_base64":"x"}
-    uint32_t cache_data_len;                  //flash内正确待发送的数据总大小，以增加 ','占用
-    uint32_t post_data_len;                   //Content_Length，通过http发送的总数据大小
-    int32_t socket_num;                       //http socket
-    bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
-    char *recv_buff = NULL;                   //post 返回
+    // uint16_t status_buff_len;                 //],"status":"mac=x","ssid_base64":"x"}
+    uint32_t cache_data_len;  //flash内正确待发送的数据总大小，以增加 ','占用
+    uint32_t post_data_len;   //Content_Length，通过http发送的总数据大小
+    int32_t socket_num;       //http socket
+    bool send_status = false; //http 发送状态标志 ，false:发送未完成
+    char *recv_buff = NULL;   //post 返回
 
     status_buff = (char *)malloc(350);
     one_post_buff = (uint8_t *)malloc(ONE_POST_BUFF_LEN);
@@ -204,8 +211,8 @@ static uint8_t Http_post_fun(void)
     memset(status_buff, 0, 350);
     xSemaphoreTake(Cache_muxtex, -1);
     xSemaphoreTake(xMutex_Http_Send, -1);
-    status_buff_len = Create_Status_Json(status_buff); //
-    ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
+    Create_Status_Json(status_buff); //
+    // ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
     ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);

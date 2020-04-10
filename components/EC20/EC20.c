@@ -152,7 +152,7 @@ void EC20_Start(void)
     // EC20_at_Binary = xSemaphoreCreateBinary();
     EC_at_queue = xQueueCreate(2, BUF_SIZE);
 
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, &Uart1_Task_Handle);
     xTaskCreate(EC20_Task, "EC20_Task", 2048, NULL, 9, &EC20_Task_Handle);
 }
 
@@ -164,6 +164,10 @@ void EC20_Power_On(void)
     gpio_set_level(EC20_SW, 0); //
     // vTaskDelay(15000 / portTICK_PERIOD_MS);
     AT_Cmd_Send(NULL, "RDY", 10000, 1);
+}
+void EC20_Power_Off(void)
+{
+    AT_Cmd_Send("AT+QPOWD=0\r\n", "POWERED DOWN", 1000, 5);
 }
 
 void EC20_Rest(void)

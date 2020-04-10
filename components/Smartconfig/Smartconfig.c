@@ -20,6 +20,7 @@
 #include "Json_parse.h"
 #include "Bluetooth.h"
 #include "EC20.h"
+#include "Mqtt.h"
 
 #include "Smartconfig.h"
 #define TAG "USER WIFI"
@@ -92,7 +93,10 @@ void init_wifi(void) //
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
 
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    // if (net_mode != NET_4G)
+    // {
+    //     ESP_ERROR_CHECK(esp_wifi_start());
+    // }
 }
 
 void stop_user_wifi(void)
@@ -119,11 +123,44 @@ void start_user_wifi(void)
     memset(&s_staconf.sta, 0, sizeof(s_staconf));
     strcpy((char *)s_staconf.sta.ssid, wifi_data.wifi_ssid);
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
-
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
     ESP_ERROR_CHECK(esp_wifi_start());
-
     printf("turn on WIFI! \n");
+}
+
+//网络状态转换任务
+void Net_Switch(void)
+{
+    switch (net_mode)
+    {
+    case NET_AUTO:
+        start_user_wifi();
+        Start_W_Mqtt();
+        if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+        {
+            vTaskResume(EC20_Task_Handle);
+        }
+        break;
+
+    case NET_WIFI:
+        start_user_wifi();
+        Start_W_Mqtt();
+        EC20_Power_Off();
+        break;
+
+    case NET_4G:
+        stop_user_wifi();
+        Stop_W_Mqtt();
+        if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+        {
+            vTaskResume(EC20_Task_Handle);
+        }
+
+        break;
+
+    default:
+        break;
+    }
 }
 
 // /*

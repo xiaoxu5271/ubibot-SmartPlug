@@ -26,12 +26,13 @@
 #include "Http.h"
 #include "EC20.h"
 
+#include "Mqtt.h"
+
 static const char *TAG = "MQTT";
 
-extern const int CONNECTED_BIT;
-
 esp_mqtt_client_handle_t client = NULL;
-TaskHandle_t Binary_mqtt = NULL;
+bool MQTT_W_STA = false;
+// TaskHandle_t Binary_mqtt = NULL;
 
 char topic_s[100] = {0};
 char topic_p[100] = {0};
@@ -44,24 +45,14 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     switch (event->event_id)
     {
     case MQTT_EVENT_CONNECTED:
+        MQTT_W_STA = true;
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-
         msg_id = esp_mqtt_client_subscribe(client, topic_s, 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        // msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        // ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-
-        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-        // ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        // ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        // msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        // ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
+        MQTT_W_STA = false;
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         break;
 
@@ -115,34 +106,35 @@ void initialise_mqtt(void)
     };
 
     // xTaskCreate(mqtt_send_task, "mqtt_send_task", 4096, NULL, 7, &Binary_mqtt);
-    xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
-                        false, true, portMAX_DELAY);
+    // xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, portMAX_DELAY);
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-    esp_mqtt_client_start(client);
-    esp_mqtt_client_start(client);
+    // esp_mqtt_client_start(client);
 }
 
-uint8_t Send_Mqtt(char *data_buff, uint16_t data_len)
+void Start_W_Mqtt(void)
 {
-    if (WIFI_STA == true)
+    esp_mqtt_client_start(client);
+}
+void Stop_W_Mqtt(void)
+{
+    esp_mqtt_client_stop(client);
+    MQTT_W_STA = false;
+}
+
+uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)
+{
+    if (MQTT_W_STA == true)
     {
-        uint8_t *status_buff = NULL; //],"status":"mac=x","ssid_base64":"x"}
-        // uint16_t status_buff_len;
-        char *mqtt_buff = NULL;
-        status_buff = (uint8_t *)malloc(350);
+        uint8_t *status_buff = (uint8_t *)malloc(350);
+        char *mqtt_buff = (char *)malloc(data_len + 350 + 10);
         memset(status_buff, 0, 350);
+        memset(mqtt_buff, 0, data_len + 350 + 10);
+
         Create_Status_Json((char *)status_buff); //
 
-        mqtt_buff = (char *)malloc(data_len + 350 + 10);
-
-        memset(mqtt_buff, 0, data_len + 350 + 10);
         snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s", data_buff, status_buff);
-
-        if (client != NULL)
-        {
-            esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
-        }
+        esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
 
         free(status_buff);
         free(mqtt_buff);

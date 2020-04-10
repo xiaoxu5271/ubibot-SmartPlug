@@ -699,10 +699,10 @@ void Energy_Read_Task(void *pvParameters)
             // free(SaveBuffer);
         }
 
-        if (Binary_mqtt != NULL)
-        {
-            xTaskNotifyGive(Binary_mqtt);
-        }
+        // if (Binary_mqtt != NULL)
+        // {
+        //     xTaskNotifyGive(Binary_mqtt);
+        // }
     }
 }
 //读取，构建累积用电量

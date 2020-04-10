@@ -355,7 +355,6 @@ int8_t http_send_post(int32_t s, char *post_buf, bool end_flag)
     }
     else
     {
-        ESP_LOGI(TAG, "EC20 POST SEND");
         if (EC20_Send_Post_Data(post_buf, end_flag) != 1)
         {
             ESP_LOGE(TAG, "EC20 send failed");

@@ -67,10 +67,12 @@ void app_main(void)
 	init_wifi();
 	ble_app_init();
 	EC20_Start();
+	initialise_mqtt();
+	Net_Switch();
+
 	RS485_Init();
 	CSE7759B_Init();
 	start_ds18b20();
 	Start_Cache();
 	initialise_http(); //须放在 采集任务建立之后
-	initialise_mqtt();
 }
