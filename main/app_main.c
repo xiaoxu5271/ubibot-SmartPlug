@@ -64,11 +64,18 @@ void app_main(void)
 	}
 	ESP_ERROR_CHECK(ret);
 
+	xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
+
 	init_wifi();
 	ble_app_init();
 	EC20_Start();
+	while (http_activate() != 1) //激活
+	{
+		ESP_LOGE("MAIN", "activate fail\n");
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
+	}
+	xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
 	initialise_mqtt();
-	Net_Switch();
 
 	RS485_Init();
 	CSE7759B_Init();

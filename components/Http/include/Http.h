@@ -55,6 +55,7 @@ int8_t http_send_post(int32_t s, char *post_buf, bool end_flag);
 int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size);
 
 extern uint8_t post_status;
+
 uint8_t human_status;
 TaskHandle_t httpHandle;
 esp_timer_handle_t http_timer_suspend_p;

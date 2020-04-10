@@ -545,19 +545,9 @@ int32_t http_activate(void)
 
 void initialise_http(void)
 {
-    xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
-    while (http_activate() != 1)                //激活
-    {
-        ESP_LOGE(TAG, "activate fail\n");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-    }
-
     xTaskCreate(send_heart_task, "send_heart_task", 8192, NULL, 5, &Binary_Heart_Send);
-
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
-
     xTaskNotifyGive(Binary_Heart_Send);
-
     err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s
     if (err != ESP_OK)
     {

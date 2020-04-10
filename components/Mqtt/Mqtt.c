@@ -32,6 +32,7 @@ static const char *TAG = "MQTT";
 
 esp_mqtt_client_handle_t client = NULL;
 bool MQTT_W_STA = false;
+bool MQTT_E_STA = false;
 // TaskHandle_t Binary_mqtt = NULL;
 
 char topic_s[100] = {0};
@@ -109,7 +110,13 @@ void initialise_mqtt(void)
     // xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, portMAX_DELAY);
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-    // esp_mqtt_client_start(client);
+
+    if (net_mode != NET_4G)
+    {
+        esp_mqtt_client_start(client);
+    }
+
+    //
 }
 
 void Start_W_Mqtt(void)
@@ -124,6 +131,7 @@ void Stop_W_Mqtt(void)
 
 uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)
 {
+
     if (MQTT_W_STA == true)
     {
         uint8_t *status_buff = (uint8_t *)malloc(350);
@@ -133,15 +141,28 @@ uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)
 
         Create_Status_Json((char *)status_buff); //
 
-        snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s", data_buff, status_buff);
+        snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s\r\n", data_buff, status_buff);
         esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
 
         free(status_buff);
         free(mqtt_buff);
         return 1;
     }
-    else if (EC20_NET_STA == true)
+    else if (MQTT_E_STA == true)
     {
+        uint8_t *status_buff = (uint8_t *)malloc(350);
+        char *mqtt_buff = (char *)malloc(data_len + 350 + 10);
+        memset(status_buff, 0, 350);
+        memset(mqtt_buff, 0, data_len + 350 + 10);
+
+        Create_Status_Json((char *)status_buff); //
+
+        snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s\r\n", data_buff, status_buff);
+        EC20_MQTT_PUB(mqtt_buff);
+
+        free(status_buff);
+        free(mqtt_buff);
+        return 1;
     }
     return 0;
 }

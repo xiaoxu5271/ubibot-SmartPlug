@@ -522,7 +522,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     cJSON *json_data_vesion = NULL;
     cJSON *json_data_set_state = NULL;
     char *resp_val = NULL;
-    resp_val = strstr(mqtt_json_data, "{");
+    resp_val = strstr(mqtt_json_data, "{\"command_id\":");
     if (resp_val == NULL)
     {
         ESP_LOGE("JSON", "DATA NO JSON");

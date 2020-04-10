@@ -54,7 +54,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         esp_wifi_connect();
         wifi_event_sta_disconnected_t *event = (wifi_event_sta_disconnected_t *)event_data;
         Wifi_ErrCode = event->reason;
-        ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d, trying to reconnect...", event->reason);
+        // ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d, trying to reconnect...", event->reason);
         if (Wifi_ErrCode >= 1 && Wifi_ErrCode <= 24) //适配APP，
         {
             Wifi_ErrCode += 300;
@@ -93,10 +93,10 @@ void init_wifi(void) //
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
 
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
-    // if (net_mode != NET_4G)
-    // {
-    //     ESP_ERROR_CHECK(esp_wifi_start());
-    // }
+    if (net_mode != NET_4G)
+    {
+        ESP_ERROR_CHECK(esp_wifi_start());
+    }
 }
 
 void stop_user_wifi(void)

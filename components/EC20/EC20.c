@@ -10,6 +10,8 @@
 #include "Json_parse.h"
 #include "Smartconfig.h"
 #include "Led.h"
+#include "Json_parse.h"
+#include "Http.h"
 
 #include "EC20.h"
 
@@ -18,6 +20,7 @@
 
 static const char *TAG = "EC20";
 TaskHandle_t EC20_Task_Handle;
+TaskHandle_t EC20_M_Task_Handle;
 TaskHandle_t Uart1_Task_Handle;
 
 #define EC20_SW 25
@@ -29,13 +32,19 @@ bool EC20_NET_STA = false;
 
 static QueueHandle_t EC_uart_queue;
 static QueueHandle_t EC_at_queue;
+static QueueHandle_t EC_mqtt_queue;
 // SemaphoreHandle_t EC20_at_Binary;
 
 uint8_t EC20_RECV[BUF_SIZE];
 char ICCID[24] = {0};
 
+extern char topic_s[100];
+extern char topic_p[100];
+extern bool MQTT_E_STA;
+
 void Uart1_Task(void *arg);
 void EC20_Task(void *arg);
+void EC20_M_Task(void *arg);
 
 static void uart_event_task(void *pvParameters)
 {
@@ -51,7 +60,7 @@ static void uart_event_task(void *pvParameters)
             {
             case UART_DATA:
                 // ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
-                if (event.size > 1)
+                if (event.size >= 1)
                 {
                     if (all_read_len + event.size >= BUF_SIZE)
                     {
@@ -61,13 +70,16 @@ static void uart_event_task(void *pvParameters)
                     }
                     uart_read_bytes(EX_UART_NUM, EC20_RECV + all_read_len, event.size, portMAX_DELAY);
                     all_read_len += event.size;
-
                     EC20_RECV[all_read_len] = 0; //去掉字符串结束符，防止字符串拼接不成功
                     if (EC20_RECV[all_read_len - 1] == '\n')
                     {
                         if (strstr((char *)EC20_RECV, "+QMTRECV:") != NULL)
                         {
                             ESP_LOGI("MQTT", "%s\n", EC20_RECV);
+                            if (WIFI_STA == false)
+                            {
+                                xQueueSend(EC_mqtt_queue, (void *)EC20_RECV, 0);
+                            }
                         }
                         else if (strstr((char *)EC20_RECV, "+QMTSTAT:") != NULL)
                         {
@@ -101,7 +113,26 @@ static void uart_event_task(void *pvParameters)
                         memset(EC20_RECV, 0, BUF_SIZE);
                         uart_flush(EX_UART_NUM);
                     }
+                    else if (strstr((char *)EC20_RECV, ">") != NULL)
+                    {
+                        xQueueSend(EC_at_queue, (void *)EC20_RECV, 0);
+                        all_read_len = 0;
+                        memset(EC20_RECV, 0, BUF_SIZE);
+                        uart_flush(EX_UART_NUM);
+                    }
                 }
+                // else if (event.size == 1)
+                // {
+                //     uart_read_bytes(EX_UART_NUM, Input_buf, event.size, portMAX_DELAY);
+                //     ESP_LOGI("MQTT", "%s\n", Input_buf);
+                //     if (Input_buf[0 == '>'])
+                //     {
+                //         xQueueSend(EC_at_queue, (void *)Input_buf, 0);
+                //         all_read_len = 0;
+                //         memset(EC20_RECV, 0, BUF_SIZE);
+                //     }
+                // }
+
                 break;
 
             case UART_FIFO_OVF:
@@ -151,9 +182,11 @@ void EC20_Start(void)
 
     // EC20_at_Binary = xSemaphoreCreateBinary();
     EC_at_queue = xQueueCreate(2, BUF_SIZE);
+    EC_mqtt_queue = xQueueCreate(2, BUF_SIZE);
 
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, &Uart1_Task_Handle);
+    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 20, &Uart1_Task_Handle);
     xTaskCreate(EC20_Task, "EC20_Task", 2048, NULL, 9, &EC20_Task_Handle);
+    xTaskCreate(EC20_M_Task, "EC20_M_Task", 4096, NULL, 8, &EC20_M_Task_Handle);
 }
 
 void EC20_Power_On(void)
@@ -185,6 +218,7 @@ void EC20_Task(void *arg)
     while (1)
     {
         EC20_NET_STA = false;
+        MQTT_E_STA = false;
         if (WIFI_STA == false)
         {
             Led_Status = LED_STA_WIFIERR;
@@ -202,14 +236,17 @@ void EC20_Task(void *arg)
             {
                 continue;
             }
-            // ret = EC20_MQTT();
-            // if (ret == 0)
-            // {
-            //     continue;
-            // }
-
             EC20_NET_STA = true;
             xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
+            xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
+            xSemaphoreTake(xMutex_Http_Send, -1);
+            ret = EC20_MQTT_INIT();
+            xSemaphoreGive(xMutex_Http_Send);
+            if (ret == 0)
+            {
+                continue;
+            }
+            MQTT_E_STA = true;
         }
 
         vTaskSuspend(NULL);
@@ -217,6 +254,18 @@ void EC20_Task(void *arg)
 }
 
 /**********************************************************/
+void EC20_M_Task(void *arg)
+{
+    char mqtt_recv[BUF_SIZE];
+    while (1)
+    {
+        memset(mqtt_recv, 0, BUF_SIZE);
+        if (xQueueReceive(EC_mqtt_queue, (void *)mqtt_recv, -1) == pdPASS)
+        {
+            parse_objects_mqtt(mqtt_recv);
+        }
+    }
+}
 
 /*******************************************************************************
 //Check AT Command Respon result，
@@ -473,87 +522,6 @@ end:
     }
 }
 
-uint8_t EC20_Post_Data(void)
-{
-    char *ret;
-    char *cmd_buf;
-    char *post_buf;
-    char *post_url;
-    // uint16_t post_len;
-    // uint16_t url_len;
-
-    post_url = (char *)malloc(80);
-    cmd_buf = (char *)malloc(30);
-    post_buf = (char *)malloc(300);
-    memset(post_url, 0, 80);
-    memset(cmd_buf, 0, 30);
-    memset(post_buf, 0, 300);
-
-    sprintf(post_url, "http://api.ubibot.cn/update.json?api_key=30f29fe61a17c644315338535f91fa78\r\n");
-    sprintf(post_buf, "{\"feeds\":[{\"created_at\":\"2020-02-27T08:49:32Z\",\"field1\":1,\"field2\":237,\"field3\":0,\"field4\":0,\"field6\":\"-54\"}],\"sensors\":[{\"rssi_g\":0,\"light\":0,\"r1_light\":0,\"r1_th_t\":0,\"r1_th_h\":0,\"r1_sth_t\":0,\"r1_sth_h\":0,\"e1_t\":0,\"r1_t\":0,\"r1_ws\":0,\"r1_co2\":0,\"r1_ph\":0}]}\r\n");
-
-    const char *post_buf1 = "{\"feeds\":[";
-    const char *post_buf2 = "{\"created_at\":\"2020-02-27T08:49:32Z\",\"field1\":1,\"field2\":237,\"field3\":0,\"field4\":0,\"field6\":\"-54\"}";
-    const char *post_buf3 = "],\"sensors\":[{\"rssi_g\":0,\"light\":0,\"r1_light\":0,\"r1_th_t\":0,\"r1_th_h\":0,\"r1_sth_t\":0,\"r1_sth_h\":0,\"e1_t\":0,\"r1_t\":0,\"r1_ws\":0,\"r1_co2\":0,\"r1_ph\":0}]}";
-
-    // url_len = strlen(post_url);
-
-    sprintf(cmd_buf, "AT+QHTTPURL=%d,10\r\n", 73);
-    ret = AT_Cmd_Send(cmd_buf, "CONNECT", 100, 5);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-        goto end;
-    }
-    ret = AT_Cmd_Send(post_url, "OK", 100, 5);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-        goto end;
-    }
-
-    memset(cmd_buf, 0, 30);
-    sprintf(cmd_buf, "AT+QHTTPPOST=%d,%d,%d\r\n", 257, 60, 60);
-    ret = AT_Cmd_Send(cmd_buf, "CONNECT", 10000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-        goto end;
-    }
-
-    //send post buff
-    uart_write_bytes(UART_NUM_1, post_buf1, strlen(post_buf1));
-    uart_write_bytes(UART_NUM_1, post_buf2, strlen(post_buf2));
-    uart_write_bytes(UART_NUM_1, post_buf3, strlen(post_buf3));
-
-    ret = AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 6000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-        goto end;
-    }
-
-    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "+QHTTPREAD: 0", 100, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-        goto end;
-    }
-
-end:
-    free(post_url);
-    free(cmd_buf);
-    free(post_buf);
-    if (ret == NULL)
-    {
-        return 0;
-    }
-    else
-    {
-        return 1;
-    }
-}
-
 uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
 {
     uart_write_bytes(EX_UART_NUM, post_buf, strlen(post_buf));
@@ -581,20 +549,15 @@ uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size)
     return 1;
 }
 
-#define API_KEY "30f29fe61a17c644315338535f91fa78"
-#define C_ID "8330"
-#define TOP_IC "/product/ubibot-sp1/channel/8330/control"
-#define USER_ID "7926568E-2E80-41C0-9865-64FCD4123F94"
 #define CMD_LEN 150
-
-uint8_t EC20_MQTT(void)
+uint8_t EC20_MQTT_INIT(void)
 {
     char *ret;
     char *cmd_buf;
     cmd_buf = (char *)malloc(CMD_LEN);
     memset(cmd_buf, 0, CMD_LEN);
 
-    ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 6000, 5);
+    ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 100, 5);
     if (ret != NULL)
     {
         ESP_LOGI(TAG, "EC20_MQTT already open");
@@ -629,7 +592,7 @@ uint8_t EC20_MQTT(void)
         goto end;
     }
 
-    sprintf(cmd_buf, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, C_ID, API_KEY);
+    sprintf(cmd_buf, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, ChannelId, ApiKey);
     ret = AT_Cmd_Send(cmd_buf, "+QMTCONN: 0,0,0", 6000, 1);
     if (ret == NULL)
     {
@@ -637,7 +600,7 @@ uint8_t EC20_MQTT(void)
         goto end;
     }
     memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTSUB=0,1,\"%s\",0\r\n", TOP_IC);
+    sprintf(cmd_buf, "AT+QMTSUB=0,1,\"%s\",0\r\n", topic_s);
     ret = AT_Cmd_Send(cmd_buf, "+QMTSUB: ", 6000, 1);
     if (ret == NULL)
     {
@@ -658,25 +621,23 @@ end:
     }
 }
 
-uint8_t EC20_MQTT_PUB(void)
+//data_buff 需要包含 \r\n
+uint8_t EC20_MQTT_PUB(char *data_buff)
 {
     char *ret;
     char *cmd_buf;
     cmd_buf = (char *)malloc(CMD_LEN);
     memset(cmd_buf, 0, CMD_LEN);
-
-    memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTPUBEX=0,0,0,0,\"%s\",30\r\n", TOP_IC);
-    ret = AT_Cmd_Send(cmd_buf, ">", 6000, 1);
+    // ESP_LOGI(TAG, "MQTT LEN:%d,\n%s", strlen(data_buff), data_buff);
+    sprintf(cmd_buf, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic_p, strlen(data_buff) - 2);
+    ret = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
         goto end;
     }
 
-    memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "This is test data, hello MQTT.\r\n");
-    ret = AT_Cmd_Send(cmd_buf, "+QMTPUBEX: 0,0,0", 6000, 1);
+    ret = AT_Cmd_Send(data_buff, "+QMTPUBEX: 0,0,0", 1000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);

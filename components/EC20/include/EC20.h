@@ -19,9 +19,8 @@ uint8_t EC20_Http_CFG(void);
 uint8_t EC20_Active(char *active_url, char *recv_buf);
 uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag);
 uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size);
-uint8_t EC20_Post_Data(void);
-uint8_t EC20_MQTT(void);
-uint8_t EC20_MQTT_PUB(void);
+uint8_t EC20_MQTT_INIT(void);
+uint8_t EC20_MQTT_PUB(char *data_buff);
 void EC20_Power_Off(void);
 
 #endif

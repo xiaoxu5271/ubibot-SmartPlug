@@ -19,6 +19,9 @@ extern bool WIFI_STA;
 extern uint8_t bl_flag; //蓝牙配网模式
 
 #define CONNECTED_BIT (1 << 0)
+#define ACTIVED_BIT (1 << 1)
+#define MQTT_W_BIT (1 << 2)
+#define MQTT_E_BIT (1 << 3)
 
 // static const int CONNECTED_BIT = BIT0;
 static const int AP_STACONNECTED_BIT = BIT0;
