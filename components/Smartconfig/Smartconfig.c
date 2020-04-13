@@ -31,7 +31,7 @@ EventGroupHandle_t tcp_event_group;
 
 uint8_t start_AP = 0;
 uint8_t bl_flag = 0; //蓝牙配网模式
-uint16_t Wifi_ErrCode = 0;
+uint8_t Net_ErrCode = 0;
 bool WIFI_STA = false;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -53,12 +53,17 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
         esp_wifi_connect();
         wifi_event_sta_disconnected_t *event = (wifi_event_sta_disconnected_t *)event_data;
-        Wifi_ErrCode = event->reason;
-        // ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d, trying to reconnect...", event->reason);
-        if (Wifi_ErrCode >= 1 && Wifi_ErrCode <= 24) //适配APP，
+
+        if (event->reason >= 200)
         {
-            Wifi_ErrCode += 300;
+            Net_ErrCode = event->reason;
         }
+
+        // ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d, trying to reconnect...", event->reason);
+        // if (Net_ErrCode >= 1 && Net_ErrCode <= 24) //适配APP，
+        // {
+        //     Net_ErrCode += 300;
+        // }
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {

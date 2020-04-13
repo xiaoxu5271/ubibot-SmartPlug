@@ -37,12 +37,12 @@ TaskHandle_t Binary_ext = NULL;
 TaskHandle_t Binary_energy = NULL;
 TaskHandle_t Binary_ele_quan = NULL;
 
+TaskHandle_t Active_Task_Handle = NULL;
 // extern uint8_t data_read[34];
 
 static char *TAG = "HTTP";
 uint8_t post_status = POST_NOCOMMAND;
 
-TaskHandle_t httpHandle = NULL;
 esp_timer_handle_t http_timer_suspend_p = NULL;
 
 void timer_heart_cb(void *arg);
@@ -283,7 +283,7 @@ int32_t http_post_init(uint32_t Content_Length)
     }
     else
     {
-        ESP_LOGI(TAG, "EC20 POST INIT");
+        // ESP_LOGI(TAG, "EC20 POST INIT");
         if (post_status == POST_NOCOMMAND) //无commID
         {
             sprintf(build_po_url, "http://%s/update.json?api_key=%s&metadata=true&firmware=%s\r\n",
@@ -392,7 +392,7 @@ int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
     }
     else
     {
-        ESP_LOGI(TAG, "EC20 POST READ");
+        // ESP_LOGI(TAG, "EC20 POST READ");
         ret = EC20_Read_Post_Data(recv_buff, buff_size);
     }
 
@@ -492,7 +492,6 @@ int32_t http_activate(void)
     xSemaphoreTake(xMutex_Http_Send, -1);
     if (WIFI_STA == true)
     {
-
         sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
         if (wifi_http_send(build_http, 256, recv_buf, 1024) < 0)
         {
@@ -543,8 +542,26 @@ int32_t http_activate(void)
     return ret;
 }
 
+void Active_Task(void *arg)
+{
+    while (1)
+    {
+        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
+        xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
+        while ((Net_ErrCode = http_activate()) != 1) //激活
+        {
+            ESP_LOGE("MAIN", "activate fail\n");
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
+        }
+        xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
+        vTaskSuspend(NULL);
+    }
+}
+
 void initialise_http(void)
 {
+    xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
+    xTaskCreate(Active_Task, "Active_Task", 3072, NULL, 4, &Active_Task_Handle);
     xTaskCreate(send_heart_task, "send_heart_task", 8192, NULL, 5, &Binary_Heart_Send);
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
     xTaskNotifyGive(Binary_Heart_Send);

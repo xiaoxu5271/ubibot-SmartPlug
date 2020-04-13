@@ -293,21 +293,24 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
     }
     cJSON_Delete(cjson_blu_data_parse);
 
-    if (xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, 10000 / portTICK_RATE_MS))
+    if (eTaskGetState(Active_Task_Handle) == eSuspended)
     {
-        return http_activate();
+        vTaskResume(Active_Task_Handle);
+    }
+    if (net_mode != NET_4G)
+    {
+        if (xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, 30000 / portTICK_RATE_MS))
+        {
+            return 1;
+        }
+        else
+        {
+            return Net_ErrCode;
+        }
     }
     else
     {
-        // if (net_mode == NET_WIFI)
-        {
-            return Wifi_ErrCode;
-        }
-
-        // else
-        // {
-        //     return LAN_ERR_CODE;
-        // }
+        return 1;
     }
 }
 
@@ -635,21 +638,38 @@ uint16_t Create_Status_Json(char *status_buff)
 
     esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
 
-    ssid64_buff = (char *)malloc(64);
-    memset(ssid64_buff, 0, 64);
-    base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
+    if (WIFI_STA == true)
+    {
+        ssid64_buff = (char *)malloc(64);
+        memset(ssid64_buff, 0, 64);
+        base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-    sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}",
-            mac_sys[0],
-            mac_sys[1],
-            mac_sys[2],
-            mac_sys[3],
-            mac_sys[4],
-            mac_sys[5],
-            ssid64_buff,
-            field_buff);
+        sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}",
+                mac_sys[0],
+                mac_sys[1],
+                mac_sys[2],
+                mac_sys[3],
+                mac_sys[4],
+                mac_sys[5],
+                ssid64_buff,
+                field_buff);
+        free(ssid64_buff);
+    }
+    else
+    {
+        sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"sensors\":[%s]}",
+                mac_sys[0],
+                mac_sys[1],
+                mac_sys[2],
+                mac_sys[3],
+                mac_sys[4],
+                mac_sys[5],
+                ICCID,
+                field_buff);
+    }
+
     free(field_buff);
-    free(ssid64_buff);
+
     return strlen(status_buff);
 }
 
@@ -657,21 +677,30 @@ void Create_NET_Json(void)
 {
     char *filed_buff;
     char *OutBuffer;
+    float ec_rssi_val;
     // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
     wifi_ap_record_t wifidata_t;
 
     filed_buff = (char *)malloc(9);
-    snprintf(filed_buff, 9, "field%d", rssi_w_f_num);
 
     pJsonRoot = cJSON_CreateObject();
     cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
 
-    if (esp_wifi_sta_get_ap_info(&wifidata_t) == 0)
+    if (WIFI_STA == true)
     {
+        esp_wifi_sta_get_ap_info(&wifidata_t);
+        snprintf(filed_buff, 9, "field%d", rssi_w_f_num);
         cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(wifidata_t.rssi));
     }
+    else if (EC20_NET_STA == true)
+    {
+        EC20_Get_Rssi(&ec_rssi_val);
+        snprintf(filed_buff, 9, "field%d", rssi_g_f_num);
+        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
+    }
+
     cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
 
     OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)

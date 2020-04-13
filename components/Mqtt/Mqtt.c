@@ -90,6 +90,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 void initialise_mqtt(void)
 {
+
     char mqtt_pwd[42];
     char mqtt_usr[23];
 
@@ -110,6 +111,8 @@ void initialise_mqtt(void)
     // xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, portMAX_DELAY);
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
 
     if (net_mode != NET_4G)
     {

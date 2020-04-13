@@ -14,7 +14,7 @@ void Net_Switch(void);
 extern uint8_t wifi_connect_sta; //wifi连接状态
 // extern uint8_t wifi_work_sta;    //wifi开启状态
 extern uint8_t start_AP;
-extern uint16_t Wifi_ErrCode; //
+extern uint8_t Net_ErrCode; //
 extern bool WIFI_STA;
 extern uint8_t bl_flag; //蓝牙配网模式
 

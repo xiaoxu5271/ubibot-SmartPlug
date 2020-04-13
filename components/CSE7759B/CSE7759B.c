@@ -647,10 +647,6 @@ int8_t CSE7759B_Read(void)
     }
 }
 
-void Creat_Ele_quan_Json(void)
-{
-}
-
 //读取，构建电能信息
 void Energy_Read_Task(void *pvParameters)
 {

@@ -459,28 +459,12 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         if (!param->write.is_prep)
         {
             ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, value :", param->write.len);
-            //esp_log_buffer_char(GATTS_TAG, param->write.value, param->write.len);
-            // printf("%s\r\n", param->write.value);
-
-            /*for(int a=0;a<param->write.len;a++)
-            {
-                printf("%x ",param->write.value[a]);
-            }
-            printf("\n");*/
 
             if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2)
             {
-                /*测试 */
-                // bzero(buf, sizeof(buf));
-                // memcpy(buf, param->write.value, param->write.len);
-                // printf("handle 43 buf : %d  \n", (int)buf);
-
-                /*测试结束 */
             }
-
             else
             {
-
                 bzero(buf, sizeof(buf));
                 memcpy(buf, param->write.value, param->write.len);
                 int32_t ret = parse_objects_bluetooth(buf);
@@ -493,7 +477,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                     strcpy(BleRespond, "{\"result\":\"error\",\"code\":100}");
                 }
 
-                else if (ret == 1) //解析蓝牙正确且按新参数配置，存储eeprom
+                else if (ret == 1) //解析蓝牙正确且按新参数配置
                 {
                     bzero(BleRespond, sizeof(BleRespond));
                     // strcpy(BleRespond, "{\"result\":\"success\",\"code\":0}");
@@ -606,15 +590,15 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     }
     case ESP_GATTS_DISCONNECT_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT");
-        if (blere_flag == true)
+        // if (blere_flag == true)
         {
             blere_flag = false;
             ble_app_stop(); //关闭蓝牙广播
         }
-        else
-        {
-            esp_ble_gap_start_advertising(&adv_params); //开启蓝牙广播
-        }
+        // else
+        // {
+        //     esp_ble_gap_start_advertising(&adv_params); //开启蓝牙广播
+        // }
         break;
     case ESP_GATTS_CONF_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONF_EVT, status %d", param->conf.status);

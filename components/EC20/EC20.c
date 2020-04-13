@@ -60,7 +60,7 @@ static void uart_event_task(void *pvParameters)
             {
             case UART_DATA:
                 // ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
-                if (event.size >= 1)
+                if (event.size > 1)
                 {
                     if (all_read_len + event.size >= BUF_SIZE)
                     {
@@ -75,7 +75,7 @@ static void uart_event_task(void *pvParameters)
                     {
                         if (strstr((char *)EC20_RECV, "+QMTRECV:") != NULL)
                         {
-                            ESP_LOGI("MQTT", "%s\n", EC20_RECV);
+                            // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
                             if (WIFI_STA == false)
                             {
                                 xQueueSend(EC_mqtt_queue, (void *)EC20_RECV, 0);
@@ -113,25 +113,16 @@ static void uart_event_task(void *pvParameters)
                         memset(EC20_RECV, 0, BUF_SIZE);
                         uart_flush(EX_UART_NUM);
                     }
-                    else if (strstr((char *)EC20_RECV, ">") != NULL)
+                    // else if (strstr((char *)EC20_RECV, ">") != NULL)
+                    else if (EC20_RECV[all_read_len - 2] == '>')
                     {
                         xQueueSend(EC_at_queue, (void *)EC20_RECV, 0);
+                        // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
                         all_read_len = 0;
                         memset(EC20_RECV, 0, BUF_SIZE);
                         uart_flush(EX_UART_NUM);
                     }
                 }
-                // else if (event.size == 1)
-                // {
-                //     uart_read_bytes(EX_UART_NUM, Input_buf, event.size, portMAX_DELAY);
-                //     ESP_LOGI("MQTT", "%s\n", Input_buf);
-                //     if (Input_buf[0 == '>'])
-                //     {
-                //         xQueueSend(EC_at_queue, (void *)Input_buf, 0);
-                //         all_read_len = 0;
-                //         memset(EC20_RECV, 0, BUF_SIZE);
-                //     }
-                // }
 
                 break;
 
@@ -149,7 +140,7 @@ static void uart_event_task(void *pvParameters)
 
             //Others
             default:
-                ESP_LOGI(TAG, "uart event type: %d", event.type);
+                // ESP_LOGI(TAG, "uart event type: %d", event.type);
                 break;
             }
         }
@@ -184,8 +175,8 @@ void EC20_Start(void)
     EC_at_queue = xQueueCreate(2, BUF_SIZE);
     EC_mqtt_queue = xQueueCreate(2, BUF_SIZE);
 
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 20, &Uart1_Task_Handle);
-    xTaskCreate(EC20_Task, "EC20_Task", 2048, NULL, 9, &EC20_Task_Handle);
+    xTaskCreate(uart_event_task, "uart_event_task", 3072, NULL, 20, &Uart1_Task_Handle);
+    xTaskCreate(EC20_Task, "EC20_Task", 3072, NULL, 9, &EC20_Task_Handle);
     xTaskCreate(EC20_M_Task, "EC20_M_Task", 4096, NULL, 8, &EC20_M_Task_Handle);
 }
 
@@ -238,6 +229,11 @@ void EC20_Task(void *arg)
             }
             EC20_NET_STA = true;
             xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
+
+            if (eTaskGetState(Active_Task_Handle) == eSuspended)
+            {
+                vTaskResume(Active_Task_Handle);
+            }
             xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
             xSemaphoreTake(xMutex_Http_Send, -1);
             ret = EC20_MQTT_INIT();
@@ -248,7 +244,6 @@ void EC20_Task(void *arg)
             }
             MQTT_E_STA = true;
         }
-
         vTaskSuspend(NULL);
     }
 }
@@ -471,9 +466,7 @@ end:
 
 uint8_t EC20_Active(char *active_url, char *recv_buf)
 {
-
     // xSemaphoreTake(EC20_muxtex, -1);
-
     char *ret;
     char *cmd_buf;
     uint8_t active_len;
@@ -655,4 +648,28 @@ end:
     {
         return 1;
     }
+}
+
+//获取信号值
+uint8_t EC20_Get_Rssi(float *Rssi_val)
+{
+    char *ret_val;
+    char *temp_buf;
+    char *InpString;
+
+    xSemaphoreTake(xMutex_Http_Send, -1);
+    ret_val = AT_Cmd_Send("AT+CSQ\r\n", "+CSQ", 100, 1);
+    if (ret_val == NULL)
+    {
+        return 0;
+    }
+    temp_buf = (char *)malloc(15);
+    memcpy(temp_buf, ret_val, 15);
+    InpString = strtok(temp_buf, ":"); //+CSQ: 24,5
+    InpString = strtok(NULL, ",");
+    *Rssi_val = ((uint8_t)strtoul(InpString, 0, 10)) * 2 - 113; //GPRS Signal Quality
+    xSemaphoreGive(xMutex_Http_Send);
+
+    free(temp_buf);
+    return *Rssi_val;
 }

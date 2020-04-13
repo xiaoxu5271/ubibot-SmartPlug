@@ -44,21 +44,17 @@ extern TaskHandle_t Binary_485_co2;
 extern TaskHandle_t Binary_ext;
 extern TaskHandle_t Binary_energy;
 extern TaskHandle_t Binary_ele_quan;
-// extern TaskHandle_t Binary_mqtt;
+extern TaskHandle_t Active_Task_Handle;
+esp_timer_handle_t http_timer_suspend_p;
+
+extern uint8_t post_status;
+extern uint8_t Last_Led_Status;
 
 void initialise_http(void);
-
 void http_send_mes(void);
 int32_t http_activate(void);
 int32_t http_post_init(uint32_t Content_Length);
 int8_t http_send_post(int32_t s, char *post_buf, bool end_flag);
 int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size);
-
-extern uint8_t post_status;
-
-uint8_t human_status;
-TaskHandle_t httpHandle;
-esp_timer_handle_t http_timer_suspend_p;
-extern uint8_t Last_Led_Status;
 
 #endif
