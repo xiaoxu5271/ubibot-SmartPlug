@@ -423,7 +423,7 @@ void send_heart_task(void *arg)
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
 
-        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
+        xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等网络连接
 
         xSemaphoreTake(xMutex_Http_Send, -1);
         build_heart_url = (char *)malloc(256);
@@ -461,6 +461,7 @@ void send_heart_task(void *arg)
             if (EC20_Active(build_heart_url, recv_buf) == 0)
             {
                 Led_Status = LED_STA_WIFIERR;
+                ESP_LOGE(TAG, "hart recv 0!\r\n");
             }
             else
             {
@@ -518,6 +519,7 @@ int32_t http_activate(void)
         sprintf(build_http, "http://%s/products/%s/devices/%s/activate\r\n", WEB_SERVER, ProductId, SerialNum);
         if (EC20_Active(build_http, recv_buf) == 0)
         {
+            ESP_LOGE(TAG, "active ERR");
             Led_Status = LED_STA_WIFIERR;
             ret = 101;
         }
@@ -546,8 +548,9 @@ void Active_Task(void *arg)
 {
     while (1)
     {
-        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
         xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
+        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
+
         while ((Net_ErrCode = http_activate()) != 1) //激活
         {
             ESP_LOGE("MAIN", "activate fail\n");
@@ -562,7 +565,7 @@ void initialise_http(void)
 {
     xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
     xTaskCreate(Active_Task, "Active_Task", 3072, NULL, 4, &Active_Task_Handle);
-    xTaskCreate(send_heart_task, "send_heart_task", 8192, NULL, 5, &Binary_Heart_Send);
+    xTaskCreate(send_heart_task, "send_heart_task", 4096, NULL, 5, &Binary_Heart_Send);
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
     xTaskNotifyGive(Binary_Heart_Send);
     err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s

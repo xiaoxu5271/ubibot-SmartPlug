@@ -130,7 +130,7 @@ void Led_Init(void)
 
     Led_Status = LED_STA_INIT;
 
-    xTaskCreate(Led_Task, "Led_Task", 4096, NULL, 2, &Led_Task_Handle);
+    xTaskCreate(Led_Task, "Led_Task", 3072, NULL, 2, &Led_Task_Handle);
 }
 
 void Led_R_On(void)

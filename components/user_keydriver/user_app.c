@@ -135,7 +135,6 @@ static void vTask_view_Work(void *pvParameters)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        ulTaskNotifyTake(pdTRUE, -1);
         ESP_LOGW("heart_memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
@@ -167,6 +166,6 @@ void user_app_key_init(void)
     int32_t err_code;
     err_code = user_key_init(gs_m_key_config, BOARD_BUTTON_COUNT, DECOUNE_TIMER, long_pressed_cb, short_pressed_cb);
     ESP_LOGI("user_app_key_init", "user_key_init is %d\n", err_code);
-    xTaskCreate(vTask_view_Work, "vTask_view_Work", 10240, NULL, 5, &view_sys_handle);
+    xTaskCreate(vTask_view_Work, "vTask_view_Work", 4096, NULL, 3, &view_sys_handle);
     xTaskCreate(user_key_cd_task, "user_key_cd_task", 4096, NULL, 8, NULL);
 }

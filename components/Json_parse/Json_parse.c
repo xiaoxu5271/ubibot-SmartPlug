@@ -216,30 +216,17 @@ static short Parse_metadata(char *ptrptr)
         }
     }
 
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "net_mode"); //"net_mode"
-    if (NULL != pSubSubSub)
-    {
-        if ((uint8_t)pSubSubSub->valueint != net_mode)
-        {
-            // switch (net_mode)
-            // {
-            // case NET_AUTO:
-            //     if ((uint8_t)pSubSubSub->valueint == NET_WIFI)
-            //     {
+    // pSubSubSub = cJSON_GetObjectItem(pJsonJson, "net_mode"); //"net_mode"
+    // if (NULL != pSubSubSub)
+    // {
+    //     if ((uint8_t)pSubSubSub->valueint != net_mode)
+    //     {
 
-            //     }
-
-            //     break;
-
-            // default:
-            //     break;
-            // }
-
-            net_mode = (uint8_t)pSubSubSub->valueint;
-            E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
-            printf("net_mode = %d\n", net_mode);
-        }
-    }
+    //         net_mode = (uint8_t)pSubSubSub->valueint;
+    //         E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
+    //         printf("net_mode = %d\n", net_mode);
+    //     }
+    // }
 
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "de_sw_s"); //"de_sw_s"
     if (NULL != pSubSubSub)
@@ -293,10 +280,10 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
     }
     cJSON_Delete(cjson_blu_data_parse);
 
-    if (eTaskGetState(Active_Task_Handle) == eSuspended)
-    {
-        vTaskResume(Active_Task_Handle);
-    }
+    // if (eTaskGetState(Active_Task_Handle) == eSuspended)
+    // {
+    //     vTaskResume(Active_Task_Handle);
+    // }
     if (net_mode != NET_4G)
     {
         if (xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, 30000 / portTICK_RATE_MS))
@@ -849,8 +836,8 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 strcpy(wifi_data.wifi_ssid, pSub->valuestring);
                 E2P_Write(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
                 printf("WIFI_SSID = %s\r\n", pSub->valuestring);
-                E2P_WriteOneByte(NET_MODE_ADD, NET_WIFI); //写入net_mode
                 net_mode = NET_WIFI;
+                E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
             }
 
             pSub = cJSON_GetObjectItem(pJson, "password"); //"password"
@@ -870,6 +857,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 E2P_Write(APN_ADDR, (uint8_t *)SIM_APN, sizeof(SIM_APN));
                 printf("apn = %s\r\n", SIM_APN);
                 net_mode = NET_4G;
+                E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
             }
 
             pSub = cJSON_GetObjectItem(pJson, "user"); //"user"
@@ -892,17 +880,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             cJSON_Delete(pJson); //delete pJson
 
             //重置网络
-            if (net_mode == NET_WIFI)
-            {
-                start_user_wifi();
-            }
-            else if (net_mode == NET_4G)
-            {
-                if (eTaskGetState(EC20_Task_Handle) == eSuspended)
-                {
-                    vTaskResume(EC20_Task_Handle);
-                }
-            }
+            Net_Switch();
 
             return 1;
         }

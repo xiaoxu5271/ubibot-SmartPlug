@@ -63,9 +63,11 @@ void app_main(void)
 		ret = nvs_flash_init();
 	}
 	ESP_ERROR_CHECK(ret);
-	init_wifi();
+
+	Net_sta_group = xEventGroupCreate();
 	ble_app_init();
-	EC20_Start();
+	init_wifi();
+	EC20_Init();
 
 	RS485_Init();
 	CSE7759B_Init();

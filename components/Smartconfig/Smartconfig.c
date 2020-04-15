@@ -78,7 +78,7 @@ void init_wifi(void) //
 {
     start_AP = 0;
     // tcpip_adapter_init();
-    Net_sta_group = xEventGroupCreate();
+    // Net_sta_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
@@ -98,7 +98,7 @@ void init_wifi(void) //
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
 
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
-    if (net_mode != NET_4G)
+    if (net_mode == NET_WIFI)
     {
         ESP_ERROR_CHECK(esp_wifi_start());
     }
@@ -136,30 +136,33 @@ void start_user_wifi(void)
 //网络状态转换任务
 void Net_Switch(void)
 {
+    ESP_LOGI("Net_Switch", "net_mode=%d", net_mode);
     switch (net_mode)
     {
-    case NET_AUTO:
-        start_user_wifi();
-        Start_W_Mqtt();
-        if (eTaskGetState(EC20_Task_Handle) == eSuspended)
-        {
-            vTaskResume(EC20_Task_Handle);
-        }
-        break;
+        // case NET_AUTO:
+        //     start_user_wifi();
+        //     Start_W_Mqtt();
+        //     if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+        //     {
+        //         vTaskResume(EC20_Task_Handle);
+        //     }
+        //     break;
 
     case NET_WIFI:
         start_user_wifi();
         Start_W_Mqtt();
-        EC20_Power_Off();
+        EC20_Stop();
+        // EC20_Power_Off();
         break;
 
     case NET_4G:
         stop_user_wifi();
         Stop_W_Mqtt();
-        if (eTaskGetState(EC20_Task_Handle) == eSuspended)
-        {
-            vTaskResume(EC20_Task_Handle);
-        }
+        EC20_Start();
+        // if (eTaskGetState(EC20_Task_Handle) == eSuspended)
+        // {
+        //     vTaskResume(EC20_Task_Handle);
+        // }
 
         break;
 

@@ -114,7 +114,7 @@ void initialise_mqtt(void)
 
     xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
 
-    if (net_mode != NET_4G)
+    if (WIFI_STA == true)
     {
         esp_mqtt_client_start(client);
     }
@@ -134,7 +134,6 @@ void Stop_W_Mqtt(void)
 
 uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)
 {
-
     if (MQTT_W_STA == true)
     {
         uint8_t *status_buff = (uint8_t *)malloc(350);
