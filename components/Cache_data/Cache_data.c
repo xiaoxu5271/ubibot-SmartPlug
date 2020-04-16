@@ -215,7 +215,7 @@ static uint8_t Http_post_fun(void)
     // ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
-    ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
+    // ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
     cache_data_len = Read_Post_Len(start_read_num, E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num);
 
@@ -226,7 +226,7 @@ static uint8_t Http_post_fun(void)
     }
 
     post_data_len = strlen(post_header) + strlen(status_buff) + cache_data_len;
-    ESP_LOGI(TAG, "post_data_len=%d,cache_data_len=%d", post_data_len, cache_data_len);
+    // ESP_LOGI(TAG, "post_data_len=%d,cache_data_len=%d", post_data_len, cache_data_len);
 
     socket_num = http_post_init(post_data_len);
     if (socket_num < 0)
@@ -267,13 +267,13 @@ static uint8_t Http_post_fun(void)
                     start_read_num_oen = 0;
                     end_read_num_one = end_read_num;
                     one_post_buff[strlen((const char *)one_post_buff)] = ',';
-                    ESP_LOGI(TAG, "first half post/read over");
+                    // ESP_LOGI(TAG, "first half post/read over");
                 }
                 else
                 {
                     //数据读完
                     send_status = true;
-                    ESP_LOGI(TAG, "All data post/read over");
+                    // ESP_LOGI(TAG, "All data post/read over");
                 }
             }
             else
@@ -300,13 +300,13 @@ static uint8_t Http_post_fun(void)
                 {
                     start_read_num_oen = 0;
                     end_read_num_one = end_read_num;
-                    ESP_LOGI(TAG, "first half post/read over");
+                    // ESP_LOGI(TAG, "first half post/read over");
                 }
                 else
                 {
                     //数据读完
                     send_status = true;
-                    ESP_LOGI(TAG, "All data post/read over");
+                    // ESP_LOGI(TAG, "All data post/read over");
                 }
             }
         }
@@ -319,7 +319,7 @@ static uint8_t Http_post_fun(void)
     }
 
     memset(recv_buff, 0, HTTP_RECV_BUFF_LEN);
-    if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) <= 0)
+    if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) == false)
     {
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;

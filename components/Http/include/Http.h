@@ -52,9 +52,9 @@ extern uint8_t Last_Led_Status;
 
 void initialise_http(void);
 void http_send_mes(void);
-int32_t http_activate(void);
+void Start_Active(void);
 int32_t http_post_init(uint32_t Content_Length);
 int8_t http_send_post(int32_t s, char *post_buf, bool end_flag);
-int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size);
+bool http_post_read(int32_t s, char *recv_buff, uint16_t buff_size);
 
 #endif

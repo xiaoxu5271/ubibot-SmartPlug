@@ -10,7 +10,7 @@
 #include "freertos/event_groups.h"
 
 #include <esp_log.h>
-#include "tcp_bsp.h"
+// #include "tcp_bsp.h"
 #include "Smartconfig.h"
 #include "Mqtt.h"
 // #include "w5500_driver.h"

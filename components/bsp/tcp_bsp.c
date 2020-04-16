@@ -96,7 +96,7 @@ void recv_data(void *pvParameters)
             {
                 // send(connect_socket, send_buf, strlen(send_buf), 0);
                 close_socket(); //删除任务前，需要断开连接
-                vTaskDelete(my_tcp_connect_Handle);
+                // vTaskDelete(my_tcp_connect_Handle);
                 vTaskDelete(tx_rx_task);
             }
             //接收数据回发
@@ -231,7 +231,7 @@ esp_err_t create_tcp_client()
 void my_tcp_connect(void)
 {
     //等待WIFI连接信号量，死等
-    xEventGroupWaitBits(tcp_event_group, AP_STACONNECTED_BIT, false, true, portMAX_DELAY);
+    // xEventGroupWaitBits(tcp_event_group, AP_STACONNECTED_BIT, false, true, portMAX_DELAY);
     ESP_LOGI(TAG, "start tcp connected");
 
     //延时3S准备建立server
@@ -360,7 +360,7 @@ void my_tcp_connect_task(void *pvParameters)
     {
         g_rxtx_need_restart = false;
         //等待WIFI连接信号量，死等
-        xEventGroupWaitBits(tcp_event_group, AP_STACONNECTED_BIT, false, true, portMAX_DELAY);
+        // xEventGroupWaitBits(tcp_event_group, AP_STACONNECTED_BIT, false, true, portMAX_DELAY);
 
         ESP_LOGI(TAG, "start tcp connected");
 

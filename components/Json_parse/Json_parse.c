@@ -17,7 +17,7 @@
 #include "Bluetooth.h"
 #include "ota.h"
 #include "Led.h"
-#include "tcp_bsp.h"
+// #include "tcp_bsp.h"
 #include "my_base64.h"
 #include "RS485_Read.h"
 #include "ds18b20.h"
@@ -280,13 +280,9 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
     }
     cJSON_Delete(cjson_blu_data_parse);
 
-    // if (eTaskGetState(Active_Task_Handle) == eSuspended)
-    // {
-    //     vTaskResume(Active_Task_Handle);
-    // }
     if (net_mode != NET_4G)
     {
-        if (xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, 30000 / portTICK_RATE_MS))
+        if (xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, 30000 / portTICK_RATE_MS))
         {
             return 1;
         }

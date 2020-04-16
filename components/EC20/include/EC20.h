@@ -7,6 +7,18 @@
 
 // SemaphoreHandle_t EC20_muxtex;
 
+uint8_t EC20_Err_Code;
+
+enum err_code
+{
+    NO_ARK = 1,
+    CPIN_ERR,
+    QICSGP_ERR,
+    CGATT_ERR,
+    QIACT_ERR,
+    NO_NET
+};
+
 extern bool EC20_NET_STA;
 extern TaskHandle_t EC20_Task_Handle;
 extern TaskHandle_t Uart1_Task_Handle;

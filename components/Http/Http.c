@@ -230,7 +230,7 @@ int32_t http_post_init(uint32_t Content_Length)
             .ai_socktype = SOCK_STREAM,
         };
         struct addrinfo *res;
-        struct in_addr *addr;
+        // struct in_addr *addr;
         int32_t s = 0;
 
         int err = getaddrinfo("api.ubibot.cn", "80", &hints, &res); //step1：DNS域名解析
@@ -243,8 +243,8 @@ int32_t http_post_init(uint32_t Content_Length)
             goto end;
         }
 
-        addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
-        ESP_LOGI(TAG, "DNS lookup succeeded. IP=%s", inet_ntoa(*addr));
+        // addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
+        // ESP_LOGI(TAG, "DNS lookup succeeded. IP=%s", inet_ntoa(*addr));
 
         s = socket(res->ai_family, res->ai_socktype, 0); //step2：新建套接字
         if (s < 0)
@@ -256,7 +256,7 @@ int32_t http_post_init(uint32_t Content_Length)
             ret = -1;
             goto end;
         }
-        ESP_LOGI(TAG, "... allocated socket");
+        // ESP_LOGI(TAG, "... allocated socket");
 
         if (connect(s, res->ai_addr, res->ai_addrlen) != 0) //step3：连接IP
         {
@@ -268,7 +268,7 @@ int32_t http_post_init(uint32_t Content_Length)
             goto end;
         }
 
-        ESP_LOGI(TAG, "... connected");
+        // ESP_LOGI(TAG, "... connected");
         freeaddrinfo(res);
 
         if (write(s, build_po_url, strlen(build_po_url)) < 0) //step4：发送http Header
@@ -365,9 +365,9 @@ int8_t http_send_post(int32_t s, char *post_buf, bool end_flag)
 }
 
 //读取http post 返回
-int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
+bool http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
 {
-    int ret;
+    bool ret;
     if (WIFI_STA == true)
     {
         struct timeval receiving_timeout;
@@ -379,23 +379,37 @@ int8_t http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
             ESP_LOGE(TAG, "... failed to set socket receiving timeout");
             close(s);
             // vTaskDelay(1000 / portTICK_PERIOD_MS);
-            return -1;
+            ret = false;
+            goto end;
         }
-        ESP_LOGI(TAG, "... set socket receiving timeout success");
-
-        /* Read HTTP response */
+        // ESP_LOGI(TAG, "... set socket receiving timeout success");
 
         // bzero((uint16_t *)recv_buff, buff_size);
-        ret = read(s, (uint16_t *)recv_buff, buff_size);
-        // ESP_LOGI(TAG, "r=%d,activate recv_buf=%s\r\n", r, (char *)recv_buff);
+        if (read(s, (uint16_t *)recv_buff, buff_size) > 0)
+        {
+            ret = true;
+            // ESP_LOGI(TAG, "r=%d,activate recv_buf=%s\r\n", ret, (char *)recv_buff);
+        }
+        else
+        {
+            ret = false;
+        }
         close(s);
     }
     else
     {
-        // ESP_LOGI(TAG, "EC20 POST READ");
-        ret = EC20_Read_Post_Data(recv_buff, buff_size);
+        if (EC20_Read_Post_Data(recv_buff, buff_size) == 1)
+        {
+            ret = true;
+        }
+
+        else
+        {
+            ret = false;
+        }
     }
 
+end:
     return ret;
 }
 
@@ -430,7 +444,6 @@ void send_heart_task(void *arg)
         recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
         if (WIFI_STA == true)
         {
-
             sprintf(build_heart_url, "GET http://%s/heartbeat?api_key=%s HTTP/1.0\r\nHost: %sUser-Agent: dalian urban ILS1\r\n\r\n",
                     WEB_SERVER,
                     ApiKey,
@@ -557,14 +570,22 @@ void Active_Task(void *arg)
             vTaskDelay(2000 / portTICK_PERIOD_MS);
         }
         xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
-        vTaskSuspend(NULL);
+        break;
+    }
+    vTaskDelete(NULL);
+}
+
+void Start_Active(void)
+{
+    if (Active_Task_Handle == NULL || eTaskGetState(Active_Task_Handle) == eReady)
+    {
+        xTaskCreate(Active_Task, "Active_Task", 3072, NULL, 4, &Active_Task_Handle);
     }
 }
 
 void initialise_http(void)
 {
     xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
-    xTaskCreate(Active_Task, "Active_Task", 3072, NULL, 4, &Active_Task_Handle);
     xTaskCreate(send_heart_task, "send_heart_task", 4096, NULL, 5, &Binary_Heart_Send);
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
     xTaskNotifyGive(Binary_Heart_Send);

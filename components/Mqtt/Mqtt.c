@@ -116,7 +116,7 @@ void initialise_mqtt(void)
 
     if (WIFI_STA == true)
     {
-        esp_mqtt_client_start(client);
+        Start_W_Mqtt();
     }
 
     //
@@ -124,12 +124,20 @@ void initialise_mqtt(void)
 
 void Start_W_Mqtt(void)
 {
-    esp_mqtt_client_start(client);
+    if ((xEventGroupGetBits(Net_sta_group) & MQTT_W_S_BIT) != MQTT_W_S_BIT)
+    {
+        esp_mqtt_client_start(client);
+        xEventGroupSetBits(Net_sta_group, MQTT_W_S_BIT);
+    }
 }
 void Stop_W_Mqtt(void)
 {
-    esp_mqtt_client_stop(client);
-    MQTT_W_STA = false;
+    if ((xEventGroupGetBits(Net_sta_group) & MQTT_W_S_BIT) == MQTT_W_S_BIT)
+    {
+        esp_mqtt_client_stop(client);
+        MQTT_W_STA = false;
+        xEventGroupClearBits(Net_sta_group, MQTT_W_S_BIT);
+    }
 }
 
 uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)

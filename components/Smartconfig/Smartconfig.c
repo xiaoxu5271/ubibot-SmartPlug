@@ -15,19 +15,19 @@
 /*  user include */
 #include "esp_log.h"
 #include "Led.h"
-#include "tcp_bsp.h"
+// #include "tcp_bsp.h"
 // #include "w5500_driver.h"
 #include "Json_parse.h"
 #include "Bluetooth.h"
 #include "EC20.h"
 #include "Mqtt.h"
+#include "Http.h"
 
 #include "Smartconfig.h"
-#define TAG "USER WIFI"
+#define TAG "NET_CFG"
 
-TaskHandle_t my_tcp_connect_Handle;
-EventGroupHandle_t Net_sta_group;
-EventGroupHandle_t tcp_event_group;
+// TaskHandle_t my_tcp_connect_Handle;
+// EventGroupHandle_t tcp_event_group;
 
 uint8_t start_AP = 0;
 uint8_t bl_flag = 0; //蓝牙配网模式
@@ -69,8 +69,9 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     {
         WIFI_STA = true;
         xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        Start_Active();
+        // ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        // ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
     }
 }
 
@@ -100,37 +101,50 @@ void init_wifi(void) //
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
     if (net_mode == NET_WIFI)
     {
+        xEventGroupSetBits(Net_sta_group, WIFI_S_BIT);
         ESP_ERROR_CHECK(esp_wifi_start());
     }
 }
 
 void stop_user_wifi(void)
 {
-    WIFI_STA = false;
-    esp_err_t err = esp_wifi_stop();
-    if (err == ESP_ERR_WIFI_NOT_INIT)
+    if ((xEventGroupGetBits(Net_sta_group) & WIFI_S_BIT) == WIFI_S_BIT)
     {
-        return;
+        xEventGroupClearBits(Net_sta_group, WIFI_S_BIT);
+        WIFI_STA = false;
+        esp_err_t err = esp_wifi_stop();
+        if (err == ESP_ERR_WIFI_NOT_INIT)
+        {
+            return;
+        }
+        ESP_ERROR_CHECK(err);
+        ESP_LOGI(TAG, "turn off WIFI! \n");
     }
-    ESP_ERROR_CHECK(err);
-    printf("turn off WIFI! \n");
+    else
+    {
+        ESP_LOGI(TAG, "WIFI not start! \n");
+    }
 }
 
 void start_user_wifi(void)
 {
-    esp_err_t err = esp_wifi_stop();
-    if (err == ESP_ERR_WIFI_NOT_INIT)
+    if ((xEventGroupGetBits(Net_sta_group) & WIFI_S_BIT) == WIFI_S_BIT)
     {
-        return;
+        esp_err_t err = esp_wifi_stop();
+        if (err == ESP_ERR_WIFI_NOT_INIT)
+        {
+            return;
+        }
+        ESP_ERROR_CHECK(err);
     }
-    ESP_ERROR_CHECK(err);
+    xEventGroupSetBits(Net_sta_group, WIFI_S_BIT);
     wifi_config_t s_staconf;
     memset(&s_staconf.sta, 0, sizeof(s_staconf));
     strcpy((char *)s_staconf.sta.ssid, wifi_data.wifi_ssid);
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
     ESP_ERROR_CHECK(esp_wifi_start());
-    printf("turn on WIFI! \n");
+    ESP_LOGI(TAG, "turn on WIFI! \n");
 }
 
 //网络状态转换任务
