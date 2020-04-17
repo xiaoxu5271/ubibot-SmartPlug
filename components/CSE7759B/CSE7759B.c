@@ -6,13 +6,15 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 #include "Json_parse.h"
-#include "CSE7759B.h"
+
 #include "Uart0.h"
 #include "Http.h"
 #include "Cache_data.h"
 #include "ServerTimer.h"
 #include "Led.h"
+#include "Smartconfig.h"
 
+#include "CSE7759B.h"
 #define TAG "CSE7759B"
 TaskHandle_t CSE7759B_Handle = NULL;
 SemaphoreHandle_t Energy_read_Binary = NULL;
@@ -669,30 +671,32 @@ void Energy_Read_Task(void *pvParameters)
                 Led_Status = LED_STA_HEARD_ERR;
                 vTaskDelay(2000 / portTICK_PERIOD_MS); //
             }
-            filed_buff = (char *)malloc(9);
 
-            pJsonRoot = cJSON_CreateObject();
-            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-            // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-            snprintf(filed_buff, 9, "field%d", sw_v_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
-            snprintf(filed_buff, 9, "field%d", sw_c_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
-            snprintf(filed_buff, 9, "field%d", sw_p_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
+            if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+            {
+                filed_buff = (char *)malloc(9);
+                pJsonRoot = cJSON_CreateObject();
+                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+                snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
+                snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
+                snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
 
-            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                       //delete cjson root
-            len = strlen(OutBuffer);
-            printf("len:%d\n%s\n", len, OutBuffer);
-            // SaveBuffer = (uint8_t *)malloc(len);
-            // memcpy(SaveBuffer, OutBuffer, len);
-            xSemaphoreTake(Cache_muxtex, -1);
-            DataSave((uint8_t *)OutBuffer, len);
-            xSemaphoreGive(Cache_muxtex);
-            free(OutBuffer);
-            free(filed_buff);
-            // free(SaveBuffer);
+                OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                cJSON_Delete(pJsonRoot);                       //delete cjson root
+                len = strlen(OutBuffer);
+                printf("len:%d\n%s\n", len, OutBuffer);
+                // SaveBuffer = (uint8_t *)malloc(len);
+                // memcpy(SaveBuffer, OutBuffer, len);
+                xSemaphoreTake(Cache_muxtex, -1);
+                DataSave((uint8_t *)OutBuffer, len);
+                xSemaphoreGive(Cache_muxtex);
+                free(OutBuffer);
+                free(filed_buff);
+            }
         }
 
         // if (Binary_mqtt != NULL)
@@ -721,24 +725,25 @@ void Ele_quan_Task(void *pvParameters)
         // ESP_LOGI(TAG, "energy=%f\n", mqtt_json_s.mqtt_Energy);
         runingInf.energy = 0; //清除本次统计
 
-        filed_buff = (char *)malloc(9);
-
-        pJsonRoot = cJSON_CreateObject();
-        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-        snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
-        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
-        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-        cJSON_Delete(pJsonRoot);                       //delete cjson root
-        len = strlen(OutBuffer);
-        printf("len:%d\n%s\n", len, OutBuffer);
-        // SaveBuffer = (uint8_t *)malloc(len);
-        // memcpy(SaveBuffer, OutBuffer, len);
-        xSemaphoreTake(Cache_muxtex, -1);
-        DataSave((uint8_t *)OutBuffer, len);
-        xSemaphoreGive(Cache_muxtex);
-        free(OutBuffer);
-        // free(SaveBuffer);
-        free(filed_buff);
+        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+        {
+            filed_buff = (char *)malloc(9);
+            pJsonRoot = cJSON_CreateObject();
+            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+            snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
+            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+            cJSON_Delete(pJsonRoot);                       //delete cjson root
+            len = strlen(OutBuffer);
+            printf("len:%d\n%s\n", len, OutBuffer);
+            // SaveBuffer = (uint8_t *)malloc(len);
+            // memcpy(SaveBuffer, OutBuffer, len);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave((uint8_t *)OutBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            free(OutBuffer);
+            free(filed_buff);
+        }
     }
 }
 

@@ -12,6 +12,7 @@
 #include "ServerTimer.h"
 #include "Json_parse.h"
 #include "crc8_16.h"
+#include "Smartconfig.h"
 
 #include "RS485_Read.h"
 
@@ -97,26 +98,30 @@ void read_485_th_task(void *pvParameters)
                     ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
                     // RS485_status = true;
                     // // 读取成功
-                    filed_buff = (char *)malloc(9);
-                    pJsonRoot = cJSON_CreateObject();
-                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-                    snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
-                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ext_tem));
-                    snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
-                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ext_hum));
 
-                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                    cJSON_Delete(pJsonRoot);                       //delete cjson root
-                    len = strlen(OutBuffer);
-                    printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
-                    // memcpy(SaveBuffer, OutBuffer, len);
-                    xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave((uint8_t *)OutBuffer, len);
-                    xSemaphoreGive(Cache_muxtex);
-                    free(OutBuffer);
-                    // free(SaveBuffer);
-                    free(filed_buff);
+                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    {
+                        filed_buff = (char *)malloc(9);
+                        pJsonRoot = cJSON_CreateObject();
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ext_tem));
+                        snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ext_hum));
+
+                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                        cJSON_Delete(pJsonRoot);                       //delete cjson root
+                        len = strlen(OutBuffer);
+                        printf("len:%d\n%s\n", len, OutBuffer);
+                        // SaveBuffer = (uint8_t *)malloc(len);
+                        // memcpy(SaveBuffer, OutBuffer, len);
+                        xSemaphoreTake(Cache_muxtex, -1);
+                        DataSave((uint8_t *)OutBuffer, len);
+                        xSemaphoreGive(Cache_muxtex);
+                        free(OutBuffer);
+                        // free(SaveBuffer);
+                        free(filed_buff);
+                    }
                 }
                 else
                 {
@@ -171,23 +176,24 @@ void read_485_t_task(void *pvParameters)
                     Rs485_t_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
                     ESP_LOGI(TAG, "Rs485_t_val=%f\n", Rs485_t_val);
 
-                    filed_buff = (char *)malloc(9);
-                    pJsonRoot = cJSON_CreateObject();
-                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-                    snprintf(filed_buff, 9, "field%d", r1_t_f_num);
-                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_t_val));
-                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                    cJSON_Delete(pJsonRoot);                       //delete cjson root
-                    len = strlen(OutBuffer);
-                    printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
-                    // memcpy(SaveBuffer, OutBuffer, len);
-                    xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave((uint8_t *)OutBuffer, len);
-                    xSemaphoreGive(Cache_muxtex);
-                    free(OutBuffer);
-                    // free(SaveBuffer);
-                    free(filed_buff);
+                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    {
+
+                        filed_buff = (char *)malloc(9);
+                        pJsonRoot = cJSON_CreateObject();
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        snprintf(filed_buff, 9, "field%d", r1_t_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_t_val));
+                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                        cJSON_Delete(pJsonRoot);                       //delete cjson root
+                        len = strlen(OutBuffer);
+                        printf("len:%d\n%s\n", len, OutBuffer);
+                        xSemaphoreTake(Cache_muxtex, -1);
+                        DataSave((uint8_t *)OutBuffer, len);
+                        xSemaphoreGive(Cache_muxtex);
+                        free(OutBuffer);
+                        free(filed_buff);
+                    }
                 }
                 else
                 {
@@ -239,23 +245,24 @@ void read_485_ws_task(void *pvParameters)
                 {
                     Rs485_ws_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
                     ESP_LOGI(TAG, "Rs485_ws_val=%f\n", Rs485_ws_val);
-                    filed_buff = (char *)malloc(9);
-                    pJsonRoot = cJSON_CreateObject();
-                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-                    snprintf(filed_buff, 9, "field%d", r1_ws_f_num);
-                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_ws_val));
-                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                    cJSON_Delete(pJsonRoot);                       //delete cjson root
-                    len = strlen(OutBuffer);
-                    printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
-                    // memcpy(SaveBuffer, OutBuffer, len);
-                    xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave((uint8_t *)OutBuffer, len);
-                    xSemaphoreGive(Cache_muxtex);
-                    free(OutBuffer);
-                    // free(SaveBuffer);
-                    free(filed_buff);
+
+                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    {
+                        filed_buff = (char *)malloc(9);
+                        pJsonRoot = cJSON_CreateObject();
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        snprintf(filed_buff, 9, "field%d", r1_ws_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_ws_val));
+                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                        cJSON_Delete(pJsonRoot);                       //delete cjson root
+                        len = strlen(OutBuffer);
+                        printf("len:%d\n%s\n", len, OutBuffer);
+                        xSemaphoreTake(Cache_muxtex, -1);
+                        DataSave((uint8_t *)OutBuffer, len);
+                        xSemaphoreGive(Cache_muxtex);
+                        free(OutBuffer);
+                        free(filed_buff);
+                    }
                 }
                 else
                 {
@@ -318,25 +325,25 @@ void read_485_sth_task(void *pvParameters)
 
                     ESP_LOGI(TAG, "rs485_st_val=%f   rs485_sh_val=%f\n", rs485_st_val, rs485_sh_val);
 
-                    filed_buff = (char *)malloc(9);
-                    pJsonRoot = cJSON_CreateObject();
-                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-                    snprintf(filed_buff, 9, "field%d", r1_sth_t_f_num);
-                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(rs485_st_val));
-                    snprintf(filed_buff, 9, "field%d", r1_sth_h_f_num);
-                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(rs485_sh_val));
-                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                    cJSON_Delete(pJsonRoot);                       //delete cjson root
-                    len = strlen(OutBuffer);
-                    printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
-                    // memcpy(SaveBuffer, OutBuffer, len);
-                    xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave((uint8_t *)OutBuffer, len);
-                    xSemaphoreGive(Cache_muxtex);
-                    free(OutBuffer);
-                    // free(SaveBuffer);
-                    free(filed_buff);
+                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    {
+                        filed_buff = (char *)malloc(9);
+                        pJsonRoot = cJSON_CreateObject();
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        snprintf(filed_buff, 9, "field%d", r1_sth_t_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(rs485_st_val));
+                        snprintf(filed_buff, 9, "field%d", r1_sth_h_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(rs485_sh_val));
+                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                        cJSON_Delete(pJsonRoot);                       //delete cjson root
+                        len = strlen(OutBuffer);
+                        printf("len:%d\n%s\n", len, OutBuffer);
+                        xSemaphoreTake(Cache_muxtex, -1);
+                        DataSave((uint8_t *)OutBuffer, len);
+                        xSemaphoreGive(Cache_muxtex);
+                        free(OutBuffer);
+                        free(filed_buff);
+                    }
                 }
                 else
                 {
@@ -390,23 +397,23 @@ void read_485_lt_task(void *pvParameters)
                     ESP_LOGI(TAG, "light_val=%f\n", light_val);
                     RS485_status = true;
                     // 读取成功
-                    filed_buff = (char *)malloc(9);
-                    pJsonRoot = cJSON_CreateObject();
-                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-                    snprintf(filed_buff, 9, "field%d", r1_light_f_num);
-                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(light_val));
-                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                    cJSON_Delete(pJsonRoot);                       //delete cjson root
-                    len = strlen(OutBuffer);
-                    printf("len:%d\n%s\n", len, OutBuffer);
-                    // SaveBuffer = (uint8_t *)malloc(len);
-                    // memcpy(SaveBuffer, OutBuffer, len);
-                    xSemaphoreTake(Cache_muxtex, -1);
-                    DataSave((uint8_t *)OutBuffer, len);
-                    xSemaphoreGive(Cache_muxtex);
-                    free(OutBuffer);
-                    // free(SaveBuffer);
-                    free(filed_buff);
+                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    {
+                        filed_buff = (char *)malloc(9);
+                        pJsonRoot = cJSON_CreateObject();
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        snprintf(filed_buff, 9, "field%d", r1_light_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(light_val));
+                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                        cJSON_Delete(pJsonRoot);                       //delete cjson root
+                        len = strlen(OutBuffer);
+                        printf("len:%d\n%s\n", len, OutBuffer);
+                        xSemaphoreTake(Cache_muxtex, -1);
+                        DataSave((uint8_t *)OutBuffer, len);
+                        xSemaphoreGive(Cache_muxtex);
+                        free(OutBuffer);
+                        free(filed_buff);
+                    }
                 }
                 else
                 {
@@ -512,27 +519,30 @@ void read_485_co2_task(void *pvParameters)
                         ESP_LOGI(TAG, "CO2:%f,T:%f,H:%f", co2_val, t_val, h_val);
                         if ((co2_val >= 100) && (co2_val <= 20000))
                         {
-                            filed_buff = (char *)malloc(9);
-                            pJsonRoot = cJSON_CreateObject();
-                            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-                            snprintf(filed_buff, 9, "field%d", r1_co2_f_num);
-                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(co2_val));
-                            snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
-                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(t_val));
-                            snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
-                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(h_val));
-                            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                            cJSON_Delete(pJsonRoot);                       //delete cjson root
-                            len = strlen(OutBuffer);
-                            printf("len:%d\n%s\n", len, OutBuffer);
-                            // SaveBuffer = (uint8_t *)malloc(len);
-                            // memcpy(SaveBuffer, OutBuffer, len);
-                            xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave((uint8_t *)OutBuffer, len);
-                            xSemaphoreGive(Cache_muxtex);
-                            free(OutBuffer);
-                            // free(SaveBuffer);
-                            free(filed_buff);
+                            if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                            {
+                                filed_buff = (char *)malloc(9);
+                                pJsonRoot = cJSON_CreateObject();
+                                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                                snprintf(filed_buff, 9, "field%d", r1_co2_f_num);
+                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(co2_val));
+                                snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
+                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(t_val));
+                                snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
+                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(h_val));
+                                OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                                cJSON_Delete(pJsonRoot);                       //delete cjson root
+                                len = strlen(OutBuffer);
+                                printf("len:%d\n%s\n", len, OutBuffer);
+                                // SaveBuffer = (uint8_t *)malloc(len);
+                                // memcpy(SaveBuffer, OutBuffer, len);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                free(OutBuffer);
+                                // free(SaveBuffer);
+                                free(filed_buff);
+                            }
                         }
                     }
                     else

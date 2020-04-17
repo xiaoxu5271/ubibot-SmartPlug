@@ -112,7 +112,7 @@ void user_key_cd_task(void *arg)
             break;
 
         case 2:
-            vTaskNotifyGiveFromISR(view_sys_handle, NULL);
+            xTaskNotifyGive(view_sys_handle);
             break;
 
         case 5:

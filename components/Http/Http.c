@@ -202,7 +202,7 @@ int32_t http_post_init(uint32_t Content_Length)
     bzero(cmd_buf, 30);
     int32_t ret;
 
-    if (WIFI_STA == true)
+    if (net_mode == NET_WIFI)
     {
         if (post_status == POST_NOCOMMAND) //无commID
         {
@@ -344,7 +344,7 @@ end:
 int8_t http_send_post(int32_t s, char *post_buf, bool end_flag)
 {
     int8_t ret = 1;
-    if (WIFI_STA == true)
+    if (net_mode == NET_WIFI)
     {
         if (write(s, post_buf, strlen((const char *)post_buf)) < 0) //step4：发送http Header
         {
@@ -368,7 +368,7 @@ int8_t http_send_post(int32_t s, char *post_buf, bool end_flag)
 bool http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
 {
     bool ret;
-    if (WIFI_STA == true)
+    if (net_mode == NET_WIFI)
     {
         struct timeval receiving_timeout;
         receiving_timeout.tv_sec = 15;
@@ -426,72 +426,91 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
     return ret;
 }
 
-void send_heart_task(void *arg)
+//发送心跳包
+bool Send_herat(void)
 {
     char *build_heart_url;
     char *recv_buf;
-    while (1)
+    bool ret = false;
+    xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
+
+    xSemaphoreTake(xMutex_Http_Send, -1);
+    build_heart_url = (char *)malloc(256);
+    recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
+    if (net_mode == NET_WIFI)
     {
-        ulTaskNotifyTake(pdTRUE, -1);
-        ESP_LOGW("heart_memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
-                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
-                 esp_get_free_heap_size());
+        sprintf(build_heart_url, "GET http://%s/heartbeat?api_key=%s HTTP/1.0\r\nHost: %sUser-Agent: dalian urban ILS1\r\n\r\n",
+                WEB_SERVER,
+                ApiKey,
+                WEB_SERVER);
 
-        xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等网络连接
-
-        xSemaphoreTake(xMutex_Http_Send, -1);
-        build_heart_url = (char *)malloc(256);
-        recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
-        if (WIFI_STA == true)
+        if ((http_send_buff(build_heart_url, 256, recv_buf, HTTP_RECV_BUFF_LEN)) > 0)
         {
-            sprintf(build_heart_url, "GET http://%s/heartbeat?api_key=%s HTTP/1.0\r\nHost: %sUser-Agent: dalian urban ILS1\r\n\r\n",
-                    WEB_SERVER,
-                    ApiKey,
-                    WEB_SERVER);
-
-            if ((http_send_buff(build_heart_url, 256, recv_buf, HTTP_RECV_BUFF_LEN)) > 0)
+            ESP_LOGI(TAG, "hart recv:%s", recv_buf);
+            if (parse_objects_heart(recv_buf))
             {
-                ESP_LOGI(TAG, "hart recv:%s", recv_buf);
-                if (parse_objects_heart(recv_buf))
-                {
-                    //successed
-                    Led_Status = LED_STA_WORK;
-                }
-                else
-                {
-                    Led_Status = LED_STA_ACTIVE_ERR;
-                }
+                //successed
+                ret = true;
+                Led_Status = LED_STA_WORK;
             }
             else
             {
-                Led_Status = LED_STA_WIFIERR;
-                ESP_LOGE(TAG, "hart recv 0!\r\n");
+                ret = false;
+                Led_Status = LED_STA_ACTIVE_ERR;
             }
         }
         else
         {
-            sprintf(build_heart_url, "http://%s/heartbeat?api_key=%s\r\n", WEB_SERVER, ApiKey);
-            if (EC20_Active(build_heart_url, recv_buf) == 0)
+            ret = false;
+            Led_Status = LED_STA_WIFIERR;
+            ESP_LOGE(TAG, "hart recv 0!\r\n");
+        }
+    }
+    else
+    {
+        sprintf(build_heart_url, "http://%s/heartbeat?api_key=%s\r\n", WEB_SERVER, ApiKey);
+        if (EC20_Active(build_heart_url, recv_buf) == 0)
+        {
+            ret = false;
+            Led_Status = LED_STA_WIFIERR;
+            ESP_LOGE(TAG, "hart recv 0!\r\n");
+        }
+        else
+        {
+            ESP_LOGI(TAG, "active recv:%s", recv_buf);
+            if (parse_objects_heart(recv_buf))
             {
-                Led_Status = LED_STA_WIFIERR;
-                ESP_LOGE(TAG, "hart recv 0!\r\n");
+                ret = true;
+                Led_Status = LED_STA_WORK;
             }
             else
             {
-                ESP_LOGI(TAG, "active recv:%s", recv_buf);
-                if (parse_objects_heart(recv_buf))
-                {
-                    Led_Status = LED_STA_WORK;
-                }
-                else
-                {
-                    Led_Status = LED_STA_ACTIVE_ERR;
-                }
+                ret = false;
+                Led_Status = LED_STA_ACTIVE_ERR;
             }
         }
-        xSemaphoreGive(xMutex_Http_Send);
-        free(recv_buf);
-        free(build_heart_url);
+    }
+
+    xSemaphoreGive(xMutex_Http_Send);
+    free(recv_buf);
+    free(build_heart_url);
+    return ret;
+}
+
+void send_heart_task(void *arg)
+{
+    while (1)
+    {
+        ESP_LOGW("heart_memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
+                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
+                 esp_get_free_heap_size());
+
+        while (Send_herat() == false)
+        {
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
+        }
+
+        ulTaskNotifyTake(pdTRUE, -1);
     }
 }
 
@@ -504,7 +523,7 @@ int32_t http_activate(void)
 
     xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
     xSemaphoreTake(xMutex_Http_Send, -1);
-    if (WIFI_STA == true)
+    if (net_mode == NET_WIFI)
     {
         sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
         if (wifi_http_send(build_http, 256, recv_buf, 1024) < 0)
@@ -559,11 +578,10 @@ int32_t http_activate(void)
 
 void Active_Task(void *arg)
 {
+    xEventGroupSetBits(Net_sta_group, ACTIVE_S_BIT);
     while (1)
     {
         xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
-        xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
-
         while ((Net_ErrCode = http_activate()) != 1) //激活
         {
             ESP_LOGE("MAIN", "activate fail\n");
@@ -572,12 +590,13 @@ void Active_Task(void *arg)
         xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
         break;
     }
+    xEventGroupClearBits(Net_sta_group, ACTIVE_S_BIT);
     vTaskDelete(NULL);
 }
 
 void Start_Active(void)
 {
-    if (Active_Task_Handle == NULL || eTaskGetState(Active_Task_Handle) == eReady)
+    if ((xEventGroupGetBits(Net_sta_group) & ACTIVE_S_BIT) != ACTIVE_S_BIT)
     {
         xTaskCreate(Active_Task, "Active_Task", 3072, NULL, 4, &Active_Task_Handle);
     }
@@ -585,10 +604,8 @@ void Start_Active(void)
 
 void initialise_http(void)
 {
-    xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
     xTaskCreate(send_heart_task, "send_heart_task", 4096, NULL, 5, &Binary_Heart_Send);
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
-    xTaskNotifyGive(Binary_Heart_Send);
     err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s
     if (err != ESP_OK)
     {

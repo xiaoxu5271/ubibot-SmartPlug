@@ -6,6 +6,8 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "Smartconfig.h"
+
 #include "ServerTimer.h"
 
 static const char *TAG = "SeverTime";
@@ -26,7 +28,8 @@ esp_err_t Server_Timer_GET(char *Server_timer_data)
     ESP_LOGI(TAG, "Setting time: %s", asctime(tmp_time));
     struct timeval now = {.tv_sec = (base_timstamp + 28800)};
     settimeofday(&now, NULL);
-
+    //校准标志
+    xEventGroupSetBits(Net_sta_group, TIME_CAL_BIT);
     free(tmp_time);
     return base_timstamp;
 }

@@ -34,6 +34,10 @@
 
 void app_main(void)
 {
+	Cache_muxtex = xSemaphoreCreateMutex();
+	xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
+	Net_sta_group = xEventGroupCreate();
+
 	Led_Init();
 	Switch_Init();
 	E2prom_Init();
@@ -64,7 +68,6 @@ void app_main(void)
 	}
 	ESP_ERROR_CHECK(ret);
 
-	Net_sta_group = xEventGroupCreate();
 	ble_app_init();
 	init_wifi();
 	EC20_Init();

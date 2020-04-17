@@ -32,7 +32,6 @@
 uint8_t start_AP = 0;
 uint8_t bl_flag = 0; //蓝牙配网模式
 uint8_t Net_ErrCode = 0;
-bool WIFI_STA = false;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
@@ -44,11 +43,11 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
 
-        WIFI_STA = false;
-        if (EC20_NET_STA == false)
+        if (net_mode == NET_WIFI)
         {
             Led_Status = LED_STA_WIFIERR;
             xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
+            Start_Active();
         }
 
         esp_wifi_connect();
@@ -67,7 +66,6 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        WIFI_STA = true;
         xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
         Start_Active();
         // ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
@@ -111,7 +109,6 @@ void stop_user_wifi(void)
     if ((xEventGroupGetBits(Net_sta_group) & WIFI_S_BIT) == WIFI_S_BIT)
     {
         xEventGroupClearBits(Net_sta_group, WIFI_S_BIT);
-        WIFI_STA = false;
         esp_err_t err = esp_wifi_stop();
         if (err == ESP_ERR_WIFI_NOT_INIT)
         {
@@ -151,6 +148,7 @@ void start_user_wifi(void)
 void Net_Switch(void)
 {
     ESP_LOGI("Net_Switch", "net_mode=%d", net_mode);
+    xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
     switch (net_mode)
     {
         // case NET_AUTO:

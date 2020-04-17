@@ -36,24 +36,21 @@ void Write_Flash_Test_task(void *pvParameters);
 
 void Data_Post_Task(void *pvParameters)
 {
-    EventBits_t uxBits;
     while (1)
     {
         ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
-        //发送成功后，判断当前使用flash是否大一个扇区，大于的话再擦除
-        ulTaskNotifyTake(pdTRUE, -1);
-        Create_NET_Json();
-        uxBits = xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, 1000 / portTICK_PERIOD_MS);
-        if ((uxBits & CONNECTED_BIT) == CONNECTED_BIT)
+
+        if ((xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1) & CONNECTED_BIT) == CONNECTED_BIT)
         {
+            Create_NET_Json();
             if (!Http_post_fun())
             {
                 // Led_Status = LED_STA_WIFIERR;
             }
         }
-
+        ulTaskNotifyTake(pdTRUE, -1);
         // vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
@@ -211,7 +208,7 @@ static uint8_t Http_post_fun(void)
     memset(status_buff, 0, 350);
     xSemaphoreTake(Cache_muxtex, -1);
     xSemaphoreTake(xMutex_Http_Send, -1);
-    Create_Status_Json(status_buff); //
+    Create_Status_Json(status_buff, true); //
     // ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;

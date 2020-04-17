@@ -12,6 +12,7 @@
 #include "ServerTimer.h"
 #include "Cache_data.h"
 #include "Json_parse.h"
+#include "Smartconfig.h"
 
 #include "ds18b20.h"
 
@@ -254,24 +255,23 @@ void get_ds18b20_task(void *org)
         printf("start 18b20!");
         if (ds18b20_get_temp() > 0)
         {
-            Field_e1_t = (char *)malloc(9);
-            snprintf(Field_e1_t, 9, "field%d", e1_t_f_num);
-
-            pJsonRoot = cJSON_CreateObject();
-            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-            cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(DS18B20_TEM));
-            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                       //delete cjson root
-            len = strlen(OutBuffer);
-            printf("len:%d\n%s\n", len, OutBuffer);
-            // SaveBuffer = (uint8_t *)malloc(len);
-            // memcpy(SaveBuffer, OutBuffer, len);
-            xSemaphoreTake(Cache_muxtex, -1);
-            DataSave((uint8_t *)OutBuffer, len);
-            xSemaphoreGive(Cache_muxtex);
-            free(OutBuffer);
-            // free(SaveBuffer);
-            free(Field_e1_t);
+            if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+            {
+                Field_e1_t = (char *)malloc(9);
+                snprintf(Field_e1_t, 9, "field%d", e1_t_f_num);
+                pJsonRoot = cJSON_CreateObject();
+                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(DS18B20_TEM));
+                OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                cJSON_Delete(pJsonRoot);                       //delete cjson root
+                len = strlen(OutBuffer);
+                printf("len:%d\n%s\n", len, OutBuffer);
+                xSemaphoreTake(Cache_muxtex, -1);
+                DataSave((uint8_t *)OutBuffer, len);
+                xSemaphoreGive(Cache_muxtex);
+                free(OutBuffer);
+                free(Field_e1_t);
+            }
         }
         else
         {

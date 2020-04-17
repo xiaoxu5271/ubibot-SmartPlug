@@ -19,7 +19,6 @@ enum err_code
     NO_NET
 };
 
-extern bool EC20_NET_STA;
 extern TaskHandle_t EC20_Task_Handle;
 extern TaskHandle_t Uart1_Task_Handle;
 

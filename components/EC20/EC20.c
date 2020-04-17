@@ -32,8 +32,6 @@ char *EC20_RECV;
 
 #define EX_UART_NUM UART_NUM_1
 
-bool EC20_NET_STA = false;
-
 QueueHandle_t EC_uart_queue;
 QueueHandle_t EC_at_queue;
 QueueHandle_t EC_mqtt_queue;
@@ -54,7 +52,7 @@ uint8_t EC20_Moudle_Init(void);
 //重启EC20网络初始化任务
 void Res_EC20_Task(void)
 {
-    if ((xEventGroupWaitBits(Net_sta_group, EC20_Task_BIT, false, true, 0) & EC20_Task_BIT) != EC20_Task_BIT)
+    if ((xEventGroupGetBits(Net_sta_group) & EC20_Task_BIT) != EC20_Task_BIT)
     // if (EC20_Task_Handle == NULL || eTaskGetState(EC20_Task_Handle) == eReady)
     {
         xTaskCreate(EC20_Task, "EC20_Task", 3072, NULL, 9, &EC20_Task_Handle);
@@ -64,7 +62,7 @@ void Res_EC20_Task(void)
 //重启EC20 mqtt 初始化任务
 void Res_EC20_Mqtt_Task(void)
 {
-    if ((xEventGroupWaitBits(Net_sta_group, EC20_M_INIT_BIT, false, true, 0) & EC20_M_INIT_BIT) != EC20_M_INIT_BIT)
+    if ((xEventGroupGetBits(Net_sta_group) & EC20_M_INIT_BIT) != EC20_M_INIT_BIT)
     // if (EC20_Mqtt_Handle == NULL || eTaskGetState(EC20_Mqtt_Handle) == eReady)
     {
         xTaskCreate(EC20_Mqtt_Init_Task, "EC_M_Init", 2048, NULL, 6, &EC20_Mqtt_Handle);
@@ -76,13 +74,13 @@ void Res_EC20_Mqtt_Task(void)
 void EC20_Start(void)
 {
     EC20_Err_Code = 0;
-    if ((xEventGroupWaitBits(Net_sta_group, Uart1_Task_BIT, false, true, 0) & Uart1_Task_BIT) != Uart1_Task_BIT)
+    if ((xEventGroupGetBits(Net_sta_group) & Uart1_Task_BIT) != Uart1_Task_BIT)
     // if (Uart1_Task_Handle == NULL || eTaskGetState(Uart1_Task_Handle) == eReady)
     {
         xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, 20, &Uart1_Task_Handle);
     }
 
-    if ((xEventGroupWaitBits(Net_sta_group, EC20_M_TASK_BIT, false, true, 0) & EC20_M_TASK_BIT) != EC20_M_TASK_BIT)
+    if ((xEventGroupGetBits(Net_sta_group) & EC20_M_TASK_BIT) != EC20_M_TASK_BIT)
     // if (EC20_M_Task_Handle == NULL || eTaskGetState(EC20_M_Task_Handle) == eReady)
     {
         xTaskCreate(EC20_M_Task, "EC20_M_Task", 3072, NULL, 8, &EC20_M_Task_Handle);
@@ -95,7 +93,7 @@ void EC20_Start(void)
 void EC20_Stop(void)
 {
     // if (Uart1_Task_Handle != NULL && eTaskGetState(Uart1_Task_Handle) != eReady)
-    if ((xEventGroupWaitBits(Net_sta_group, Uart1_Task_BIT, false, true, 0) & Uart1_Task_BIT) == Uart1_Task_BIT)
+    if ((xEventGroupGetBits(Net_sta_group) & Uart1_Task_BIT) == Uart1_Task_BIT)
     {
         vTaskDelete(Uart1_Task_Handle);
         xEventGroupClearBits(Net_sta_group, Uart1_Task_BIT);
@@ -103,7 +101,7 @@ void EC20_Stop(void)
     }
 
     // if (EC20_M_Task_Handle != NULL && eTaskGetState(EC20_M_Task_Handle) != eReady)
-    if ((xEventGroupWaitBits(Net_sta_group, EC20_M_TASK_BIT, false, true, 0) & EC20_M_TASK_BIT) == EC20_M_TASK_BIT)
+    if ((xEventGroupGetBits(Net_sta_group) & EC20_M_TASK_BIT) == EC20_M_TASK_BIT)
     {
         vTaskDelete(EC20_M_Task_Handle);
         xEventGroupClearBits(Net_sta_group, EC20_M_TASK_BIT);
@@ -287,7 +285,6 @@ void EC20_Task(void *arg)
     {
         ESP_LOGI(TAG, "EC20_Task START");
 
-        EC20_NET_STA = false;
         MQTT_E_STA = false;
         Led_Status = LED_STA_WIFIERR;
         xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
@@ -302,7 +299,6 @@ void EC20_Task(void *arg)
         {
             continue;
         }
-        EC20_NET_STA = true;
         xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
 
         Res_EC20_Mqtt_Task();
@@ -413,12 +409,12 @@ uint8_t EC20_Moudle_Init(void)
 
     EC20_Rest();
 
-    // ret = AT_Cmd_Send("ATE0\r\n", "OK", 100, 5); //回显
-    // if (ret == NULL)
-    // {
-    //     ESP_LOGE(TAG, "ATE0  ");
-    //     return 0;
-    // }
+    ret = AT_Cmd_Send("ATE0\r\n", "OK", 100, 5); //回显
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, "ATE0  ");
+        return 0;
+    }
 
     ret = AT_Cmd_Send("AT+IPR=115200\r\n", "OK", 100, 5);
     if (ret == NULL)
@@ -493,7 +489,7 @@ void EC20_Mqtt_Init_Task(void *arg)
     uint8_t ret;
     while (1)
     {
-        xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
+        xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT | MQTT_INITED_BIT, false, true, -1); //等待激活
         if (net_mode != NET_4G)
         {
             break;

@@ -33,13 +33,13 @@ EventGroupHandle_t Net_sta_group;
 #define EC20_M_INIT_BIT (1 << 11) //ec20 MQTT初始化状态
 #define EC20_M_TASK_BIT (1 << 12) //ec20 mqtt接收任务
 #define Uart1_Task_BIT (1 << 13)  //Uart1 接收任务
+#define MQTT_INITED_BIT (1 << 14) //MQTT初始化完成
+#define ACTIVE_S_BIT (1 << 15)    //激活中
+#define TIME_CAL_BIT (1 << 16)    //时间校准成功
 
 // static const int CONNECTED_BIT = BIT0;
 // static const int AP_STACONNECTED_BIT = BIT0;
 // extern TaskHandle_t my_tcp_connect_Handle;
-
-#define WIFISTATUS_CONNET 0X01
-#define WIFISTATUS_DISCONNET 0X00
 
 //server
 //AP热点模式的配置信息

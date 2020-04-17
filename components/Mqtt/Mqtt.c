@@ -90,7 +90,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 void initialise_mqtt(void)
 {
-
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
     char mqtt_pwd[42];
     char mqtt_usr[23];
 
@@ -107,14 +107,12 @@ void initialise_mqtt(void)
 
     };
 
-    // xTaskCreate(mqtt_send_task, "mqtt_send_task", 4096, NULL, 7, &Binary_mqtt);
-    // xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, portMAX_DELAY);
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
 
-    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
+    xEventGroupSetBits(Net_sta_group, MQTT_INITED_BIT);
 
-    if (WIFI_STA == true)
+    if (net_mode == NET_WIFI)
     {
         Start_W_Mqtt();
     }
@@ -124,7 +122,8 @@ void initialise_mqtt(void)
 
 void Start_W_Mqtt(void)
 {
-    if ((xEventGroupGetBits(Net_sta_group) & MQTT_W_S_BIT) != MQTT_W_S_BIT)
+    // if ((xEventGroupGetBits(Net_sta_group) & MQTT_W_S_BIT) != MQTT_W_S_BIT)
+    if ((xEventGroupGetBits(Net_sta_group) & (MQTT_W_S_BIT | MQTT_INITED_BIT)) == MQTT_INITED_BIT) //设备激活过，但MQTT未启动
     {
         esp_mqtt_client_start(client);
         xEventGroupSetBits(Net_sta_group, MQTT_W_S_BIT);
@@ -149,7 +148,7 @@ uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)
         memset(status_buff, 0, 350);
         memset(mqtt_buff, 0, data_len + 350 + 10);
 
-        Create_Status_Json((char *)status_buff); //
+        Create_Status_Json((char *)status_buff, false); //
 
         snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s\r\n", data_buff, status_buff);
         esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
@@ -160,18 +159,21 @@ uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)
     }
     else if (MQTT_E_STA == true)
     {
+        xSemaphoreTake(xMutex_Http_Send, -1);
         uint8_t *status_buff = (uint8_t *)malloc(350);
         char *mqtt_buff = (char *)malloc(data_len + 350 + 10);
         memset(status_buff, 0, 350);
         memset(mqtt_buff, 0, data_len + 350 + 10);
 
-        Create_Status_Json((char *)status_buff); //
+        Create_Status_Json((char *)status_buff, false); //
 
         snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s\r\n", data_buff, status_buff);
         EC20_MQTT_PUB(mqtt_buff);
+        xSemaphoreGive(xMutex_Http_Send);
 
         free(status_buff);
         free(mqtt_buff);
+
         return 1;
     }
     return 0;

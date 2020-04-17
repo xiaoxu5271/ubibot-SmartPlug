@@ -24,9 +24,9 @@ esp_err_t creat_object(void);
 #define WORK_FIREINIT 0X08   //开机就火灾
 #define WORK_FIRE 0x09       //火灾保护状态
 
-#define NET_AUTO 0 //上网模式 自动
+#define NET_AUTO 2 //上网模式 自动
 #define NET_4G 1   //上网模式 4G
-#define NET_WIFI 2 //上网模式 wifi
+#define NET_WIFI 0 //上网模式 wifi
 
 struct
 {
@@ -70,7 +70,8 @@ void Read_Metadate_E2p(void);
 void Read_Product_E2p(void);
 void Read_Fields_E2p(void);
 void Create_NET_Json(void);
-uint16_t Create_Status_Json(char *status_buff);
+void Create_Switch_Json(void);
+uint16_t Create_Status_Json(char *status_buff, bool filed_flag);
 
 /************metadata 参数***********/
 extern uint32_t fn_dp;      //数据发送频率
