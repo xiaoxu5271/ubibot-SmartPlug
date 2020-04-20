@@ -7,7 +7,6 @@
 #include "driver/uart.h"
 #include "soc/uart_periph.h"
 #include "driver/gpio.h"
-#include "Json_parse.h"
 #include "Smartconfig.h"
 #include "Led.h"
 #include "Json_parse.h"

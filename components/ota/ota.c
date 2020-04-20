@@ -10,9 +10,6 @@
 
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
-
-// #include "nvs.h"
-// #include "nvs_flash.h"
 #include "Smartconfig.h"
 #include "Json_parse.h"
 #include "Http.h"
@@ -30,6 +27,7 @@ extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 static const char *TAG = "ota";
 //OTA数据
 static char ota_write_data[BUFFSIZE + 1] = {0};
+bool OTA_FLAG = false;
 
 uint32_t content_len = 0;
 
@@ -59,6 +57,7 @@ static void http_cleanup(esp_http_client_handle_t client)
 
 static void wifi_ota_task(void *pvParameter)
 {
+    OTA_FLAG = true;
     esp_err_t err;
     /* update handle : set by esp_ota_begin(), must be freed via esp_ota_end() */
     esp_ota_handle_t update_handle = 0;
@@ -225,5 +224,8 @@ static void wifi_ota_task(void *pvParameter)
 
 void ota_start(void) //建立OTA升级任务，目的是为了让此函数被调用后尽快执行完毕
 {
-    xTaskCreate(wifi_ota_task, "wifi_ota_task", 8192, NULL, 10, &ota_handle);
+    if (OTA_FLAG == false)
+    {
+        xTaskCreate(wifi_ota_task, "wifi_ota_task", 8192, NULL, 10, &ota_handle);
+    }
 }
