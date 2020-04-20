@@ -6,7 +6,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-#define FIRMWARE "SP1-V0.1.12"
+#define FIRMWARE "SP1-V0.1.13"
 
 #define POST_NORMAL 0X00
 #define POST_HEIGHT_ADD 0X01

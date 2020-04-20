@@ -126,20 +126,20 @@ void read_485_th_task(void *pvParameters)
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error\n");
+                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
                 RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error\n");
+                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                 // return 1;
             }
         }
         else
         {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -198,20 +198,20 @@ void read_485_t_task(void *pvParameters)
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error\n");
+                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
                 RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error\n");
+                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                 // return 1;
             }
         }
         else
         {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -267,20 +267,19 @@ void read_485_ws_task(void *pvParameters)
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error\n");
-                    // return 1;
+                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
                 }
             }
             else
             {
                 RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error\n");
+                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                 // return 1;
             }
         }
         else
         {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -348,20 +347,20 @@ void read_485_sth_task(void *pvParameters)
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error\n");
+                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
                 RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error\n");
+                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                 // return 1;
             }
         }
         else
         {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -418,20 +417,20 @@ void read_485_lt_task(void *pvParameters)
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error\n");
+                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
                 RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error\n");
+                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                 // return 1;
             }
         }
         else
         {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! \n");
+            ESP_LOGE(TAG, "RS485 NO ARK !!!  line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -494,22 +493,22 @@ void read_485_co2_task(void *pvParameters)
                                         }
                                         else
                                         {
-                                            ESP_LOGE(TAG, "co2_r CRC ERR");
+                                            ESP_LOGE(TAG, "co2_r CRC line:%d\n", __LINE__);
                                         }
                                     }
                                     else
                                     {
-                                        ESP_LOGE(TAG, "co2_r NO RECV");
+                                        ESP_LOGE(TAG, "co2_r NO RECV line:%d\n", __LINE__);
                                     }
                                 }
                                 else
                                 {
-                                    ESP_LOGE(TAG, "co2_g CRC ERR");
+                                    ESP_LOGE(TAG, "co2_g CRC ERR line:%d\n", __LINE__);
                                 }
                             }
                             else
                             {
-                                ESP_LOGE(TAG, "co2_g NO RECV");
+                                ESP_LOGE(TAG, "co2_g NO RECV line:%d\n", __LINE__);
                             }
                         }
                         co2_val = ((int)(co2_val * 1000 + 0.5)) * 0.001; //保留3位
@@ -547,23 +546,23 @@ void read_485_co2_task(void *pvParameters)
                     }
                     else
                     {
-                        ESP_LOGE(TAG, "co2_s CRC ERR");
+                        ESP_LOGE(TAG, "co2_s CRC ERR line:%d\n", __LINE__);
                     }
                 }
                 else
                 {
-                    ESP_LOGE(TAG, "co2_s NO RECV");
+                    ESP_LOGE(TAG, "co2_s NO RECV line:%d\n", __LINE__);
                 }
             }
             else
             {
-                ESP_LOGE(TAG, "co2_t CRC ERR");
+                ESP_LOGE(TAG, "co2_t CRC ERR line:%d\n", __LINE__);
                 // return 1;
             }
         }
         else
         {
-            ESP_LOGE(TAG, "co2_t NO RECV");
+            ESP_LOGE(TAG, "co2_t NO RECV line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
