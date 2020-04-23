@@ -71,13 +71,13 @@ static void short_pressed_cb(uint8_t pin_no, uint8_t key_action)
     case APP_KEY_PUSH:
         esp_timer_stop(gs_m_key_time_params.short_press_time_handle);
         esp_timer_start_once(gs_m_key_time_params.long_press_time_handle, s_m_key_config->long_pressed_time);
-        ESP_LOGI("short_pressed_cb", "APP_KEY_PUSH\n");
+        // ESP_LOGI("short_pressed_cb", "APP_KEY_PUSH\n");
         break;
     case APP_KEY_RELEASE:
-        ESP_LOGI("short_pressed_cb", "APP_KEY_RELEASE\n");
+        // ESP_LOGI("short_pressed_cb", "APP_KEY_RELEASE\n");
         esp_timer_stop(gs_m_key_time_params.long_press_time_handle);
         /* 如果按键的按下与释放的时间小于MULTI_PRESSED_TIMER则认为是整个短按按键动作完成 */
-        ESP_LOGI("short_pressed_cb", "current_time - last_time is %lld\n", current_time - last_time);
+        // ESP_LOGI("short_pressed_cb", "current_time - last_time is %lld\n", current_time - last_time);
         if ((current_time - last_time) < MULTI_PRESSED_TIMER)
         {
             s_m_key_config->short_pressed_counts++;
@@ -130,6 +130,7 @@ static void long_press_time_out_handle(void *arg)
  */
 static void after_key_decounce_cb(void *arg)
 {
+    // printf("after_key\n");
     /* 轮询判断是哪个GPIO */
     for (uint8_t i = 0; i < gs_key_counts; i++)
     {
@@ -159,7 +160,7 @@ static void after_key_decounce_cb(void *arg)
  *               Ver0.0.1:
                      Helon_Chan, 2018/06/16, 初始化版本\n 
  */
-static void gpio_intr_handler(void *arg)
+static void IRAM_ATTR gpio_intr_handler(void *arg)
 {
 
     /* 获取触发中断的gpio口 */
@@ -243,7 +244,7 @@ int32_t user_key_init(key_config_t *key_config,
     gs_m_key_config = key_config;
     gs_key_counts = key_counts;
     /* 设置gpio中断服务 */
-    gpio_install_isr_service(ESP_INTR_FLAG_EDGE);
+    gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
     /* 不断填充按键参数值 */
     for (uint8_t i = 0; i < key_counts; i++)
     {
@@ -272,7 +273,7 @@ int32_t user_key_init(key_config_t *key_config,
         err_code = gpio_config(&m_gpio_config);
         if (err_code != ESP_OK)
         {
-            ESP_LOGI("user_key_int", "gpio_config is %d\n", err_code);
+            ESP_LOGE("user_key_int", "gpio_config is %d\n", err_code);
             return err_code;
         }
         /* 注册中调回调函数,并将触发中断的GPIO口传进中断处理函数 */
@@ -284,7 +285,7 @@ int32_t user_key_init(key_config_t *key_config,
         err_code = gpio_set_intr_type((key_config + i)->key_number, GPIO_INTR_ANYEDGE);
         if (err_code != ESP_OK)
         {
-            ESP_LOGI("user_key_init", "gpio_set_intr_type is %d\n", err_code);
+            ESP_LOGE("user_key_init", "gpio_set_intr_type is %d\n", err_code);
             return err_code;
         }
     }
@@ -298,10 +299,10 @@ int32_t user_key_init(key_config_t *key_config,
     /* 创建一个名为"gpio_intr_task_thread"的任务,
   注意任务堆栈设大点,否则会在任务处理函数中复位,
   因为那里有打印输出函数,需要占用较大的空间 */
-    err_code = xTaskCreate(gpio_intr_task_thread, "gpio_intr_task_thread", 256 * 8, NULL, 10, NULL);
+    err_code = xTaskCreate(gpio_intr_task_thread, "gpio_intr_task_thread", 256 * 8, NULL, 17, NULL);
     if (err_code != pdPASS)
     {
-        ESP_LOGI("user_key_init", "xTaskCreate is %d\n", err_code);
+        ESP_LOGE("user_key_init", "xTaskCreate is %d\n", err_code);
         return err_code;
     }
     /* 填充消抖定时器所需要的相关参数并创建消抖计时函数 */
@@ -315,7 +316,7 @@ int32_t user_key_init(key_config_t *key_config,
     err_code = esp_timer_create(&esp_decounce_timer_args, &gs_m_key_time_params.key_decounce_time_handle);
     if (err_code != ESP_OK)
     {
-        ESP_LOGI("user_key_init", "esp_decounce_timer is %d\n", err_code);
+        ESP_LOGE("user_key_init", "esp_decounce_timer is %d\n", err_code);
         return err_code;
     }
     /* 填充按键按下并释放之后延时一段时间判断是否有新的按键动作按下所需要的相关参数并创建对应的计时函数 */
@@ -329,7 +330,7 @@ int32_t user_key_init(key_config_t *key_config,
     err_code = esp_timer_create(&esp_short_press_timer_args, &gs_m_key_time_params.short_press_time_handle);
     if (err_code != ESP_OK)
     {
-        ESP_LOGI("user_key_init", "esp_short_press_timer is %d\n", err_code);
+        ESP_LOGE("user_key_init", "esp_short_press_timer is %d\n", err_code);
         return err_code;
     }
     /* 填充按键长按所需要的时间相关参数并创建对应的计时函数 */

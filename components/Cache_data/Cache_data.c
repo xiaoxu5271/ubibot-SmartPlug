@@ -58,6 +58,9 @@ void Data_Post_Task(void *pvParameters)
 void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
 {
     // xSemaphoreTake(Cache_muxtex, -1);
+    Mqtt_Msg Mqtt_Data = {.buff = {0},
+                          .buff_len = 0};
+
     uint16_t Buff_len_c;
     Buff_len_c = strlen((const char *)sava_buff);
     if (Buff_len == 0 || Buff_len != Buff_len_c)
@@ -66,7 +69,9 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
         return;
     }
 
-    Send_Mqtt(sava_buff, Buff_len);
+    memcpy(Mqtt_Data.buff, sava_buff, Buff_len);
+    Mqtt_Data.buff_len = Buff_len;
+    xQueueOverwrite(Send_Mqtt_Queue, (void *)&Mqtt_Data);
 
     flash_used_num = E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
@@ -206,7 +211,6 @@ static uint8_t Http_post_fun(void)
     recv_buff = (char *)malloc(HTTP_RECV_BUFF_LEN);
 
     memset(status_buff, 0, 350);
-    xSemaphoreTake(Cache_muxtex, -1);
     xSemaphoreTake(xMutex_Http_Send, -1);
     Create_Status_Json(status_buff, true); //
     // ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
@@ -214,7 +218,9 @@ static uint8_t Http_post_fun(void)
     start_read_num_oen = start_read_num;
     // ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
+    xSemaphoreTake(Cache_muxtex, -1);
     cache_data_len = Read_Post_Len(start_read_num, E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num);
+    xSemaphoreGive(Cache_muxtex);
 
     if (cache_data_len == 0)
     {
@@ -252,7 +258,10 @@ static uint8_t Http_post_fun(void)
     while (send_status == false)
     {
         memset(one_post_buff, 0, ONE_POST_BUFF_LEN);
+        xSemaphoreTake(Cache_muxtex, -1);
         one_data_len = W25QXX_Read_Data(one_post_buff, start_read_num_oen, ONE_POST_BUFF_LEN);
+        xSemaphoreGive(Cache_muxtex);
+
         if (one_data_len > 0)
         {
             start_read_num_oen = start_read_num_oen + one_data_len;
@@ -322,9 +331,10 @@ static uint8_t Http_post_fun(void)
         goto end;
     }
     // printf("解析返回数据！\n");
-    ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
+    // ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
     if (parse_objects_http_respond(recv_buff))
     {
+        ESP_LOGI(TAG, "post success");
         Led_Status = LED_STA_WORK;
     }
     else
@@ -344,7 +354,6 @@ end:
     free(recv_buff);
     free(one_post_buff);
 
-    xSemaphoreGive(Cache_muxtex);
     xSemaphoreGive(xMutex_Http_Send);
     return 1;
 }

@@ -10,7 +10,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
 #include "lwip/sockets.h"
@@ -29,6 +28,8 @@
 #include "Mqtt.h"
 
 static const char *TAG = "MQTT";
+QueueHandle_t Send_Mqtt_Queue;
+void Send_Mqtt_Task(void *arg);
 
 esp_mqtt_client_handle_t client = NULL;
 bool MQTT_W_STA = false;
@@ -111,6 +112,7 @@ void initialise_mqtt(void)
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
 
     xEventGroupSetBits(Net_sta_group, MQTT_INITED_BIT);
+    xTaskCreate(Send_Mqtt_Task, "Send Mqtt", 4096, NULL, 10, NULL);
 
     if (net_mode == NET_WIFI)
     {
@@ -139,42 +141,40 @@ void Stop_W_Mqtt(void)
     }
 }
 
-uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len)
+void Send_Mqtt_Task(void *arg)
 {
-    if (MQTT_W_STA == true)
+    Mqtt_Msg Mqtt_Send;
+    while (1)
     {
-        uint8_t *status_buff = (uint8_t *)malloc(350);
-        char *mqtt_buff = (char *)malloc(data_len + 350 + 10);
-        memset(status_buff, 0, 350);
-        memset(mqtt_buff, 0, data_len + 350 + 10);
+        xQueueReceive(Send_Mqtt_Queue, &Mqtt_Send, -1);
+        if (MQTT_W_STA == true)
+        {
+            uint8_t *status_buff = (uint8_t *)malloc(350);
+            char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + 350 + 10);
+            memset(status_buff, 0, 350);
+            memset(mqtt_buff, 0, Mqtt_Send.buff_len + 350 + 10);
+            Create_Status_Json((char *)status_buff, false); //
+            snprintf(mqtt_buff, Mqtt_Send.buff_len + 350 + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
+            esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
 
-        Create_Status_Json((char *)status_buff, false); //
+            free(status_buff);
+            free(mqtt_buff);
+            // return 1;
+        }
+        else if (MQTT_E_STA == true)
+        {
+            xSemaphoreTake(xMutex_Http_Send, -1);
+            uint8_t *status_buff = (uint8_t *)malloc(350);
+            char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + 350 + 10);
+            memset(status_buff, 0, 350);
+            memset(mqtt_buff, 0, Mqtt_Send.buff_len + 350 + 10);
+            Create_Status_Json((char *)status_buff, false); //
+            snprintf(mqtt_buff, Mqtt_Send.buff_len + 350 + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
+            EC20_MQTT_PUB(mqtt_buff);
+            xSemaphoreGive(xMutex_Http_Send);
 
-        snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s\r\n", data_buff, status_buff);
-        esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
-
-        free(status_buff);
-        free(mqtt_buff);
-        return 1;
+            free(status_buff);
+            free(mqtt_buff);
+        }
     }
-    else if (MQTT_E_STA == true)
-    {
-        xSemaphoreTake(xMutex_Http_Send, -1);
-        uint8_t *status_buff = (uint8_t *)malloc(350);
-        char *mqtt_buff = (char *)malloc(data_len + 350 + 10);
-        memset(status_buff, 0, 350);
-        memset(mqtt_buff, 0, data_len + 350 + 10);
-
-        Create_Status_Json((char *)status_buff, false); //
-
-        snprintf(mqtt_buff, data_len + 350 + 10, "{\"feeds\":[%s%s\r\n", data_buff, status_buff);
-        EC20_MQTT_PUB(mqtt_buff);
-        xSemaphoreGive(xMutex_Http_Send);
-
-        free(status_buff);
-        free(mqtt_buff);
-
-        return 1;
-    }
-    return 0;
 }

@@ -47,8 +47,6 @@ typedef enum
     BLU_WIFI_ERR
 } BLU_error_info;
 
-uint8_t Ble_mes_status;
-
 //#define PROFILE_NUM 1
 //#define PROFILE_APP_ID 0
 

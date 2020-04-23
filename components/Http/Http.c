@@ -605,10 +605,10 @@ void Start_Active(void)
 void initialise_http(void)
 {
     xTaskCreate(send_heart_task, "send_heart_task", 4096, NULL, 5, &Binary_Heart_Send);
-    esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
-    err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s
-    if (err != ESP_OK)
-    {
-        printf("timer heart create err code:%d\n", err);
-    }
+    // esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
+    // err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s
+    // if (err != ESP_OK)
+    // {
+    //     printf("timer heart create err code:%d\n", err);
+    // }
 }

@@ -533,14 +533,10 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
         memset(mqtt_json_s.mqtt_command_id, 0, sizeof(mqtt_json_s.mqtt_command_id));
         strncpy(mqtt_json_s.mqtt_command_id, json_data_command_id_parse->valuestring, strlen(json_data_command_id_parse->valuestring));
         // strncpy(mqtt_json_s.mqtt_string, json_data_string_parse->valuestring, strlen(json_data_string_parse->valuestring));
-
         post_status = POST_NORMAL;
-        // if (Binary_dp != NULL)
-        // {
-        //     // xSemaphoreGive(Binary_Http_Send);
-        //     vTaskNotifyGiveFromISR(Binary_dp, NULL);
-        // }
+
         // need_send = 1;
+
         json_data_string_parse = cJSON_Parse(json_data_string_parse->valuestring); //将command_string再次构建成json格式，以便二次解析
         if (json_data_string_parse != NULL)
         {
@@ -551,7 +547,12 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
                 //如果命令是OTA
                 if (strcmp(json_data_action->valuestring, "ota") == 0)
                 {
-                    printf("OTA命令进入\r\n");
+                    if (Binary_dp != NULL)
+                    {
+                        xSemaphoreGive(Binary_dp);
+                        // vTaskNotifyGiveFromISR(Binary_dp, NULL);
+                    }
+                    // printf("OTA命令进入\r\n");
                     if ((json_data_vesion = cJSON_GetObjectItem(json_data_string_parse, "version")) != NULL &&
                         (json_data_url = cJSON_GetObjectItem(json_data_string_parse, "url")) != NULL)
                     {
@@ -729,6 +730,7 @@ void Create_NET_Json(void)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
         len = strlen(OutBuffer);
         printf("len:%d\n%s\n", len, OutBuffer);
+        // Send_Mqtt((uint8_t *)OutBuffer, len);
         xSemaphoreTake(Cache_muxtex, -1);
         DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
@@ -756,7 +758,7 @@ void Create_Switch_Json(void)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
         len = strlen(OutBuffer);
         printf("len:%d\n%s\n", len, OutBuffer);
-
+        // Send_Mqtt((uint8_t *)OutBuffer, len);
         xSemaphoreTake(Cache_muxtex, -1);
         DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
