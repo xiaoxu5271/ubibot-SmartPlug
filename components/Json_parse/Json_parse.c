@@ -549,8 +549,8 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
                 {
                     if (Binary_dp != NULL)
                     {
-                        xSemaphoreGive(Binary_dp);
-                        // vTaskNotifyGiveFromISR(Binary_dp, NULL);
+                        // xSemaphoreGive(Binary_dp);
+                        vTaskNotifyGiveFromISR(Binary_dp, NULL);
                     }
                     // printf("OTA命令进入\r\n");
                     if ((json_data_vesion = cJSON_GetObjectItem(json_data_string_parse, "version")) != NULL &&
@@ -561,11 +561,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
                             strcpy(mqtt_json_s.mqtt_ota_url, json_data_url->valuestring);
                             // E2prom_page_Write(ota_url_add, (uint8_t *)mqtt_json_s.mqtt_ota_url, 128);
                             printf("OTA_URL=%s\r\n OTA_VERSION=%s\r\n", mqtt_json_s.mqtt_ota_url, json_data_vesion->valuestring);
-                            //目前OTA只支持wifi
-                            if (net_mode == NET_WIFI)
-                            {
-                                ota_start(); //启动OTA
-                            }
+                            ota_start(); //启动OTA
                         }
                         else
                         {
@@ -1177,6 +1173,99 @@ static short Parse_fields_num(char *ptrptr)
     cJSON_Delete(pJsonJson);
 
     return ESP_OK;
+}
+
+// get mid str 把src中 s1 到 s2之间的数据拷贝（包括s1不包括S2）到 sub中 ,返回 s2地址
+char *mid(char *src, char *s1, char *s2, char *sub)
+{
+    char *sub1;
+    char *sub2;
+    uint16_t n;
+
+    sub1 = strstr(src, s1);
+    if (sub1 == NULL)
+        return NULL;
+    sub1 += strlen(s1);
+    sub2 = strstr(sub1, s2);
+    if (sub2 == NULL)
+        return NULL;
+    n = sub2 - sub1;
+    strncpy(sub, sub1, n);
+    sub[n] = 0;
+    return sub2;
+}
+
+// return: NULL Not Found
+//反向查找字符串 _MaxLen: 内存大小，_ReadLen:查找的长度
+char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szKey)
+{
+    if (NULL == _pBegin || NULL == _szKey || _MaxLen <= 0)
+    {
+        return NULL;
+    }
+    int i = _MaxLen - 1;
+    int j = strlen(_szKey) - 1;
+    int k = 0;
+    int s32CmpLen = strlen(_szKey);
+
+    for (i = _MaxLen - 1; i >= (_MaxLen - _ReadLen); i--)
+    {
+        if (_pBegin[i] == _szKey[j])
+        {
+            for (j = strlen(_szKey) - 1, k = i; j >= 0; j--, k--)
+            {
+                if (_pBegin[k] != _szKey[j])
+                {
+                    j = strlen(_szKey) - 1;
+                    break;
+                }
+                if (j == 0)
+                {
+                    return (char *)_pBegin + i - strlen(_szKey) + 1;
+                }
+            }
+        }
+    }
+
+    return NULL;
+}
+
+// return: NULL Not Found
+//buff中正向查找字符串 _ReadLen:查找的长度
+char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_szKey)
+{
+    if (NULL == _pBegin || NULL == _szKey || _ReadLen <= 0)
+    {
+        return NULL;
+    }
+    int i = 0, j = 0, k = 0;
+    int s32CmpLen = strlen(_szKey);
+
+    for (i = 0; i < _ReadLen; i++)
+    {
+        if (_pBegin[i] == _szKey[j])
+        {
+            for (j = 0, k = i; j < s32CmpLen; j++, k++)
+            {
+                if (_pBegin[k] != _szKey[j])
+                {
+                    j = 0;
+                    break;
+                }
+                if (j == s32CmpLen - 1)
+                {
+                    if (first_len != NULL)
+                    {
+                        printf("s_strstr,i=%d\n", i);
+                        *first_len = i;
+                    }
+                    return (char *)_pBegin + i;
+                }
+            }
+        }
+    }
+
+    return NULL;
 }
 
 //读取EEPROM中的metadata

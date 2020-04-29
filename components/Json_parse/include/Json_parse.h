@@ -72,6 +72,9 @@ void Read_Fields_E2p(void);
 void Create_NET_Json(void);
 void Create_Switch_Json(void);
 uint16_t Create_Status_Json(char *status_buff, bool filed_flag);
+char *mid(char *src, char *s1, char *s2, char *sub);
+char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szKey);
+char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_szKey);
 
 /************metadata 参数***********/
 extern uint32_t fn_dp;      //数据发送频率

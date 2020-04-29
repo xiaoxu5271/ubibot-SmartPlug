@@ -36,6 +36,7 @@ void app_main(void)
 {
 	Cache_muxtex = xSemaphoreCreateMutex();
 	xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
+	EC20_muxtex = xSemaphoreCreateMutex();
 	Net_sta_group = xEventGroupCreate();
 	Send_Mqtt_Queue = xQueueCreate(1, sizeof(Mqtt_Msg));
 

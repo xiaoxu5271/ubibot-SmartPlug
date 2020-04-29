@@ -5,11 +5,17 @@
 
 #include "freertos/FreeRTOS.h"
 
-// SemaphoreHandle_t EC20_muxtex;
+SemaphoreHandle_t EC20_muxtex;
+
+enum recv_mode
+{
+    EC_NORMAL = 0,
+    EC_OTA,
+    EC_INPORT
+};
 
 uint8_t EC20_Err_Code;
-
-enum err_code
+enum ec_err_code
 {
     NO_ARK = 1,
     CPIN_ERR,
@@ -38,5 +44,8 @@ uint8_t EC20_MQTT_INIT(void);
 uint8_t EC20_MQTT_PUB(char *data_buff);
 uint8_t EC20_Get_Rssi(float *Rssi_val);
 void EC20_Power_Off(void);
+uint16_t Read_OTA_File(uint8_t flie_handle, char *file_buff);
+uint8_t Start_EC_OTA(char *ota_url, uint32_t *file_len);
+bool End_EC_OTA(uint8_t file_handle);
 
 #endif
