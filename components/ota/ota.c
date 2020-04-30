@@ -26,30 +26,15 @@
 static const char *TAG = "ota";
 bool OTA_FLAG = false;
 
-//LNA-OTA数据
 static char ota_write_data[BUFFSIZE + 1] = {0};
-// //LNA-接收数据
-// static char text[BUFFSIZE + 1] = {0};
-//LNA-镜像大小
-static int binary_file_length = 0;
-//LAN 报文镜像长度
-uint32_t content_len = 0;
-uint8_t file_handle;
 
 TaskHandle_t ota_handle = NULL;
-// extern const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-// extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
 static void __attribute__((noreturn)) task_fatal_error()
 {
     ESP_LOGE(TAG, "Exiting task due to fatal error...");
     esp_restart();
     (void)vTaskDelete(NULL);
-
-    // while (1)
-    // {
-    //     ;
-    // }
 }
 
 static void http_cleanup(esp_http_client_handle_t client)
@@ -197,7 +182,13 @@ bool EC20_OTA(void)
     bool ret = false;
     int32_t buff_len;
     esp_err_t err;
-    /* update handle : set by esp_ota_begin(), must be freed via esp_ota_end() */
+    //EC20 文件句柄
+    uint8_t file_handle = 0;
+    //已写入镜像大小
+    uint32_t binary_file_length = 0;
+    //报文镜像长度
+    uint32_t content_len = 0;
+
     esp_ota_handle_t update_handle = 0;
     const esp_partition_t *update_partition = NULL;
 
@@ -229,7 +220,7 @@ bool EC20_OTA(void)
     }
     ESP_LOGI(TAG, "esp_ota_begin succeeded");
 
-    //获取烧录文件
+    //获取升级文件
     file_handle = Start_EC_OTA(mqtt_json_s.mqtt_ota_url, &content_len);
     if (file_handle == 0)
     {
@@ -293,9 +284,11 @@ end:
     // esp_restart();
 }
 
-static void ota_task(void *pvParameter)
+void ota_task(void *pvParameter)
 {
+    vTaskDelay(1000 / portTICK_PERIOD_MS); //等待数据同步完成
     ESP_LOGI(TAG, "Starting OTA example...");
+
     if (net_mode == NET_WIFI)
     {
         WIFI_OTA();

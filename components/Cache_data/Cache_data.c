@@ -189,6 +189,7 @@ void Start_Cache(void)
 //  HTTP POST 
 *******************************************************************************/
 #define ONE_POST_BUFF_LEN 512
+#define STATUS_BUFF_LEN 450
 
 static uint8_t Http_post_fun(void)
 {
@@ -199,18 +200,17 @@ static uint8_t Http_post_fun(void)
     uint32_t start_read_num_oen;              //单条数据读取的开始地址
     uint32_t end_read_num;                    //本次数据同步 截至地址
     uint32_t end_read_num_one;                //读取一条数据 截至地址
-    // uint16_t status_buff_len;                 //],"status":"mac=x","ssid_base64":"x"}
-    uint32_t cache_data_len;  //flash内正确待发送的数据总大小，以增加 ','占用
-    uint32_t post_data_len;   //Content_Length，通过http发送的总数据大小
-    int32_t socket_num;       //http socket
-    bool send_status = false; //http 发送状态标志 ，false:发送未完成
-    char *recv_buff = NULL;   //post 返回
+    uint32_t cache_data_len;                  //flash内正确待发送的数据总大小，以增加 ','占用
+    uint32_t post_data_len;                   //Content_Length，通过http发送的总数据大小
+    int32_t socket_num;                       //http socket
+    bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
+    char *recv_buff = NULL;                   //post 返回
 
-    status_buff = (char *)malloc(350);
+    status_buff = (char *)malloc(STATUS_BUFF_LEN);
     one_post_buff = (uint8_t *)malloc(ONE_POST_BUFF_LEN);
     recv_buff = (char *)malloc(HTTP_RECV_BUFF_LEN);
 
-    memset(status_buff, 0, 350);
+    memset(status_buff, 0, STATUS_BUFF_LEN);
     xSemaphoreTake(xMutex_Http_Send, -1);
     Create_Status_Json(status_buff, true); //
     // ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);

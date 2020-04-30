@@ -141,6 +141,7 @@ void Stop_W_Mqtt(void)
     }
 }
 
+#define MQTT_STATUS_BUFF_LEN 150
 void Send_Mqtt_Task(void *arg)
 {
     Mqtt_Msg Mqtt_Send;
@@ -149,12 +150,12 @@ void Send_Mqtt_Task(void *arg)
         xQueueReceive(Send_Mqtt_Queue, &Mqtt_Send, -1);
         if (MQTT_W_STA == true)
         {
-            uint8_t *status_buff = (uint8_t *)malloc(350);
-            char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + 350 + 10);
-            memset(status_buff, 0, 350);
-            memset(mqtt_buff, 0, Mqtt_Send.buff_len + 350 + 10);
+            uint8_t *status_buff = (uint8_t *)malloc(MQTT_STATUS_BUFF_LEN);
+            char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
+            memset(status_buff, 0, MQTT_STATUS_BUFF_LEN);
+            memset(mqtt_buff, 0, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
             Create_Status_Json((char *)status_buff, false); //
-            snprintf(mqtt_buff, Mqtt_Send.buff_len + 350 + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
+            snprintf(mqtt_buff, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
             esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
 
             free(status_buff);
@@ -164,12 +165,12 @@ void Send_Mqtt_Task(void *arg)
         else if (MQTT_E_STA == true)
         {
             xSemaphoreTake(xMutex_Http_Send, -1);
-            uint8_t *status_buff = (uint8_t *)malloc(350);
-            char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + 350 + 10);
-            memset(status_buff, 0, 350);
-            memset(mqtt_buff, 0, Mqtt_Send.buff_len + 350 + 10);
+            uint8_t *status_buff = (uint8_t *)malloc(MQTT_STATUS_BUFF_LEN);
+            char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
+            memset(status_buff, 0, MQTT_STATUS_BUFF_LEN);
+            memset(mqtt_buff, 0, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
             Create_Status_Json((char *)status_buff, false); //
-            snprintf(mqtt_buff, Mqtt_Send.buff_len + 350 + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
+            snprintf(mqtt_buff, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
             EC20_MQTT_PUB(mqtt_buff);
             xSemaphoreGive(xMutex_Http_Send);
 

@@ -28,6 +28,8 @@ esp_err_t creat_object(void);
 #define NET_4G 1   //上网模式 4G
 #define NET_WIFI 0 //上网模式 wifi
 
+#define FILED_BUFF_SIZE 350
+
 struct
 {
     // int mqtt_Voltage;
@@ -109,6 +111,8 @@ extern uint8_t r1_t_f_num;     //485温度探头温度
 extern uint8_t r1_ws_f_num;    //485风速
 extern uint8_t r1_co2_f_num;   //485 CO2
 extern uint8_t r1_ph_f_num;    //485 PH
+extern uint8_t r1_co2_t_f_num; // CO2 温度
+extern uint8_t r1_co2_h_f_num; //CO2 湿度
 
 extern char SerialNum[SERISE_NUM_LEN];
 extern char ProductId[PRODUCT_ID_LEN];

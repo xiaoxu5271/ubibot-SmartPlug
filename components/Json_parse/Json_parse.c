@@ -63,6 +63,8 @@ uint8_t r1_t_f_num = 14;     //485温度探头温度
 uint8_t r1_ws_f_num = 15;    //485风速
 uint8_t r1_co2_f_num = 16;   //485 CO2
 uint8_t r1_ph_f_num = 17;    //485 PH
+uint8_t r1_co2_t_f_num = 18; // CO2 温度
+uint8_t r1_co2_h_f_num = 19; //CO2 湿度
 
 //
 char SerialNum[SERISE_NUM_LEN] = {0};
@@ -549,8 +551,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
                 {
                     if (Binary_dp != NULL)
                     {
-                        // xSemaphoreGive(Binary_dp);
-                        vTaskNotifyGiveFromISR(Binary_dp, NULL);
+                        xTaskNotifyGive(Binary_dp);
                     }
                     // printf("OTA命令进入\r\n");
                     if ((json_data_vesion = cJSON_GetObjectItem(json_data_string_parse, "version")) != NULL &&
@@ -619,8 +620,8 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
     if (filed_flag == true)
     {
         char *field_buff;
-        field_buff = (char *)malloc(200);
-        memset(field_buff, 0, 200);
+        field_buff = (char *)malloc(FILED_BUFF_SIZE);
+        memset(field_buff, 0, FILED_BUFF_SIZE);
         Create_fields_num(field_buff);
 
         if (net_mode == NET_WIFI)
@@ -790,6 +791,8 @@ void Create_fields_num(char *read_buf)
     cJSON_AddNumberToObject(pJsonRoot, "r1_ws", r1_ws_f_num);       //r1_ws_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_co2", r1_co2_f_num);     //r1_co2_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);       //r1_ph_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_t", r1_co2_t_f_num); //r1_co2_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_h", r1_co2_h_f_num); //r1_co2_h_f_num
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
     data_len = strlen(out_buf);
@@ -1169,6 +1172,24 @@ static short Parse_fields_num(char *ptrptr)
             E2P_WriteOneByte(RS485_PH_NUM_ADDR, r1_ph_f_num); //r1_ph_f_num
         }
     }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_co2_t"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != r1_co2_t_f_num)
+        {
+            r1_co2_t_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(RS485_CO2_T_NUM_ADDR, r1_co2_t_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_co2_h"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != r1_co2_h_f_num)
+        {
+            r1_co2_h_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(RS485_CO2_H_NUM_ADDR, r1_co2_h_f_num); //
+        }
+    }
 
     cJSON_Delete(pJsonJson);
 
@@ -1206,7 +1227,7 @@ char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szK
     int i = _MaxLen - 1;
     int j = strlen(_szKey) - 1;
     int k = 0;
-    int s32CmpLen = strlen(_szKey);
+    // int s32CmpLen = strlen(_szKey);
 
     for (i = _MaxLen - 1; i >= (_MaxLen - _ReadLen); i--)
     {
@@ -1365,6 +1386,8 @@ void Read_Fields_E2p(void)
     r1_ws_f_num = E2P_ReadOneByte(RS485_WS_NUM_ADDR);       //r1_ws_f_num
     r1_co2_f_num = E2P_ReadOneByte(RS485_CO2_NUM_ADDR);     //r1_co2_f_num
     r1_ph_f_num = E2P_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
+    r1_co2_t_f_num = E2P_ReadOneByte(RS485_CO2_T_NUM_ADDR);
+    r1_co2_h_f_num = E2P_ReadOneByte(RS485_CO2_H_NUM_ADDR);
 
     printf("sw_s_f_num:%d\n", sw_s_f_num);
     printf("sw_v_f_num:%d\n", sw_v_f_num);
@@ -1383,4 +1406,6 @@ void Read_Fields_E2p(void)
     printf("r1_ws_f_num:%d\n", r1_ws_f_num);
     printf("r1_co2_f_num:%d\n", r1_co2_f_num);
     printf("r1_ph_f_num:%d\n", r1_ph_f_num);
+    printf("r1_co2_t_f_num:%d\n", r1_co2_t_f_num);
+    printf("r1_co2_h_f_num:%d\n", r1_co2_h_f_num);
 }

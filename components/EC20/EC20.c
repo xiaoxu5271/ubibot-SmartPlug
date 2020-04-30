@@ -210,7 +210,7 @@ void uart_event_task(void *pvParameters)
                         ret_chr = s_rstrstr(EC20_RECV, all_read_len, 5, "OK\r\n");
                         if (ret_chr != NULL)
                         {
-                            if (memcmp(ret_chr, "OK\r\n", 5) == 0)
+                            if (memcmp(ret_chr, "OK\r\n", 5) == 0) // 判断 OK\r\n 是否出现在结尾
                             {
                                 xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
                                 // ESP_LOGI("EC_OTA", "%d\n", all_read_len);
@@ -219,7 +219,6 @@ void uart_event_task(void *pvParameters)
                                 uart_flush(EX_UART_NUM);
                             }
                         }
-                        // uart_flush(EX_UART_NUM);
 
                     default:
                         break;
@@ -800,19 +799,12 @@ uint8_t Start_EC_OTA(char *ota_url, uint32_t *file_len)
     char *InpString;
     uint8_t active_len;
     uint8_t file_handle;
+
     cmd_buf = (char *)malloc(150);
     memset(cmd_buf, 0, 150);
-
-    // //包含 header
-    // ret = AT_Cmd_Send("AT+QHTTPCFG=\"responseheader\",1\r\n", "OK", 100, 5);
-    // if (ret == NULL)
-    // {
-    //     ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-    //     goto end;
-    // }
-
     active_len = strlen(ota_url); //不包含换行符
     sprintf(cmd_buf, "AT+QHTTPURL=%d,60\r\n", active_len);
+
     ret = AT_Cmd_Send(cmd_buf, "CONNECT", 1000, 1);
     if (ret == NULL)
     {
@@ -838,6 +830,12 @@ uint8_t Start_EC_OTA(char *ota_url, uint32_t *file_len)
     InpString = strtok(ret, ",");
     InpString = strtok(NULL, ",");
     InpString = strtok(NULL, ",");
+    if (InpString == NULL)
+    {
+        ESP_LOGE(TAG, " %d", __LINE__);
+        ret = NULL;
+        goto end;
+    }
     *file_len = (uint32_t)strtol(InpString, 0, 10);
 
     //下载文件到 EC20 文件系统
@@ -847,6 +845,7 @@ uint8_t Start_EC_OTA(char *ota_url, uint32_t *file_len)
         ESP_LOGE(TAG, " %d", __LINE__);
         goto end;
     }
+
     //打开文件
     //response: +QFOPEN: 4
     ret = AT_Cmd_Send("AT+QFOPEN=\"OTA\"\r\n", "+QFOPEN:", 1000, 1);
@@ -858,6 +857,12 @@ uint8_t Start_EC_OTA(char *ota_url, uint32_t *file_len)
 
     InpString = strtok(ret, ":");
     InpString = strtok(NULL, ":");
+    if (InpString == NULL)
+    {
+        ESP_LOGE(TAG, " %d", __LINE__);
+        ret = NULL;
+        goto end;
+    }
     file_handle = (uint8_t)strtol(InpString, 0, 10);
 
 end:
@@ -878,13 +883,6 @@ bool End_EC_OTA(uint8_t file_handle)
     char *ret;
     char *cmd_buf = (char *)malloc(20);
     memset(cmd_buf, 0, 20);
-
-    // ret = AT_Cmd_Send("AT+QHTTPCFG=\"responseheader\",0\r\n", "OK", 100, 5);
-    // if (ret == NULL)
-    // {
-    //     ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-    //     goto end;
-    // }
 
     sprintf(cmd_buf, "AT+QFCLOSE=%d\r\n", file_handle);
     ret = AT_Cmd_Send(cmd_buf, "OK", 100, 1);
@@ -939,9 +937,7 @@ uint16_t Read_OTA_File(uint8_t flie_handle, char *file_buff)
             goto end;
         }
         file_len = (uint16_t)strtoul(num_buff, 0, 10);
-        // ESP_LOGI(TAG, "file len:%d", file_len);
         memcpy(file_buff, rst_val + 2, file_len);
-        // esp_log_buffer_char("test1", rst_val, 10);
     }
     else //未等到数据
     {

@@ -525,9 +525,9 @@ void read_485_co2_task(void *pvParameters)
                                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
                                 snprintf(filed_buff, 9, "field%d", r1_co2_f_num);
                                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(co2_val));
-                                snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
+                                snprintf(filed_buff, 9, "field%d", r1_co2_t_f_num);
                                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(t_val));
-                                snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
+                                snprintf(filed_buff, 9, "field%d", r1_co2_h_f_num);
                                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(h_val));
                                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                                 cJSON_Delete(pJsonRoot);                       //delete cjson root

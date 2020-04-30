@@ -92,10 +92,11 @@
 #define SW_C_F_NUM_ADDR SW_V_F_NUM_ADDR + 1 + 1           //uint8_t
 #define SW_P_F_NUM_ADDR SW_C_F_NUM_ADDR + 1 + 1           //uint8_t
 #define SW_PC_F_NUM_ADDR SW_P_F_NUM_ADDR + 1 + 1          //uint8_t
-
-#define APN_ADDR SW_PC_F_NUM_ADDR + 1 + 1         //32 B
-#define BEARER_USER_ADDR APN_ADDR + 32 + 1        //32 B
-#define BEARER_PWD_ADDR BEARER_USER_ADDR + 32 + 1 //32 B
+#define APN_ADDR SW_PC_F_NUM_ADDR + 1 + 1                 //32 B
+#define BEARER_USER_ADDR APN_ADDR + 32 + 1                //32 B
+#define BEARER_PWD_ADDR BEARER_USER_ADDR + 32 + 1         //32 B
+#define RS485_CO2_T_NUM_ADDR BEARER_PWD_ADDR + 32 + 1     //uint8_t
+#define RS485_CO2_H_NUM_ADDR RS485_CO2_T_NUM_ADDR + 1 + 1 //uint8_t
 
 void E2prom_Init(void);
 esp_err_t E2P_WriteOneByte(uint16_t reg_addr, uint8_t dat);
