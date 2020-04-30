@@ -9,6 +9,7 @@
 #include "user_key.h"
 #include "Led.h"
 #include "crc8_16.h"
+#include "ota.h"
 
 #include "E2prom.h"
 
@@ -46,9 +47,9 @@ void E2prom_Init(void)
     if (Check_Set_defaul())
     {
         Led_Status = LED_STA_REST;
-        E2prom_read_defaul();
-        E2prom_set_defaul(true);
-        Led_Status = LED_STA_INIT;
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+        Rest_Factory();
     }
 }
 
