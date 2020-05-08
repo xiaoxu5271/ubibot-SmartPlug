@@ -31,7 +31,7 @@
 
 uint8_t start_AP = 0;
 uint8_t bl_flag = 0; //蓝牙配网模式
-uint8_t Net_ErrCode = 0;
+uint16_t Net_ErrCode = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
@@ -58,7 +58,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
             Net_ErrCode = event->reason;
         }
 
-        // ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d, trying to reconnect...", event->reason);
+        ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d, trying to reconnect...", event->reason);
         // if (Net_ErrCode >= 1 && Net_ErrCode <= 24) //适配APP，
         // {
         //     Net_ErrCode += 300;

@@ -14,10 +14,9 @@ enum recv_mode
     EC_INPORT
 };
 
-uint8_t EC20_Err_Code;
 enum ec_err_code
 {
-    NO_ARK = 1,
+    NO_ARK = 401,
     CPIN_ERR,
     QICSGP_ERR,
     CGATT_ERR,

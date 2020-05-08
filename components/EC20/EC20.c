@@ -70,7 +70,6 @@ void Res_EC20_Mqtt_Task(void)
 //开启EC20
 void EC20_Start(void)
 {
-    EC20_Err_Code = 0;
     if ((xEventGroupGetBits(Net_sta_group) & Uart1_Task_BIT) != Uart1_Task_BIT)
     {
         xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, 20, &Uart1_Task_Handle);
@@ -124,7 +123,7 @@ void EC20_Rest(void)
     }
     else
     {
-        EC20_Err_Code = NO_ARK;
+        Net_ErrCode = NO_ARK;
     }
 
     EC20_Power_On();
@@ -388,7 +387,7 @@ uint8_t EC20_Net_Check(void)
     uint8_t ret = 0;
     for (uint8_t i = 0; i < 15; i++)
     {
-        ESP_LOGI(TAG, "EC20 Net_ChecK");
+        ESP_LOGI(TAG, "EC20 Net_Check");
         if (AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5) != NULL)
         {
             ret = 1;
@@ -434,7 +433,7 @@ uint8_t EC20_Moudle_Init(void)
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        EC20_Err_Code = CPIN_ERR;
+        Net_ErrCode = CPIN_ERR;
         goto end;
     }
 
@@ -442,7 +441,7 @@ uint8_t EC20_Moudle_Init(void)
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        EC20_Err_Code = CPIN_ERR;
+        Net_ErrCode = CPIN_ERR;
         goto end;
     }
     else
@@ -456,7 +455,7 @@ uint8_t EC20_Moudle_Init(void)
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        EC20_Err_Code = QICSGP_ERR;
+        Net_ErrCode = QICSGP_ERR;
         goto end;
     }
 
@@ -464,7 +463,7 @@ uint8_t EC20_Moudle_Init(void)
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        EC20_Err_Code = CGATT_ERR;
+        Net_ErrCode = CGATT_ERR;
         goto end;
     }
 
@@ -472,7 +471,7 @@ uint8_t EC20_Moudle_Init(void)
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        EC20_Err_Code = CGATT_ERR;
+        Net_ErrCode = CGATT_ERR;
         goto end;
     }
 
@@ -555,7 +554,7 @@ uint8_t EC20_Http_CFG(void)
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-        EC20_Err_Code = QIACT_ERR;
+        Net_ErrCode = QIACT_ERR;
         goto end;
     }
 
@@ -563,7 +562,7 @@ uint8_t EC20_Http_CFG(void)
     if (ret != NULL)
     {
         // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        EC20_Err_Code = QIACT_ERR;
+        Net_ErrCode = QIACT_ERR;
         goto end;
     }
 
@@ -582,7 +581,6 @@ end:
 
 uint8_t EC20_Active(char *active_url, char *recv_buf)
 {
-
     char *ret;
     char *cmd_buf;
     uint8_t active_len;
@@ -622,6 +620,7 @@ end:
     free(cmd_buf);
     if (ret == NULL)
     {
+        Res_EC20_Task();
         return 0;
     }
     else
@@ -638,6 +637,7 @@ uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
         if (AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 6000, 1) == NULL)
         {
             ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+            Res_EC20_Task();
             return 0;
         }
     }
@@ -757,6 +757,7 @@ end:
     free(cmd_buf);
     if (ret == NULL)
     {
+        Res_EC20_Task();
         return 0;
     }
     else
@@ -869,6 +870,7 @@ end:
     free(cmd_buf);
     if (ret == NULL)
     {
+        Res_EC20_Task();
         return 0;
     }
     else

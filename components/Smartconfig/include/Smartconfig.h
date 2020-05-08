@@ -14,7 +14,7 @@ void Net_Switch(void);
 extern uint8_t wifi_connect_sta; //wifi连接状态
 // extern uint8_t wifi_work_sta;    //wifi开启状态
 extern uint8_t start_AP;
-extern uint8_t Net_ErrCode; //
+extern uint16_t Net_ErrCode; //
 extern bool WIFI_STA;
 extern uint8_t bl_flag; //蓝牙配网模式
 
@@ -36,6 +36,7 @@ EventGroupHandle_t Net_sta_group;
 #define MQTT_INITED_BIT (1 << 14) //MQTT初始化完成
 #define ACTIVE_S_BIT (1 << 15)    //激活中
 #define TIME_CAL_BIT (1 << 16)    //时间校准成功
+#define BLE_RESP_BIT (1 << 17)    //蓝牙超时回复标志
 
 // static const int CONNECTED_BIT = BIT0;
 // static const int AP_STACONNECTED_BIT = BIT0;

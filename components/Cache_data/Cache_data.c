@@ -42,7 +42,7 @@ void Data_Post_Task(void *pvParameters)
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
 
-        if ((xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1) & CONNECTED_BIT) == CONNECTED_BIT)
+        if ((xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1) & ACTIVED_BIT) == ACTIVED_BIT)
         {
             Create_NET_Json();
             if (!Http_post_fun())

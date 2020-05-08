@@ -219,12 +219,26 @@ typedef struct
 static prepare_type_env_t a_prepare_write_env;
 // static prepare_type_env_t b_prepare_write_env;
 
-void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
-// void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
-
 char buf[1024];              // do not free from heap!
 char BleRespond[128] = "\0"; // 蓝牙回复
 bool blere_flag = false;
+// bool ble_resp_flag = false; // 蓝牙回复超时标志
+int32_t Ble_ret = 0;
+esp_timer_handle_t ble_response_timer_handle;
+bool notify_flag = false; //开启 notify_flag
+
+esp_gatt_if_t not_gatts_if;
+esp_ble_gatts_cb_param_t *not_param;
+
+void ble_respon_process(void *arg);
+void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
+// void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
+
+void ble_response_timer_cb(void *arg)
+{
+    xEventGroupSetBits(Net_sta_group, BLE_RESP_BIT);
+    ESP_LOGI(GATTS_TAG, "BLE_RESP_BIT");
+}
 
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
@@ -441,24 +455,28 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
         rsp.attr_value.handle = param->read.handle;
 
-        int32_t ret = parse_objects_bluetooth(buf);
-        printf("parse_objects_bluetooth return = %d \n", ret);
-        if (ret == BLU_JSON_FORMAT_ERROR) //解析蓝牙格式错误
+        bzero(BleRespond, sizeof(BleRespond));
+        if (Ble_ret == 0)
         {
-            bzero(BleRespond, sizeof(BleRespond));
+            // bzero(BleRespond, sizeof(BleRespond));
             strcpy(BleRespond, "{\"result\":\"error\",\"code\":100}");
         }
-        else if (ret == 1) //解析蓝牙正确且按新参数配置
+        else
         {
-            bzero(BleRespond, sizeof(BleRespond));
-            // strcpy(BleRespond, "{\"result\":\"success\",\"code\":0}");
-            strcpy(BleRespond, "{\"result\":\"success\"}");
-            printf("{\"result\":\"success\"} \n");
-        }
-        else //激活失败
-        {
-            bzero(BleRespond, sizeof(BleRespond));
-            sprintf(BleRespond, "{\"result\":\"error\",\"code\":%d}", ret);
+            if ((xEventGroupGetBits(Net_sta_group) & ACTIVED_BIT) == ACTIVED_BIT) //网络连接成功
+            {
+                // bzero(BleRespond, sizeof(BleRespond));
+                strcpy(BleRespond, "{\"result\":\"success\"}");
+            }
+            else
+            {
+                if ((xEventGroupGetBits(Net_sta_group) & BLE_RESP_BIT) == BLE_RESP_BIT)
+                {
+                    // ble_resp_flag = false;
+                    xEventGroupClearBits(Net_sta_group, BLE_RESP_BIT);
+                    sprintf(BleRespond, "{\"result\":\"error\",\"code\":%d}", Net_ErrCode);
+                }
+            }
         }
 
         //蓝牙回复
@@ -469,10 +487,6 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id,
                                     ESP_GATT_OK, &rsp);
         blere_flag = true;
-        // ble_app_stop(); //关闭蓝牙
-        // http_activate();
-
-        // printf("send_response  3 \n");
         break;
     }
     case ESP_GATTS_WRITE_EVT:
@@ -482,11 +496,40 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         if (!param->write.is_prep)
         {
             ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, value :\n%s", param->write.len, param->write.value);
-            bzero(buf, sizeof(buf));
-            memcpy(buf, param->write.value, param->write.len);
-            // int32_t ret = parse_objects_bluetooth(buf);
+            //开启notify
+            if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2)
+            {
+                ESP_LOGI(GATTS_TAG, "notify \n");
+                if (Ble_ret == 0)
+                {
+                    bzero(BleRespond, sizeof(BleRespond));
+                    strcpy(BleRespond, "{\"result\":\"error\",\"code\":101}");
+                    esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
+                                                strlen(BleRespond), (uint8_t *)BleRespond, false);
+                }
+                else
+                {
+                    not_gatts_if = gatts_if;
+                    not_param = param;
+                    notify_flag = true;
+                    xTaskCreate(ble_respon_process, "BLE respon", 2048, NULL, 5, NULL);
+                }
+            }
+            else
+            {
+                bzero(buf, sizeof(buf));
+                memcpy(buf, param->write.value, param->write.len);
+                Ble_ret = parse_objects_bluetooth(buf);
+                printf("parse_objects_bluetooth return = %d \n", Ble_ret);
 
-            // printf("parse_objects_bluetooth return = %d \n", ret);
+                if (Ble_ret)
+                {
+                    // ble_resp_flag = false;
+                    xEventGroupClearBits(Net_sta_group, BLE_RESP_BIT);
+                    esp_timer_stop(ble_response_timer_handle);
+                    esp_timer_start_once(ble_response_timer_handle, BLE_TIMEOUT);
+                }
+            }
 
             // if (ret == BLU_JSON_FORMAT_ERROR) //解析蓝牙格式错误
             // {
@@ -527,8 +570,9 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         gl_profile_tab[PROFILE_A_APP_ID].char_uuid.uuid.uuid16 = GATTS_CHAR_UUID_TEST_A;
 
         esp_ble_gatts_start_service(gl_profile_tab[PROFILE_A_APP_ID].service_handle);
-        // a_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-        a_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE;
+        a_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+        // a_property = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+        // a_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE;
         esp_err_t add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_A_APP_ID].service_handle, &gl_profile_tab[PROFILE_A_APP_ID].char_uuid,
                                                         ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
                                                         a_property,
@@ -604,6 +648,8 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     }
     case ESP_GATTS_DISCONNECT_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT,%s", Server_Timer_SEND());
+        esp_timer_stop(ble_response_timer_handle);
+        notify_flag = false;
         // if (blere_flag == true)
         {
             blere_flag = false;
@@ -730,18 +776,66 @@ void ble_app_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
 
+    esp_timer_create_args_t ble_response_timer =
+        {
+            .callback = ble_response_timer_cb,
+            .arg = NULL,
+            .dispatch_method = ESP_TIMER_TASK,
+            .name = "esp_short_press_timer",
+        };
+    esp_err_t err_code = esp_timer_create(&ble_response_timer, &ble_response_timer_handle);
+    if (err_code != ESP_OK)
+    {
+        ESP_LOGE("user_key_init", "esp_short_press_timer is %d\n", err_code);
+    }
+
     return;
+}
+
+void notify_respon(char *buff)
+{
+    if (notify_flag == true)
+    {
+        ESP_LOGI(GATTS_TAG, "ble respond=%s\n", buff);
+        esp_ble_gatts_send_indicate(not_gatts_if, not_param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
+                                    strlen(buff), (uint8_t *)buff, false);
+    }
+}
+
+//处理 notify 返回 任务
+void ble_respon_process(void *arg)
+{
+    ESP_LOGI(GATTS_TAG, "ble_respon_process \n");
+    while (notify_flag == true)
+    {
+        ESP_LOGI(GATTS_TAG, "ble_respon_process \n");
+        if ((xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, 5000 / portTICK_RATE_MS) & ACTIVED_BIT) == ACTIVED_BIT)
+        {
+            ESP_LOGI(GATTS_TAG, "ACTIVED_BIT \n");
+            strcpy(BleRespond, "{\"result\":\"success\"}");
+            break;
+        }
+        else
+        {
+            if ((xEventGroupGetBits(Net_sta_group) & BLE_RESP_BIT) == BLE_RESP_BIT)
+            {
+                // ble_resp_flag = false;
+                xEventGroupClearBits(Net_sta_group, BLE_RESP_BIT);
+                sprintf(BleRespond, "{\"result\":\"error\",\"code\":%d}", Net_ErrCode);
+                break;
+            }
+        }
+    }
+    ESP_LOGI(GATTS_TAG, "ble_respon_process EXIT\n");
+    notify_respon(BleRespond);
+    vTaskDelete(NULL);
 }
 
 void ble_app_start(void)
 {
-
     esp_ble_gap_start_advertising(&adv_params);
     bl_flag = 1;
     ESP_LOGI(GATTS_TAG, "turn on ble！");
-    // Led_Status = LED_STA_AP;
-    // stop_user_wifi(); //停止网络连接
-    // wifi_disconnect();
 }
 
 void ble_app_stop(void)

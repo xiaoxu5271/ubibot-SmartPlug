@@ -281,22 +281,23 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
         ParseTcpUartCmd(cJSON_Print(cjson_blu_data_parse));
     }
     cJSON_Delete(cjson_blu_data_parse);
-
-    if (xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, 30000 / portTICK_RATE_MS))
-    {
-        return 1;
-    }
-    else
-    {
-        if (net_mode == NET_WIFI)
-        {
-            return Net_ErrCode;
-        }
-        else
-        {
-            return EC20_Err_Code;
-        }
-    }
+    return 1;
+    // vTaskDelay(60000 / portTICK_PERIOD_MS);
+    // if (xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, 20000 / portTICK_RATE_MS) == pdTRUE)
+    // {
+    //     return 1;
+    // }
+    // else
+    // {
+    //     if (net_mode == NET_WIFI)
+    //     {
+    //         return Net_ErrCode;
+    //     }
+    //     else
+    //     {
+    //         return Net_ErrCode;
+    //     }
+    // }
 }
 
 //解析激活返回数据

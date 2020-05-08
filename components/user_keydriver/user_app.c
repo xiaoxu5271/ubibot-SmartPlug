@@ -55,6 +55,7 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
             // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 2:
+            ble_app_start();
             // ESP_LOGI("short_pressed_cb", "double press!!!\n");
             // Task_key_num = 2;
             // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
@@ -96,7 +97,7 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
         // ESP_LOGI("long_pressed_cb", "long press!!!\n");
         // Task_key_num = 5;
         // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
-        ble_app_start();
+        // ble_app_start();
 
         break;
     default:
@@ -118,7 +119,7 @@ void user_key_cd_task(void *arg)
             break;
 
         case 2:
-            xTaskNotifyGive(view_sys_handle);
+            // xTaskNotifyGive(view_sys_handle);
             break;
 
         case 5:

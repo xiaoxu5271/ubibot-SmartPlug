@@ -515,11 +515,11 @@ void send_heart_task(void *arg)
 }
 
 //激活流程
-int32_t http_activate(void)
+uint16_t http_activate(void)
 {
     char *build_http = (char *)malloc(256);
     char *recv_buf = (char *)malloc(1024);
-    uint8_t ret;
+    uint16_t ret;
 
     xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
     xSemaphoreTake(xMutex_Http_Send, -1);
@@ -529,7 +529,7 @@ int32_t http_activate(void)
         if (wifi_http_send(build_http, 256, recv_buf, 1024) < 0)
         {
             Led_Status = LED_STA_WIFIERR;
-            ret = 101;
+            ret = 301;
         }
         else
         {
@@ -542,7 +542,7 @@ int32_t http_activate(void)
             else
             {
                 Led_Status = LED_STA_ACTIVE_ERR;
-                ret = 102;
+                ret = 302;
             }
         }
     }
