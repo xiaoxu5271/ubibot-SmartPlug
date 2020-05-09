@@ -85,7 +85,8 @@ static void short_pressed_cb(uint8_t pin_no, uint8_t key_action)
         }
         else
         {
-            s_m_key_config->short_pressed_counts = 0;
+            s_m_key_config->short_pressed_counts = 1;
+            esp_timer_start_once(gs_m_key_time_params.short_press_time_handle, SHORT_PRESS_DELAY_CHECK);
         }
         break;
     }

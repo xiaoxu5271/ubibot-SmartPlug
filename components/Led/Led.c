@@ -9,6 +9,7 @@
 #if 1
 
 #define GPIO_LED_B GPIO_NUM_33
+#define GPIO_LED_Y GPIO_NUM_13
 
 #else
 
@@ -27,10 +28,12 @@ static void Led_Task(void *arg)
     {
         if (bl_flag == 1)
         {
+            Led_Y_Off();
             Led_B_On();
-            vTaskDelay(400 / portTICK_RATE_MS);
-            Led_Off();
-            vTaskDelay(100 / portTICK_RATE_MS);
+            vTaskDelay(500 / portTICK_RATE_MS);
+            Led_Y_On();
+            Led_B_Off();
+            vTaskDelay(500 / portTICK_RATE_MS);
         }
         else
         {
@@ -120,7 +123,7 @@ void Led_Init(void)
     //set as output mode
     io_conf.mode = GPIO_MODE_OUTPUT;
     //bit mask of the pins that you want to set,e.g.GPIO16
-    io_conf.pin_bit_mask = (1ULL << GPIO_LED_B);
+    io_conf.pin_bit_mask = (1ULL << GPIO_LED_B) | (1ULL << GPIO_LED_Y);
     //disable pull-down mode
     io_conf.pull_down_en = 1;
     //disable pull-up mode
@@ -161,9 +164,11 @@ void Led_B_Off(void)
 
 void Led_Y_On(void)
 {
-    // gpio_set_level(GPIO_LED_R, 0);
-    // gpio_set_level(GPIO_LED_G, 0);
-    // gpio_set_level(GPIO_LED_B, 1);
+    gpio_set_level(GPIO_LED_Y, 1);
+}
+void Led_Y_Off(void)
+{
+    gpio_set_level(GPIO_LED_Y, 0);
 }
 
 void Led_C_On(void) //
@@ -175,9 +180,8 @@ void Led_C_On(void) //
 
 void Led_Off(void)
 {
-    // gpio_set_level(GPIO_LED_R, 1);
-    // gpio_set_level(GPIO_LED_G, 1);
-    gpio_set_level(GPIO_LED_B, 0);
+    Led_B_Off();
+    Led_Y_Off();
 }
 
 void Turn_Off_LED(void)

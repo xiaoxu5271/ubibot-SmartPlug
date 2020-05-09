@@ -35,6 +35,7 @@ void Led_Y_On(void);
 void Led_C_On(void);
 void Led_Off(void);
 void Led_B_Off(void);
+void Led_Y_Off(void);
 
 void Turn_ON_LED(void);
 void Turn_Off_LED(void);

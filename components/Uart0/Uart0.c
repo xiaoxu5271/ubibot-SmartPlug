@@ -22,22 +22,25 @@
 #define BUF_SIZE 1024
 static const char *TAG = "UART0";
 SemaphoreHandle_t xMutex_uart2_sw = NULL;
+QueueHandle_t Log_uart_queue;
 
 static void Uart0_Task(void *arg);
 
 void Uart_Init(void)
 {
     //uart0,log
-    uart_config_t uart0_config = {
+    uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
-
-    uart_param_config(UART_NUM_0, &uart0_config);
-    uart_set_pin(UART_NUM_0, UART0_TXD, UART0_RXD, UART0_RTS, UART0_CTS);
-    uart_driver_install(UART_NUM_0, BUF_SIZE * 2, 0, 0, NULL, 0);
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+    //Install UART driver, and get the queue.
+    uart_driver_install(UART_NUM_0, BUF_SIZE * 2, 0, 2, &Log_uart_queue, 0);
+    uart_param_config(UART_NUM_0, &uart_config);
+    uart_set_pin(UART_NUM_0, UART0_TXD, UART0_TXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     //uart2,485
     uart_config_t uart2_config = {
@@ -98,26 +101,58 @@ void sw_uart2(uint8_t uart2_mode)
     vTaskDelay(10 / portTICK_RATE_MS);
 }
 
-void Uart0_read(void)
-{
-    uint8_t data_u0[BUF_SIZE];
-
-    int len0 = uart_read_bytes(UART_NUM_0, data_u0, BUF_SIZE, -1);
-    if (len0 != 0) //读取到按键数据
-    {
-
-        ESP_LOGW(TAG, "uart0 recv len:%d", len0);
-        ParseTcpUartCmd((char *)data_u0);
-        bzero(data_u0, sizeof(data_u0));
-        len0 = 0;
-    }
-}
-
 void Uart0_Task(void *arg)
 {
+    uart_event_t event;
+    uint8_t data_u0[BUF_SIZE] = {0};
+    uint16_t all_read_len = 0;
     while (1)
     {
-        Uart0_read();
-        vTaskDelay(10 / portTICK_RATE_MS);
+        if (xQueueReceive(Log_uart_queue, (void *)&event, (portTickType)portMAX_DELAY))
+        {
+            switch (event.type)
+            {
+            case UART_DATA:
+                if (event.size > 1)
+                {
+                    if (all_read_len + event.size >= BUF_SIZE)
+                    {
+                        ESP_LOGE(TAG, "read len flow");
+                        all_read_len = 0;
+                        memset(data_u0, 0, BUF_SIZE);
+                    }
+                    uart_read_bytes(UART_NUM_0, data_u0 + all_read_len, event.size, portMAX_DELAY);
+                    all_read_len += event.size;
+
+                    if (data_u0[all_read_len - 1] == '\n')
+                    {
+                        ESP_LOGI(TAG, "uart0 recv :%s", data_u0);
+                        ParseTcpUartCmd((char *)data_u0);
+                        bzero(data_u0, sizeof(data_u0));
+                        all_read_len = 0;
+                        memset(data_u0, 0, BUF_SIZE);
+                        uart_flush(UART_NUM_0);
+                    }
+                }
+                break;
+
+            case UART_FIFO_OVF:
+                ESP_LOGI(TAG, "hw fifo overflow");
+                uart_flush_input(UART_NUM_0);
+                xQueueReset(Log_uart_queue);
+                break;
+
+            case UART_BUFFER_FULL:
+                ESP_LOGI(TAG, "ring buffer full");
+                uart_flush_input(UART_NUM_0);
+                xQueueReset(Log_uart_queue);
+                break;
+
+            //Others
+            default:
+                // ESP_LOGI(TAG, "uart type: %d", event.type);
+                break;
+            }
+        }
     }
 }
