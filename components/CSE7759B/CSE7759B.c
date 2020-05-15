@@ -373,6 +373,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
     case 0xAA:
         //芯片未校准
         // CSE_Status = false;
+        xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
         ESP_LOGE(TAG, "CSE7759B not check\r\n");
         return -1;
         break;
@@ -382,6 +383,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         {
             //存储区异常，芯片坏了
             // CSE_Status = false;
+            xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
             ESP_LOGE(TAG, "CSE7759B broken\r\n");
             return -1;
         }
@@ -575,6 +577,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
     sw_v_val = voltage / 1000;
     sw_c_val = electricity / 1000.0;
     sw_p_val = power / 1000.0;
+    xEventGroupSetBits(Net_sta_group, CSE_CHECK_BIT);
     // CSE_Status = true;
     return 1;
 }
@@ -630,6 +633,7 @@ int8_t CSE7759B_Read(void)
                         else
                         {
                             // CSE_Status = false;
+                            xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
                             ESP_LOGE(TAG, "checksum = 0x%02x ,7759b checksum fail!", checksum);
                             return 0;
                         }
@@ -638,6 +642,7 @@ int8_t CSE7759B_Read(void)
             }
         }
         ESP_LOGE(TAG, "CSE7759B Date Err！\n");
+        xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
         // CSE_Status = false;
         return 0;
     }
@@ -664,45 +669,37 @@ void Energy_Read_Task(void *pvParameters)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        if (mqtt_json_s.mqtt_switch_status)
+        while (CSE7759B_Read() != 1)
         {
-            while (CSE7759B_Read() != 1)
-            {
-                Led_Status = LED_STA_HEARD_ERR;
-                vTaskDelay(2000 / portTICK_PERIOD_MS); //
-            }
-
-            if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
-            {
-                filed_buff = (char *)malloc(9);
-                pJsonRoot = cJSON_CreateObject();
-                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-                // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-                snprintf(filed_buff, 9, "field%d", sw_v_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
-                snprintf(filed_buff, 9, "field%d", sw_c_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
-                snprintf(filed_buff, 9, "field%d", sw_p_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
-
-                OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                cJSON_Delete(pJsonRoot);                       //delete cjson root
-                len = strlen(OutBuffer);
-                printf("len:%d\n%s\n", len, OutBuffer);
-                // SaveBuffer = (uint8_t *)malloc(len);
-                // memcpy(SaveBuffer, OutBuffer, len);
-                xSemaphoreTake(Cache_muxtex, -1);
-                DataSave((uint8_t *)OutBuffer, len);
-                xSemaphoreGive(Cache_muxtex);
-                free(OutBuffer);
-                free(filed_buff);
-            }
+            Led_Status = LED_STA_HEARD_ERR;
+            vTaskDelay(1000 / portTICK_PERIOD_MS); //
         }
 
-        // if (Binary_mqtt != NULL)
-        // {
-        //     xTaskNotifyGive(Binary_mqtt);
-        // }
+        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT && mqtt_json_s.mqtt_switch_status == 1)
+        {
+            filed_buff = (char *)malloc(9);
+            pJsonRoot = cJSON_CreateObject();
+            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+            // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+            snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
+            snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
+            snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
+
+            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+            cJSON_Delete(pJsonRoot);                       //delete cjson root
+            len = strlen(OutBuffer);
+            printf("len:%d\n%s\n", len, OutBuffer);
+            // SaveBuffer = (uint8_t *)malloc(len);
+            // memcpy(SaveBuffer, OutBuffer, len);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave((uint8_t *)OutBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            free(OutBuffer);
+            free(filed_buff);
+        }
     }
 }
 //读取，构建累积用电量

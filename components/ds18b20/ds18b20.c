@@ -20,7 +20,7 @@
 #define ds18b20_gpio GPIO_NUM_4
 
 //采集数据的次数
-#define Cla_Num 9
+#define Cla_Num 3
 
 #define DATA_IO_ON() gpio_set_level(ds18b20_gpio, 1)
 #define DATA_IO_OFF() gpio_set_level(ds18b20_gpio, 0)
@@ -255,6 +255,7 @@ void get_ds18b20_task(void *org)
         printf("start 18b20!");
         if (ds18b20_get_temp() > 0)
         {
+            xEventGroupSetBits(Net_sta_group, DS18B20_CHECK_BIT);
             if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
             {
                 Field_e1_t = (char *)malloc(9);

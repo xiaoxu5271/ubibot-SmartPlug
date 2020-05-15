@@ -50,17 +50,6 @@ void app_main(void)
 	Uart_Init();
 	user_app_key_init();
 
-	/* 判断是否有序列号和product id */
-	if ((strlen(SerialNum) == 0) || (strlen(ProductId) == 0) || (strlen(WEB_SERVER) == 0)) //未获取到序列号或productid，未烧写序列号
-	{
-		while (1)
-		{
-			ESP_LOGE("Init", "no SerialNum or product id!");
-			Led_Status = LED_STA_NOSER; //故障灯
-			vTaskDelay(1000 / portTICK_RATE_MS);
-		}
-	}
-
 	esp_err_t ret;
 	ret = nvs_flash_init();
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -79,6 +68,16 @@ void app_main(void)
 	start_ds18b20();
 	Start_Cache();
 	initialise_http(); //须放在 采集任务建立之后
-
 	initialise_mqtt();
+
+	/* 判断是否有序列号和product id */
+	if ((strlen(SerialNum) == 0) || (strlen(ProductId) == 0) || (strlen(WEB_SERVER) == 0)) //未获取到序列号或productid，未烧写序列号
+	{
+		while (1)
+		{
+			ESP_LOGE("Init", "no SerialNum or product id!");
+			Led_Status = LED_STA_NOSER; //故障灯
+			vTaskDelay(1000 / portTICK_RATE_MS);
+		}
+	}
 }

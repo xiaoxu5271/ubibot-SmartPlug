@@ -32,17 +32,20 @@
 uint8_t start_AP = 0;
 uint8_t bl_flag = 0; //蓝牙配网模式
 uint16_t Net_ErrCode = 0;
+bool scan_flag = false;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
-        esp_wifi_connect();
+        if (scan_flag == false)
+        {
+            esp_wifi_connect();
+        }
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-
         if (net_mode == NET_WIFI)
         {
             Led_Status = LED_STA_WIFIERR;
@@ -50,19 +53,16 @@ static void event_handler(void *arg, esp_event_base_t event_base,
             Start_Active();
         }
 
-        esp_wifi_connect();
         wifi_event_sta_disconnected_t *event = (wifi_event_sta_disconnected_t *)event_data;
-
         if (event->reason >= 200)
         {
             Net_ErrCode = event->reason;
         }
-
-        ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d, trying to reconnect...", event->reason);
-        // if (Net_ErrCode >= 1 && Net_ErrCode <= 24) //适配APP，
-        // {
-        //     Net_ErrCode += 300;
-        // }
+        ESP_LOGI(TAG, "Wi-Fi disconnected,reason:%d", event->reason);
+        if (scan_flag == false)
+        {
+            esp_wifi_connect();
+        }
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -87,20 +87,18 @@ void init_wifi(void) //
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
-
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); //实验，测试解决wifi中断问题
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     // ESP_ERROR_CHECK(esp_wifi_get_config(ESP_IF_WIFI_STA, &s_staconf));
-    wifi_config_t s_staconf;
-    memset(&s_staconf.sta, 0, sizeof(s_staconf));
-    strcpy((char *)s_staconf.sta.ssid, wifi_data.wifi_ssid);
-    strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
+    // wifi_config_t s_staconf;
+    // memset(&s_staconf.sta, 0, sizeof(s_staconf));
+    // strcpy((char *)s_staconf.sta.ssid, wifi_data.wifi_ssid);
+    // strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
 
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
+    // ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
     if (net_mode == NET_WIFI)
     {
         xEventGroupSetBits(Net_sta_group, WIFI_S_BIT);
-        ESP_ERROR_CHECK(esp_wifi_start());
+        start_user_wifi();
     }
 }
 
@@ -151,15 +149,6 @@ void Net_Switch(void)
     xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
     switch (net_mode)
     {
-        // case NET_AUTO:
-        //     start_user_wifi();
-        //     Start_W_Mqtt();
-        //     if (eTaskGetState(EC20_Task_Handle) == eSuspended)
-        //     {
-        //         vTaskResume(EC20_Task_Handle);
-        //     }
-        //     break;
-
     case NET_WIFI:
         start_user_wifi();
         Start_W_Mqtt();
@@ -180,6 +169,44 @@ void Net_Switch(void)
 
     default:
         break;
+    }
+}
+
+#define DEFAULT_SCAN_LIST_SIZE 5
+void Scan_Wifi(void)
+{
+    uint16_t number = DEFAULT_SCAN_LIST_SIZE;
+    wifi_ap_record_t ap_info[DEFAULT_SCAN_LIST_SIZE];
+    uint16_t ap_count = 0;
+    memset(ap_info, 0, sizeof(ap_info));
+    scan_flag = true;
+    start_user_wifi();
+
+    if (esp_wifi_scan_start(NULL, true) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_scan_start FAIL");
+        scan_flag = false;
+        return;
+    }
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
+    ESP_LOGI(TAG, "Total APs scanned = %u", ap_count);
+    for (int i = 0; (i < DEFAULT_SCAN_LIST_SIZE) && (i < ap_count); i++)
+    {
+        // ESP_LOGI(TAG, "SSID \t\t%s", ap_info[i].ssid);
+        // ESP_LOGI(TAG, "RSSI \t\t%d", ap_info[i].rssi);
+        // ESP_LOGI(TAG, "Channel \t\t%d\n", ap_info[i].primary);
+        printf("{\"SSID\":\"%s\",\"rssi\":%d}\n\r", ap_info[i].ssid, ap_info[i].rssi);
+    }
+
+    scan_flag = false;
+    if (net_mode == NET_WIFI)
+    {
+        start_user_wifi();
+    }
+    else
+    {
+        stop_user_wifi();
     }
 }
 

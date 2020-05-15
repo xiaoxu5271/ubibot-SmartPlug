@@ -946,6 +946,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
             return 1;
         }
+        //{"command":"ReadProduct"}
         else if (!strcmp((char const *)pSub->valuestring, "ReadProduct")) //Command:ReadProduct
         {
             char mac_buff[18];
@@ -983,16 +984,44 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             cJSON_Delete(root); //delete pJson
             free(json_temp);
         }
-        else if (!strcmp((char const *)pSub->valuestring, "CheckSensors")) //Command:ReadProduct
+        //{"command":"CheckSensors"}
+        else if (!strcmp((char const *)pSub->valuestring, "CheckSensors"))
         {
-            // if (human_chack == 1)
-            // {
-            //     printf("{\"result\":\"OK\",\"human\":\"OK\"}\n");
-            // }
-            // else
-            // {
-            //     printf("{\"result\":\"ERROR\",\"human\":\"ERROR\"}\n");
-            // }
+            xTaskNotifyGive(Binary_485_th);
+            xTaskNotifyGive(Binary_ext);
+            xTaskNotifyGive(Binary_energy);
+
+            if ((xEventGroupWaitBits(Net_sta_group, RS485_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & RS485_CHECK_BIT) == RS485_CHECK_BIT)
+            {
+                printf("{\"result\":\"RS485 OK\",\"temp_val\":%d,\"humi_val\":%d}\r\n", (int)ext_tem, (int)ext_hum);
+            }
+            else
+            {
+                printf("{\"result\":\"RS485 ERROR\"}\r\n");
+            }
+
+            if ((xEventGroupWaitBits(Net_sta_group, CSE_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & CSE_CHECK_BIT) == CSE_CHECK_BIT)
+            {
+                printf("{\"result\":\"ENERGY OK\"}\r\n");
+            }
+            else
+            {
+                printf("{\"result\":\"ENERGY ERROR\"}\r\n");
+            }
+
+            if ((xEventGroupWaitBits(Net_sta_group, DS18B20_CHECK_BIT, true, true, 5000 / portTICK_RATE_MS) & DS18B20_CHECK_BIT) == DS18B20_CHECK_BIT)
+            {
+                printf("{\"result\":\"DS18B20 OK\",\"ext_temp_val\":%d}\r\n", (int)DS18B20_TEM);
+            }
+            else
+            {
+                printf("{\"result\":\"DS18B20 ERROR\"}\r\n");
+            }
+        }
+        //{"command":"ScanWifiList"}
+        else if (!strcmp((char const *)pSub->valuestring, "ScanWifiList"))
+        {
+            Scan_Wifi();
         }
     }
 

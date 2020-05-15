@@ -97,7 +97,9 @@ void read_485_th_task(void *pvParameters)
                     ext_hum = ((recv_data[5] << 8) + recv_data[6]) * 0.1;
                     ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
                     // RS485_status = true;
-                    // // 读取成功
+
+                    //读取成功
+                    xEventGroupSetBits(Net_sta_group, RS485_CHECK_BIT);
 
                     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
                     {
