@@ -30,7 +30,6 @@
 // EventGroupHandle_t tcp_event_group;
 
 uint8_t start_AP = 0;
-uint8_t bl_flag = 0; //蓝牙配网模式
 uint16_t Net_ErrCode = 0;
 bool scan_flag = false;
 
@@ -48,7 +47,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     {
         if (net_mode == NET_WIFI)
         {
-            Led_Status = LED_STA_WIFIERR;
+            Net_sta_flag = false;
             xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
             Start_Active();
         }

@@ -76,7 +76,7 @@ void app_main(void)
 		while (1)
 		{
 			ESP_LOGE("Init", "no SerialNum or product id!");
-			Led_Status = LED_STA_NOSER; //故障灯
+			No_ser_flag = true;
 			vTaskDelay(1000 / portTICK_RATE_MS);
 		}
 	}

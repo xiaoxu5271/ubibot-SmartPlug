@@ -420,7 +420,7 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
 
     int32_t ret;
 
-    printf("wifi send!!!\n");
+    ESP_LOGI(TAG, "wifi send!!!\n");
     ret = wifi_http_send(send_buff, send_size, recv_buff, recv_size);
 
     return ret;
@@ -451,18 +451,18 @@ bool Send_herat(void)
             {
                 //successed
                 ret = true;
-                Led_Status = LED_STA_WORK;
+                Net_sta_flag = true;
             }
             else
             {
                 ret = false;
-                Led_Status = LED_STA_ACTIVE_ERR;
+                Net_sta_flag = false;
             }
         }
         else
         {
             ret = false;
-            Led_Status = LED_STA_WIFIERR;
+            Net_sta_flag = false;
             ESP_LOGE(TAG, "hart recv 0!\r\n");
         }
     }
@@ -472,7 +472,7 @@ bool Send_herat(void)
         if (EC20_Active(build_heart_url, recv_buf) == 0)
         {
             ret = false;
-            Led_Status = LED_STA_WIFIERR;
+            Net_sta_flag = false;
             ESP_LOGE(TAG, "hart recv 0!\r\n");
         }
         else
@@ -481,12 +481,12 @@ bool Send_herat(void)
             if (parse_objects_heart(recv_buf))
             {
                 ret = true;
-                Led_Status = LED_STA_WORK;
+                Net_sta_flag = true;
             }
             else
             {
                 ret = false;
-                Led_Status = LED_STA_ACTIVE_ERR;
+                Net_sta_flag = false;
             }
         }
     }
@@ -528,7 +528,7 @@ uint16_t http_activate(void)
         sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
         if (wifi_http_send(build_http, 256, recv_buf, 1024) < 0)
         {
-            Led_Status = LED_STA_WIFIERR;
+            Net_sta_flag = false;
             ret = 301;
         }
         else
@@ -536,12 +536,12 @@ uint16_t http_activate(void)
             ESP_LOGI(TAG, "active recv:%s", recv_buf);
             if (parse_objects_http_active(recv_buf))
             {
-                Led_Status = LED_STA_WORK;
+                Net_sta_flag = true;
                 ret = 1;
             }
             else
             {
-                Led_Status = LED_STA_ACTIVE_ERR;
+                Net_sta_flag = false;
                 ret = 302;
             }
         }
@@ -552,7 +552,7 @@ uint16_t http_activate(void)
         if (EC20_Active(build_http, recv_buf) == 0)
         {
             ESP_LOGE(TAG, "active ERR");
-            Led_Status = LED_STA_WIFIERR;
+            Net_sta_flag = false;
             ret = 101;
         }
         else
@@ -560,12 +560,12 @@ uint16_t http_activate(void)
             ESP_LOGI(TAG, "active recv:%s", recv_buf);
             if (parse_objects_http_active(recv_buf))
             {
-                Led_Status = LED_STA_WORK;
+                Net_sta_flag = true;
                 ret = 1;
             }
             else
             {
-                Led_Status = LED_STA_ACTIVE_ERR;
+                Net_sta_flag = false;
                 ret = 102;
             }
         }
@@ -609,6 +609,6 @@ void initialise_http(void)
     err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s
     if (err != ESP_OK)
     {
-        printf("timer heart create err code:%d\n", err);
+        ESP_LOGI(TAG, "timer heart create err code:%d\n", err);
     }
 }

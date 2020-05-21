@@ -17,7 +17,6 @@ extern uint8_t wifi_connect_sta; //wifi连接状态
 extern uint8_t start_AP;
 extern uint16_t Net_ErrCode; //
 extern bool WIFI_STA;
-extern uint8_t bl_flag; //蓝牙配网模式
 
 EventGroupHandle_t Net_sta_group;
 #define CONNECTED_BIT (1 << 0)      //网络连接

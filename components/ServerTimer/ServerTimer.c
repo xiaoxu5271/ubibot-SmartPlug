@@ -22,7 +22,7 @@ esp_err_t Server_Timer_GET(char *Server_timer_data)
     struct tm *tmp_time = (struct tm *)malloc(sizeof(struct tm));
     strptime(Server_timer_data, "%Y-%m-%dT%H:%M:%SZ", tmp_time);
     base_timstamp = mktime(tmp_time);
-    printf("this is time tamp%ld\r\n", base_timstamp);
+    ESP_LOGI(TAG, "this is time tamp%ld\r\n", base_timstamp);
 
     //time_t t = mktime(tmp_time);
     ESP_LOGI(TAG, "Setting time: %s", asctime(tmp_time));

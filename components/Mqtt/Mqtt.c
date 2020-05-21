@@ -91,35 +91,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 void initialise_mqtt(void)
 {
-    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
-    char mqtt_pwd[42];
-    char mqtt_usr[23];
-
-    sprintf(topic_s, "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/control", '\0');
-    sprintf(topic_p, "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/status", '\0');
-
-    sprintf(mqtt_pwd, "%s%s%c", "api_key=", ApiKey, '\0');
-    sprintf(mqtt_usr, "%s%s%c", "c_id=", ChannelId, '\0');
-
-    const esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = "mqtt://mqtt.ubibot.cn",
-        .username = mqtt_usr,
-        .password = mqtt_pwd,
-
-    };
-
-    client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-
-    xEventGroupSetBits(Net_sta_group, MQTT_INITED_BIT);
     xTaskCreate(Send_Mqtt_Task, "Send Mqtt", 4096, NULL, 10, NULL);
-
-    if (net_mode == NET_WIFI)
-    {
-        Start_W_Mqtt();
-    }
-
-    //
 }
 
 void Start_W_Mqtt(void)
@@ -145,6 +117,32 @@ void Stop_W_Mqtt(void)
 void Send_Mqtt_Task(void *arg)
 {
     Mqtt_Msg Mqtt_Send;
+
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
+    char mqtt_pwd[42];
+    char mqtt_usr[23];
+
+    sprintf(topic_s, "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/control", '\0');
+    sprintf(topic_p, "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/status", '\0');
+
+    sprintf(mqtt_pwd, "%s%s%c", "api_key=", ApiKey, '\0');
+    sprintf(mqtt_usr, "%s%s%c", "c_id=", ChannelId, '\0');
+
+    const esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = "mqtt://mqtt.ubibot.cn",
+        .username = mqtt_usr,
+        .password = mqtt_pwd,
+    };
+
+    client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+    xEventGroupSetBits(Net_sta_group, MQTT_INITED_BIT);
+
+    if (net_mode == NET_WIFI)
+    {
+        Start_W_Mqtt();
+    }
+
     while (1)
     {
         xQueueReceive(Send_Mqtt_Queue, &Mqtt_Send, -1);

@@ -44,8 +44,9 @@ extern uint16_t W25QXX_TYPE; //定义W25QXX芯片型号
 #define W25X_Exit4ByteAddr 0xE9
 
 void SPI_FLASH_Init(void);
-uint16_t W25QXX_ReadID(void);     //读取FLASH ID
-uint8_t W25QXX_ReadSR(void);      //读取状态寄存器S
+uint16_t W25QXX_ReadID(void); //读取FLASH ID
+uint8_t W25QXX_ReadSR(void);  //读取状态寄存器S
+
 void W25QXX_Write_SR(uint8_t sr); //写状态寄存器
 void W25QXX_Write_Enable(void);   //写使能
 void W25QXX_Write_Disable(void);  //写保护

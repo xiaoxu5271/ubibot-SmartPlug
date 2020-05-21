@@ -679,9 +679,9 @@ void SPI_FLASH_Init(void)
 		vTaskDelay(1000 / portTICK_RATE_MS);
 		W25QXX_TYPE = W25QXX_ReadID(); //读取FLASH ID.
 		ESP_LOGE(TAG, "W25QXX_TYPE = %x\n", W25QXX_TYPE);
-		Led_Status = LED_STA_HEARD_ERR;
+		FLASH_FLAG = false;
 	}
-
+	FLASH_FLAG = true;
 	W25QXX_Write_Enable(); //SPI_FLASH写使能
 	W25QXX_Write_SR(0);
 	W25QXX_Wait_Busy();

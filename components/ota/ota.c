@@ -232,7 +232,7 @@ bool EC20_OTA(void)
 
     while (binary_file_length < content_len)
     {
-        Led_Status = LED_STA_OTA;
+        // Led_Status = LED_STA_OTA;
 
         //写入之前清0
         memset(ota_write_data, 0, 1000);

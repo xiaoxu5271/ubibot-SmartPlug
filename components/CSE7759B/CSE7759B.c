@@ -373,7 +373,6 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
     case 0xAA:
         //芯片未校准
         // CSE_Status = false;
-        xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
         ESP_LOGE(TAG, "CSE7759B not check\r\n");
         return -1;
         break;
@@ -383,7 +382,6 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         {
             //存储区异常，芯片坏了
             // CSE_Status = false;
-            xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
             ESP_LOGE(TAG, "CSE7759B broken\r\n");
             return -1;
         }
@@ -577,7 +575,6 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
     sw_v_val = voltage / 1000;
     sw_c_val = electricity / 1000.0;
     sw_p_val = power / 1000.0;
-    xEventGroupSetBits(Net_sta_group, CSE_CHECK_BIT);
     // CSE_Status = true;
     return 1;
 }
@@ -633,7 +630,6 @@ int8_t CSE7759B_Read(void)
                         else
                         {
                             // CSE_Status = false;
-                            xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
                             ESP_LOGE(TAG, "checksum = 0x%02x ,7759b checksum fail!", checksum);
                             return 0;
                         }
@@ -642,7 +638,6 @@ int8_t CSE7759B_Read(void)
             }
         }
         ESP_LOGE(TAG, "CSE7759B Date Err！\n");
-        xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
         // CSE_Status = false;
         return 0;
     }
@@ -665,17 +660,26 @@ void Energy_Read_Task(void *pvParameters)
 
     CSE7759B_Read();
     vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
-    CSE7759B_Read();
+    if (CSE7759B_Read() == 1)
+    {
+        CSE_FLAG = true;
+    }
+
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
         while (CSE7759B_Read() != 1)
         {
-            Led_Status = LED_STA_HEARD_ERR;
+            ESP_LOGE(TAG, "CSE7759B Read err！\n");
+            CSE_FLAG = false;
+            xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
             vTaskDelay(1000 / portTICK_PERIOD_MS); //
         }
+        ESP_LOGI(TAG, "CSE7759B Read OK\n");
+        xEventGroupSetBits(Net_sta_group, CSE_CHECK_BIT);
+        CSE_FLAG = true;
 
-        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT && mqtt_json_s.mqtt_switch_status == 1)
+        if (((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT) && (mqtt_json_s.mqtt_switch_status == 1))
         {
             filed_buff = (char *)malloc(9);
             pJsonRoot = cJSON_CreateObject();
@@ -691,7 +695,7 @@ void Energy_Read_Task(void *pvParameters)
             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
             cJSON_Delete(pJsonRoot);                       //delete cjson root
             len = strlen(OutBuffer);
-            printf("len:%d\n%s\n", len, OutBuffer);
+            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
             // SaveBuffer = (uint8_t *)malloc(len);
             // memcpy(SaveBuffer, OutBuffer, len);
             xSemaphoreTake(Cache_muxtex, -1);
@@ -732,7 +736,7 @@ void Ele_quan_Task(void *pvParameters)
             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
             cJSON_Delete(pJsonRoot);                       //delete cjson root
             len = strlen(OutBuffer);
-            printf("len:%d\n%s\n", len, OutBuffer);
+            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
             // SaveBuffer = (uint8_t *)malloc(len);
             // memcpy(SaveBuffer, OutBuffer, len);
             xSemaphoreTake(Cache_muxtex, -1);

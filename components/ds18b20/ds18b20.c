@@ -252,7 +252,6 @@ void get_ds18b20_task(void *org)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        printf("start 18b20!");
         if (ds18b20_get_temp() > 0)
         {
             xEventGroupSetBits(Net_sta_group, DS18B20_CHECK_BIT);
@@ -266,7 +265,7 @@ void get_ds18b20_task(void *org)
                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                 cJSON_Delete(pJsonRoot);                       //delete cjson root
                 len = strlen(OutBuffer);
-                printf("len:%d\n%s\n", len, OutBuffer);
+                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                 xSemaphoreTake(Cache_muxtex, -1);
                 DataSave((uint8_t *)OutBuffer, len);
                 xSemaphoreGive(Cache_muxtex);

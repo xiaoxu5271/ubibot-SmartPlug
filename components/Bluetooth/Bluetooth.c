@@ -520,7 +520,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 bzero(buf, sizeof(buf));
                 memcpy(buf, param->write.value, param->write.len);
                 Ble_ret = parse_objects_bluetooth(buf);
-                printf("parse_objects_bluetooth return = %d \n", Ble_ret);
+                ESP_LOGI(GATTS_TAG, "parse_objects_bluetooth return = %d \n", Ble_ret);
 
                 if (Ble_ret)
                 {
@@ -834,14 +834,13 @@ void ble_respon_process(void *arg)
 void ble_app_start(void)
 {
     esp_ble_gap_start_advertising(&adv_params);
-    bl_flag = 1;
+    Cnof_net_flag = true;
     ESP_LOGI(GATTS_TAG, "turn on ble！");
 }
 
 void ble_app_stop(void)
 {
     esp_ble_gap_stop_advertising();
-
-    bl_flag = 0;
+    Cnof_net_flag = false;
     ESP_LOGI(GATTS_TAG, "turn off ble！");
 }

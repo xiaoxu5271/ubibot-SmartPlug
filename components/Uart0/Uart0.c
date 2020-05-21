@@ -66,7 +66,7 @@ void Uart_Init(void)
     //创建切换uart2 互斥信号
     xMutex_uart2_sw = xSemaphoreCreateMutex();
     //串口0 接收解析
-    xTaskCreate(Uart0_Task, "Uart0_Task", 4096, NULL, 9, NULL);
+    xTaskCreate(Uart0_Task, "Uart0_Task", 5120, NULL, 9, NULL);
 }
 
 void sw_uart2(uint8_t uart2_mode)

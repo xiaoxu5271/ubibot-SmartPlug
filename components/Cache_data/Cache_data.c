@@ -334,12 +334,12 @@ static uint8_t Http_post_fun(void)
     // ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
     if (parse_objects_http_respond(recv_buff))
     {
+        Net_sta_flag = true;
         ESP_LOGI(TAG, "post success");
-        Led_Status = LED_STA_WORK;
     }
     else
     {
-        Led_Status = LED_STA_ACTIVE_ERR;
+        Net_sta_flag = false;
     }
 
     E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
@@ -376,12 +376,12 @@ void Write_Flash_Test_task(void *pvParameters)
 
 void Erase_Flash_data_test(void)
 {
-    printf("\nstart erase flash\n");
+    ESP_LOGI("TEST", "\nstart erase flash\n");
     W25QXX_Erase_Sector(0);
     E2P_WriteLenByte(START_READ_NUM_ADD, 0, 4);
     E2P_WriteLenByte(DATA_SAVE_NUM_ADD, 0, 4);
     E2P_WriteLenByte(FLASH_USED_NUM_ADD, 0, 4);
-    printf("\nerase flash ok\n");
+    ESP_LOGI("TEST", "\nerase flash ok\n");
 }
 
 void Raad_flash_Soctor(void)
@@ -390,7 +390,7 @@ void Raad_flash_Soctor(void)
     W25QXX_Read(test_buff, 0, 10);
     for (uint8_t i = 0; i < 10; i++)
     {
-        printf("i:%d,num:%d,char:%c\n", i, test_buff[i], test_buff[i]);
+        ESP_LOGI("TEST", "i:%d,num:%d,char:%c\n", i, test_buff[i], test_buff[i]);
     }
 
     // printf("len:%d\ntest_buff:%s\n", strlen((const char *)test_buff), test_buff);

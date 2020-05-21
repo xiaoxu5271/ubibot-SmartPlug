@@ -1023,6 +1023,17 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
         {
             Scan_Wifi();
         }
+        //{"command":"Reset"}
+        else if (!strcmp((char const *)pSub->valuestring, "Reset"))
+        {
+            esp_restart();
+        }
+
+        //{"command":"AllReset"}
+        else if (!strcmp((char const *)pSub->valuestring, "AllReset"))
+        {
+            E2prom_set_defaul(false);
+        }
     }
 
     cJSON_Delete(pJson); //delete pJson

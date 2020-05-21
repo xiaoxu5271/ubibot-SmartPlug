@@ -290,7 +290,7 @@ void EC20_Task(void *arg)
         ESP_LOGI(TAG, "EC20_Task START");
 
         MQTT_E_STA = false;
-        Led_Status = LED_STA_WIFIERR;
+        Net_sta_flag = false;
         xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
         Start_Active();
         ret = EC20_Moudle_Init();
@@ -367,7 +367,7 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
             }
             else //未等到数据
             {
-                ESP_LOGI(TAG, "LINE %d", __LINE__);
+                // ESP_LOGI(TAG, "LINE %d", __LINE__);
                 break;
             }
         }
@@ -955,3 +955,19 @@ end:
     free(recv_buf);
     return file_len;
 }
+
+//检查模块硬件
+// uint8_t Check_Module(void)
+// {
+//     char *ret;
+//     char *cmd_buf = (char *)malloc(120);
+
+//     // EC20_Rest();
+
+//     ret = AT_Cmd_Send("AT\r\n", "OK", 1000, 5); //回显
+//     if (ret == NULL)
+//     {
+//         ESP_LOGE(TAG, "%d", __LINE__);
+//         EC20_Rest();
+//     }
+// }
