@@ -313,7 +313,7 @@ void ota_start(void) //建立OTA升级任务，目的是为了让此函数被调
     }
 }
 
-void Rest_Factory(void)
+void ota_back(void)
 {
     esp_ota_mark_app_invalid_rollback_and_reboot();
 }

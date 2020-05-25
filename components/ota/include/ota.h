@@ -6,6 +6,6 @@
 uint8_t need_update;
 uint8_t update_fail_num;
 void ota_start(void);
-void Rest_Factory(void);
+void ota_back(void);
 
 #endif

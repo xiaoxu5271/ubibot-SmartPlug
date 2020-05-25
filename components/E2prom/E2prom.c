@@ -44,13 +44,6 @@ void E2prom_Init(void)
         return;
     }
     E2P_FLAG = true;
-    if (Check_Set_defaul())
-    {
-        Set_defaul_flag = true;
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-        Rest_Factory();
-    }
 }
 
 esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat)
@@ -430,7 +423,7 @@ void E2prom_empty_all(void)
     // {
     //     E2P_WriteOneByte(i, 0);
     // }
-    FM24C_Empty(E2P_SIZE / 4);
+    FM24C_Empty(E2P_SIZE / 8);
 }
 
 static void E2prom_read_defaul(void)
@@ -447,6 +440,7 @@ static void E2prom_read_defaul(void)
 //flag =0 不写入序列号相关
 void E2prom_set_defaul(bool flag)
 {
+    E2prom_read_defaul();
     E2prom_empty_all();
     //写入默认值
     ESP_LOGI(TAG, "set defaul\n");
@@ -480,6 +474,8 @@ void E2prom_set_defaul(bool flag)
     E2P_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num);
     E2P_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num);
     E2P_WriteOneByte(SW_PC_F_NUM_ADDR, sw_pc_f_num);
+    E2P_WriteOneByte(RS485_CO2_T_NUM_ADDR, r1_co2_t_f_num);
+    E2P_WriteOneByte(RS485_CO2_H_NUM_ADDR, r1_co2_h_f_num);
 }
 
 //检查AT24CXX是否正常,以及是否为新EEPROM

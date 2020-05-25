@@ -346,7 +346,7 @@ int32_t user_key_init(key_config_t *key_config,
 }
 
 //恢复出厂设置按键检测
-bool Check_Set_defaul(void)
+bool Check_First_Key(void)
 {
     uint16_t i = 0;
     gpio_set_direction(BOARD_BUTTON, GPIO_MODE_INPUT);
