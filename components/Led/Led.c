@@ -36,13 +36,13 @@ bool Cnof_net_flag = false;
 bool No_ser_flag = false;
 
 /*******************************************
- 硬件错误：黄灯闪烁
- 恢复出厂：蓝灯闪烁
- 无序列号：黄+蓝 闪烁
- 配置网络：黄蓝交替闪烁
+黄灯闪烁：硬件错误
+蓝灯闪烁：恢复出厂
+黄蓝交替闪烁：配置网络
 
- 开：蓝灯亮，关：蓝灯灭
- 网络正常：黄灯灭，网络问题：黄灯亮
+蓝灯常亮：开关开启，网络正常
+黄灯常亮：电源开启，网络断开
+灯熄灭：电源断开 
  
  * ***************************************/
 static void Led_Task(void *arg)
@@ -52,7 +52,7 @@ static void Led_Task(void *arg)
         //硬件错误
         if ((CSE_FLAG == false) || (E2P_FLAG == false) || (FLASH_FLAG == false))
         {
-            ESP_LOGI(TAG, "CSE_FLAG=:%d,E2P_FLAG=:%d,FLASH_FLAG=:%d", CSE_FLAG, E2P_FLAG, FLASH_FLAG);
+            // ESP_LOGI(TAG, "CSE_FLAG=:%d,E2P_FLAG=:%d,FLASH_FLAG=:%d", CSE_FLAG, E2P_FLAG, FLASH_FLAG);
             Led_Off();
             vTaskDelay(500 / portTICK_RATE_MS);
             Led_Y_On();
@@ -64,15 +64,6 @@ static void Led_Task(void *arg)
             Led_Off();
             vTaskDelay(500 / portTICK_RATE_MS);
             Led_B_On();
-            vTaskDelay(500 / portTICK_RATE_MS);
-        }
-        //无序列号
-        else if (No_ser_flag == true)
-        {
-            Led_Off();
-            vTaskDelay(500 / portTICK_RATE_MS);
-            Led_B_On();
-            Led_Y_On();
             vTaskDelay(500 / portTICK_RATE_MS);
         }
         //配网
@@ -88,25 +79,34 @@ static void Led_Task(void *arg)
         //开关以及网络
         else
         {
-            //开关
-            if (mqtt_json_s.mqtt_switch_status == true)
+            if (cg_data_led == 1)
             {
-                Led_B_On();
+                //开关
+                if (mqtt_json_s.mqtt_switch_status == true)
+                {
+                    //网络
+                    if (Net_sta_flag == true)
+                    {
+                        Led_Off();
+                        Led_B_On();
+                    }
+                    else
+                    {
+                        Led_Off();
+                        Led_Y_On();
+                    }
+                }
+                else
+                {
+                    Led_Off();
+                }
+                vTaskDelay(100 / portTICK_RATE_MS);
             }
             else
             {
-                Led_B_Off();
+                Led_Off();
+                vTaskDelay(100 / portTICK_RATE_MS);
             }
-            //网络
-            if (Net_sta_flag == true)
-            {
-                Led_Y_Off();
-            }
-            else
-            {
-                Led_Y_On();
-            }
-            vTaskDelay(100 / portTICK_RATE_MS);
         }
     }
 }

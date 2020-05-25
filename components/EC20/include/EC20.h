@@ -46,5 +46,6 @@ void EC20_Power_Off(void);
 uint16_t Read_OTA_File(uint8_t flie_handle, char *file_buff);
 uint8_t Start_EC_OTA(char *ota_url, uint32_t *file_len);
 bool End_EC_OTA(uint8_t file_handle);
+void Check_Module(void);
 
 #endif

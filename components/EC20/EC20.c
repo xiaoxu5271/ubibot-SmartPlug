@@ -3,6 +3,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
+#include <cJSON.h>
 
 #include "driver/uart.h"
 #include "soc/uart_periph.h"
@@ -956,18 +957,89 @@ end:
     return file_len;
 }
 
-//检查模块硬件
-// uint8_t Check_Module(void)
-// {
-//     char *ret;
-//     char *cmd_buf = (char *)malloc(120);
+// 检查模块硬件
+void Check_Module(void)
+{
+    char *ret;
+    bool module_flag = false;
+    bool simcard_flag = false;
+    bool result_flag = true;
+    float ec_rssi_val;
 
-//     // EC20_Rest();
+    if ((xEventGroupGetBits(Net_sta_group) & Uart1_Task_BIT) != Uart1_Task_BIT)
+    {
+        xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, 20, &Uart1_Task_Handle);
+    }
 
-//     ret = AT_Cmd_Send("AT\r\n", "OK", 1000, 5); //回显
-//     if (ret == NULL)
-//     {
-//         ESP_LOGE(TAG, "%d", __LINE__);
-//         EC20_Rest();
-//     }
-// }
+    cJSON *root = cJSON_CreateObject();
+    char *json_temp;
+
+    ret = AT_Cmd_Send("AT\r\n", "OK", 100, 5); //
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, "%d", __LINE__);
+        EC20_Rest();
+    }
+
+    ret = AT_Cmd_Send("AT\r\n", "OK", 100, 5); //
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, "%d", __LINE__);
+        module_flag = false;
+        result_flag = false;
+        goto end;
+    }
+    module_flag = true;
+
+    ret = AT_Cmd_Send("AT+CPIN?\r\n", "READY", 100, 5);
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+        simcard_flag = false;
+        result_flag = false;
+        goto end;
+    }
+    simcard_flag = true;
+
+    EC20_Get_Rssi(&ec_rssi_val);
+
+end:
+
+    if (net_mode != NET_4G)
+    {
+        EC20_Stop();
+    }
+
+    if (result_flag == true)
+    {
+        cJSON_AddStringToObject(root, "result", "OK");
+    }
+    else
+    {
+        cJSON_AddStringToObject(root, "result", "ERROR");
+    }
+
+    if (module_flag == true)
+    {
+        cJSON_AddStringToObject(root, "module", "OK");
+    }
+    else
+    {
+        cJSON_AddStringToObject(root, "module", "ERROR");
+    }
+
+    if (simcard_flag == true)
+    {
+        cJSON_AddStringToObject(root, "simcard", "OK");
+        cJSON_AddNumberToObject(root, "RSSI", ec_rssi_val);
+    }
+    else
+    {
+        cJSON_AddStringToObject(root, "simcard", "ERROR");
+    }
+
+    json_temp = cJSON_PrintUnformatted(root);
+    printf("%s\n", json_temp);
+    cJSON_Delete(root); //delete pJson
+    free(json_temp);
+}

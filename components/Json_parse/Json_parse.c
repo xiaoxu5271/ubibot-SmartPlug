@@ -207,14 +207,14 @@ static short Parse_metadata(char *ptrptr)
             cg_data_led = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(CG_DATA_LED_ADD, cg_data_led);
             printf("cg_data_led = %d\n", cg_data_led);
-            if (cg_data_led == 0)
-            {
-                Turn_Off_LED();
-            }
-            else
-            {
-                Turn_ON_LED();
-            }
+            // if (cg_data_led == 0)
+            // {
+            //     Turn_Off_LED();
+            // }
+            // else
+            // {
+            //     Turn_ON_LED();
+            // }
         }
     }
 
@@ -987,48 +987,135 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
         //{"command":"CheckSensors"}
         else if (!strcmp((char const *)pSub->valuestring, "CheckSensors"))
         {
+            cJSON *root = cJSON_CreateObject();
+            char *json_temp;
+
+            bool result_flag = true;
+            bool RS484_flag = false;
+            bool ENERGY_flag = false;
+            bool DS18B20_flag = false;
+
             xTaskNotifyGive(Binary_485_th);
             xTaskNotifyGive(Binary_ext);
             xTaskNotifyGive(Binary_energy);
 
             if ((xEventGroupWaitBits(Net_sta_group, RS485_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & RS485_CHECK_BIT) == RS485_CHECK_BIT)
             {
-                printf("{\"result\":\"RS485 OK\",\"temp_val\":%d,\"humi_val\":%d}\r\n", (int)ext_tem, (int)ext_hum);
+                // printf("{\"result\":\"RS485 OK\",\"temp_val\":%d,\"humi_val\":%d}\r\n", (int)ext_tem, (int)ext_hum);
+                RS484_flag = true;
             }
             else
             {
-                printf("{\"result\":\"RS485 ERROR\"}\r\n");
+                // printf("{\"result\":\"RS485 ERROR\"}\r\n");
+                result_flag = false;
+                RS484_flag = false;
             }
 
             if ((xEventGroupWaitBits(Net_sta_group, CSE_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & CSE_CHECK_BIT) == CSE_CHECK_BIT)
             {
-                printf("{\"result\":\"ENERGY OK\"}\r\n");
+                // printf("{\"result\":\"ENERGY OK\"}\r\n");
+                ENERGY_flag = true;
             }
             else
             {
-                printf("{\"result\":\"ENERGY ERROR\"}\r\n");
+                // printf("{\"result\":\"ENERGY ERROR\"}\r\n");
+                result_flag = false;
+                ENERGY_flag = false;
             }
 
             if ((xEventGroupWaitBits(Net_sta_group, DS18B20_CHECK_BIT, true, true, 5000 / portTICK_RATE_MS) & DS18B20_CHECK_BIT) == DS18B20_CHECK_BIT)
             {
-                printf("{\"result\":\"DS18B20 OK\",\"ext_temp_val\":%d}\r\n", (int)DS18B20_TEM);
+                // printf("{\"result\":\"DS18B20 OK\",\"ext_temp_val\":%d}\r\n", (int)DS18B20_TEM);
+                DS18B20_flag = true;
             }
             else
             {
-                printf("{\"result\":\"DS18B20 ERROR\"}\r\n");
+                // printf("{\"result\":\"DS18B20 ERROR\"}\r\n");
+                result_flag = false;
+                DS18B20_flag = false;
             }
+
+            if ((E2P_FLAG & E2P_FLAG) != true)
+            {
+                result_flag = false;
+            }
+
+            //构建返回结果
+            if (result_flag == true)
+            {
+                cJSON_AddStringToObject(root, "result", "OK");
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "result", "ERROR");
+            }
+
+            if (RS484_flag == true)
+            {
+                cJSON_AddNumberToObject(root, "temp_val", (int)ext_tem);
+                cJSON_AddNumberToObject(root, "humi_val", (int)ext_hum);
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "RS485", "ERROR");
+            }
+
+            if (ENERGY_flag == true)
+            {
+                cJSON_AddStringToObject(root, "ENERGY", "OK");
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "ENERGY", "ERROR");
+            }
+
+            if (DS18B20_flag == true)
+            {
+                cJSON_AddNumberToObject(root, "ext_temp_val", (int)DS18B20_TEM);
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "DS18B20", "ERROR");
+            }
+
+            if (E2P_FLAG == true)
+            {
+                cJSON_AddStringToObject(root, "e2prom", "OK");
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "e2prom", "ERROR");
+            }
+
+            if (FLASH_FLAG == true)
+            {
+                cJSON_AddStringToObject(root, "flash", "OK");
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "flash", "ERROR");
+            }
+
+            json_temp = cJSON_PrintUnformatted(root);
+            printf("%s\n", json_temp);
+            cJSON_Delete(root); //delete pJson
+            free(json_temp);
+        }
+        //{"command":"CheckModule"}
+        else if (!strcmp((char const *)pSub->valuestring, "CheckModule"))
+        {
+            Check_Module();
         }
         //{"command":"ScanWifiList"}
         else if (!strcmp((char const *)pSub->valuestring, "ScanWifiList"))
         {
             Scan_Wifi();
         }
-        //{"command":"Reset"}
-        else if (!strcmp((char const *)pSub->valuestring, "Reset"))
+        //{"command":"reboot"}
+        else if (!strcmp((char const *)pSub->valuestring, "reboot"))
         {
             esp_restart();
         }
-
         //{"command":"AllReset"}
         else if (!strcmp((char const *)pSub->valuestring, "AllReset"))
         {
