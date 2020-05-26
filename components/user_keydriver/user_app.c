@@ -20,6 +20,7 @@
 #include "Json_parse.h"
 #include "Switch.h"
 #include "Http.h"
+#include "Led.h"
 
 #include "user_key.h"
 uint8_t Task_key_num = 0;
@@ -94,7 +95,9 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
     switch (key_num)
     {
     case BOARD_BUTTON:
+        Set_defaul_flag = true;
         E2prom_set_defaul(true);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
         esp_restart();
 
         break;

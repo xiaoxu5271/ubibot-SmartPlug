@@ -871,7 +871,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                         // E2prom_Write(BEARER_PWD_ADDR, (uint8_t *)pSub->valuestring, strlen(pSub->valuestring), 1); //save pwd
                     }
 
-                    printf("SetupProduct Successed !");
+                    // printf("SetupProduct Successed !");
                     printf("{\"status\":0,\"code\": 0}");
 
                     // if (start_AP == 1)
@@ -940,7 +940,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 printf("pwd = %s\r\n", SIM_PWD);
             }
             cJSON_Delete(pJson); //delete pJson
-
+            printf("{\"status\":0,\"code\": 0}");
             //重置网络
             Net_Switch();
 
