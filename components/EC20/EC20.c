@@ -430,7 +430,7 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+CPIN?\r\n", "READY", 100, 5);
+    ret = AT_Cmd_Send("AT+CPIN?\r\n", "READY", 1000, 5);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
@@ -537,11 +537,11 @@ uint8_t EC20_Http_CFG(void)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QHTTPCFG=\"closewaittime\",0\r\n", "OK", 100, 5);
+    ret = AT_Cmd_Send("AT+QHTTPCFG=\"closewaittime\",0\r\n", "OK", 100, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-        goto end;
+        // goto end; //兼容EC200T
     }
 
     ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);

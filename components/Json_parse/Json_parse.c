@@ -29,6 +29,8 @@
 
 #include "Json_parse.h"
 
+#define TAG "Json_parse"
+
 //metadata 相关变量
 // uint8_t fn_set_flag = 0;     //metadata 读取标志，未读取则使用下面固定参数
 uint32_t fn_dp = 300;     //数据发送频率
@@ -946,6 +948,17 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
             return 1;
         }
+        //{"command":"SetupHost","Host":"api.ubibot.cn","Port":80}
+        else if (!strcmp((char const *)pSub->valuestring, "SetupHost")) //Command:SetupWifi
+        {
+            pSub = cJSON_GetObjectItem(pJson, "Host"); //"Host"
+            if (NULL != pSub)
+            {
+                ESP_LOGI(TAG, "Host= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                E2P_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save SeriesNumber
+            }
+        }
+
         //{"command":"ReadProduct"}
         else if (!strcmp((char const *)pSub->valuestring, "ReadProduct")) //Command:ReadProduct
         {
