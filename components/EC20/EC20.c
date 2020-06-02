@@ -207,17 +207,17 @@ void uart_event_task(void *pvParameters)
                         break;
 
                     case EC_OTA:
-                        ret_chr = s_rstrstr(EC20_RECV, all_read_len, 5, "OK\r\n");
+                        ret_chr = s_rstrstr(EC20_RECV, all_read_len, 30, "\r\nOK\r\n");
                         if (ret_chr != NULL)
                         {
-                            if (memcmp(ret_chr, "OK\r\n", 5) == 0) // 判断 OK\r\n 是否出现在结尾
-                            {
-                                xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
-                                // ESP_LOGI("EC_OTA", "%d\n", all_read_len);
-                                all_read_len = 0;
-                                memset(EC20_RECV, 0, BUF_SIZE);
-                                uart_flush(EX_UART_NUM);
-                            }
+                            // ESP_LOGI("EC_OTA", "%d\n", all_read_len);
+                            // if ((memcmp(ret_chr, "OK\r\n", 5) == 0) || (memcmp(ret_chr, "OK\r\n+QIURC", 10) == 0)) // 判断 OK\r\n 是否出现在结尾
+                            // {
+                            xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
+                            all_read_len = 0;
+                            memset(EC20_RECV, 0, BUF_SIZE);
+                            uart_flush(EX_UART_NUM);
+                            // }
                         }
 
                     default:
@@ -378,6 +378,8 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
             break;
         }
     }
+
+    // vTaskDelay(100 / portTICK_PERIOD_MS);
     xSemaphoreGive(EC20_muxtex);
     free(recv_buf);
     return rst_val; //
@@ -476,6 +478,29 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
+    ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
+    if (ret != NULL)
+    {
+        // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+        goto end;
+    }
+
+    ret = AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 1000, 10);
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+        Net_ErrCode = QIACT_ERR;
+        goto end;
+    }
+
+    ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
+    if (ret != NULL)
+    {
+        // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+        Net_ErrCode = QIACT_ERR;
+        goto end;
+    }
+
 end:
     // free(active_url);
     free(cmd_buf);
@@ -537,35 +562,35 @@ uint8_t EC20_Http_CFG(void)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QHTTPCFG=\"closewaittime\",0\r\n", "OK", 100, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-        // goto end; //兼容EC200T
-    }
+    // ret = AT_Cmd_Send("AT+QHTTPCFG=\"closewaittime\",0\r\n", "OK", 100, 1);
+    // if (ret == NULL)
+    // {
+    //     ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+    //     // goto end; //兼容EC200T
+    // }
 
-    ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
-    if (ret != NULL)
-    {
-        // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        goto end;
-    }
+    // ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
+    // if (ret != NULL)
+    // {
+    //     // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+    //     goto end;
+    // }
 
-    ret = AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 100, 5);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-        Net_ErrCode = QIACT_ERR;
-        goto end;
-    }
+    // ret = AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 100, 5);
+    // if (ret == NULL)
+    // {
+    //     ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+    //     Net_ErrCode = QIACT_ERR;
+    //     goto end;
+    // }
 
-    ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
-    if (ret != NULL)
-    {
-        // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        Net_ErrCode = QIACT_ERR;
-        goto end;
-    }
+    // ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
+    // if (ret != NULL)
+    // {
+    //     // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+    //     Net_ErrCode = QIACT_ERR;
+    //     goto end;
+    // }
 
 end:
     // free(active_url);
@@ -914,6 +939,19 @@ end:
     }
 }
 
+bool End_EC_TCP_OTA(void)
+{
+    char *ret;
+    Res_EC20_Mqtt_Task();
+    ret = AT_Cmd_Send("AT+QICLOSE=0\r\n", "OK", 100, 1);
+    if (ret == NULL)
+    {
+        ESP_LOGE(TAG, " %d", __LINE__);
+        return false;
+    }
+    return true;
+}
+
 //读取升级文件
 uint16_t Read_OTA_File(uint8_t flie_handle, char *file_buff)
 {
@@ -933,6 +971,99 @@ uint16_t Read_OTA_File(uint8_t flie_handle, char *file_buff)
     if (xQueueReceive(EC_at_queue, (void *)recv_buf, 10000 / portTICK_RATE_MS) == pdPASS)
     {
         rst_val = mid((char *)recv_buf, "CONNECT ", "\r\n", num_buff);
+        if (rst_val == NULL)
+        {
+            ESP_LOGE(TAG, "EC20 %d", __LINE__);
+            file_len = 0;
+            goto end;
+        }
+        file_len = (uint16_t)strtoul(num_buff, 0, 10);
+        memcpy(file_buff, rst_val + 2, file_len);
+    }
+    else //未等到数据
+    {
+        ESP_LOGI(TAG, "LINE %d", __LINE__);
+        goto end;
+    }
+
+end:
+    EC_RECV_MODE = EC_NORMAL;
+    xSemaphoreGive(EC20_muxtex);
+
+    free(cmd_buf);
+    free(recv_buf);
+    return file_len;
+}
+
+//tcp 模式OTA
+bool Start_EC20_TCP_OTA(void)
+{
+    char *cmd_buf = (char *)malloc(120);
+    char *rst_val = NULL;
+    // uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
+
+    //关闭MQTT
+    rst_val = AT_Cmd_Send("AT+QMTCLOSE=0\r\n", "+QMTCLOSE:", 1000, 1);
+    if (rst_val == NULL)
+    {
+        ESP_LOGE(TAG, "%d", __LINE__);
+        goto end;
+    }
+
+    sprintf(cmd_buf, "AT+QIOPEN=1,0,\"TCP\",\"39.100.121.178\",80,0,0\r\n");
+    rst_val = AT_Cmd_Send(cmd_buf, "+QIOPEN: 0,0", 5000, 1);
+    if (rst_val == NULL)
+    {
+        ESP_LOGE(TAG, " %d", __LINE__);
+        goto end;
+    }
+
+    rst_val = AT_Cmd_Send("AT+QISEND=0,85\r\n", ">", 1000, 1);
+    if (rst_val == NULL)
+    {
+        ESP_LOGE(TAG, "%d", __LINE__);
+        goto end;
+    }
+
+    sprintf(cmd_buf, "GET http://www.relianyun.com/otaftp/lcx/SP1/SP1-V0.1.19.bin\r\nHost:www.relianyun.com\r\n");
+    rst_val = AT_Cmd_Send(cmd_buf, "+QIURC: \"recv\",0", 5000, 1);
+    if (rst_val == NULL)
+    {
+        ESP_LOGE(TAG, "%d", __LINE__);
+        goto end;
+    }
+
+end:
+    free(cmd_buf);
+    if (rst_val == NULL)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+//读取升级文件 tcp
+uint16_t Read_TCP_OTA_File(char *file_buff)
+{
+    char *cmd_buf = (char *)malloc(120);
+    char *rst_val = NULL;
+    uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
+    char num_buff[5] = {0};
+    uint16_t file_len = 0;
+
+    xSemaphoreTake(EC20_muxtex, -1);
+    EC_RECV_MODE = EC_OTA;
+    sprintf(cmd_buf, "AT+QIRD=0,%d\r\n", FILE_SIZE_ONE);
+
+    uart_flush(EX_UART_NUM);
+    uart_write_bytes(EX_UART_NUM, cmd_buf, strlen(cmd_buf));
+
+    if (xQueueReceive(EC_at_queue, (void *)recv_buf, 10000 / portTICK_RATE_MS) == pdPASS)
+    {
+        rst_val = mid((char *)recv_buf, "+QIRD: ", "\r\n", num_buff);
         if (rst_val == NULL)
         {
             ESP_LOGE(TAG, "EC20 %d", __LINE__);

@@ -504,14 +504,7 @@ esp_err_t parse_objects_heart(char *json_data)
 esp_err_t parse_objects_mqtt(char *mqtt_json_data)
 {
     cJSON *json_data_parse = NULL;
-    cJSON *json_data_string_parse = NULL;
-    cJSON *json_data_command_id_parse = NULL;
 
-    //OTA相关
-    cJSON *json_data_action = NULL;
-    cJSON *json_data_url = NULL;
-    cJSON *json_data_vesion = NULL;
-    cJSON *json_data_set_state = NULL;
     char *resp_val = NULL;
     resp_val = strstr(mqtt_json_data, "{\"command_id\":");
     if (resp_val == NULL)
@@ -523,93 +516,74 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
 
     if (json_data_parse == NULL) //如果数据包不为JSON则退出
     {
-
         printf("Json Formatting error5\n");
-
         cJSON_Delete(json_data_parse);
         return 0;
     }
 
-    json_data_string_parse = cJSON_GetObjectItem(json_data_parse, "command_string");
-    if (json_data_string_parse != NULL)
+    cJSON *pSubSubSub = cJSON_GetObjectItem(json_data_parse, "command_id"); //
+    if (pSubSubSub != NULL)
     {
-        json_data_command_id_parse = cJSON_GetObjectItem(json_data_parse, "command_id");
-
         memset(mqtt_json_s.mqtt_command_id, 0, sizeof(mqtt_json_s.mqtt_command_id));
-        strncpy(mqtt_json_s.mqtt_command_id, json_data_command_id_parse->valuestring, strlen(json_data_command_id_parse->valuestring));
-        // strncpy(mqtt_json_s.mqtt_string, json_data_string_parse->valuestring, strlen(json_data_string_parse->valuestring));
+        strncpy(mqtt_json_s.mqtt_command_id, pSubSubSub->valuestring, strlen(pSubSubSub->valuestring));
         post_status = POST_NORMAL;
-
-        // need_send = 1;
-
-        json_data_string_parse = cJSON_Parse(json_data_string_parse->valuestring); //将command_string再次构建成json格式，以便二次解析
-        if (json_data_string_parse != NULL)
+        if (Binary_dp != NULL)
         {
-            // printf("MQTT-command_string  = %s\r\n", cJSON_Print(json_data_string_parse));
-
-            if ((json_data_action = cJSON_GetObjectItem(json_data_string_parse, "action")) != NULL)
-            {
-                //如果命令是OTA
-                if (strcmp(json_data_action->valuestring, "ota") == 0)
-                {
-                    if (Binary_dp != NULL)
-                    {
-                        xTaskNotifyGive(Binary_dp);
-                    }
-                    // printf("OTA命令进入\r\n");
-                    if ((json_data_vesion = cJSON_GetObjectItem(json_data_string_parse, "version")) != NULL &&
-                        (json_data_url = cJSON_GetObjectItem(json_data_string_parse, "url")) != NULL)
-                    {
-                        if (strcmp(json_data_vesion->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
-                        {
-                            strcpy(mqtt_json_s.mqtt_ota_url, json_data_url->valuestring);
-                            // E2prom_page_Write(ota_url_add, (uint8_t *)mqtt_json_s.mqtt_ota_url, 128);
-                            printf("OTA_URL=%s\r\n OTA_VERSION=%s\r\n", mqtt_json_s.mqtt_ota_url, json_data_vesion->valuestring);
-                            ota_start(); //启动OTA
-                        }
-                        else
-                        {
-                            printf("当前版本无需升级 \r\n");
-                        }
-                    }
-                }
-
-                else if (strcmp(json_data_action->valuestring, "command") == 0)
-                {
-                    if ((json_data_set_state = cJSON_GetObjectItem(json_data_string_parse, "set_state")) != NULL)
-                    {
-                        Switch_Relay(json_data_set_state->valueint);
-                    }
-                    else if ((json_data_set_state = cJSON_GetObjectItem(json_data_string_parse, "set_state_plug1")) != NULL)
-                    {
-                        Switch_Relay(json_data_set_state->valueint);
-                    }
-                }
-                else
-                {
-                    printf("Action 非许可 \r\n");
-                }
-            }
-            else if ((json_data_action = cJSON_GetObjectItem(json_data_string_parse, "command")) != NULL)
-            {
-                printf("command CMD!\r\n");
-                ParseTcpUartCmd(cJSON_Print(json_data_string_parse));
-            }
-            else
-            {
-                printf("非许可命令\r\n");
-            }
+            xTaskNotifyGive(Binary_dp);
         }
     }
-    else
+
+    pSubSubSub = cJSON_GetObjectItem(json_data_parse, "command_string"); //
+    if (pSubSubSub != NULL)
     {
-        printf("Json Formatting error6\n");
-        cJSON_Delete(json_data_parse);
-        cJSON_Delete(json_data_string_parse);
-        return 0;
+        // ESP_LOGI(TAG, "command_string=%s", pSubSubSub->valuestring);
+        ParseTcpUartCmd(pSubSubSub->valuestring);
+
+        cJSON *json_data_parse_1 = cJSON_Parse(pSubSubSub->valuestring);
+        if (json_data_parse_1 != NULL)
+        {
+            pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "action"); //
+            if (pSubSubSub != NULL)
+            {
+                if (strcmp(pSubSubSub->valuestring, "ota") == 0)
+                {
+                    pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "url"); //
+                    if (pSubSubSub != NULL)
+                    {
+                        strcpy(mqtt_json_s.mqtt_ota_url, pSubSubSub->valuestring);
+                        ESP_LOGI(TAG, "OTA_URL=%s", mqtt_json_s.mqtt_ota_url);
+
+                        pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "size"); //
+                        if (pSubSubSub != NULL)
+                        {
+                            mqtt_json_s.mqtt_file_size = (uint32_t)pSubSubSub->valuedouble;
+                            ESP_LOGI(TAG, "OTA_SIZE=%d", mqtt_json_s.mqtt_file_size);
+
+                            pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "version"); //
+                            if (pSubSubSub != NULL)
+                            {
+                                if (strcmp(pSubSubSub->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
+                                {
+                                    ESP_LOGI(TAG, "OTA_VERSION=%s", pSubSubSub->valuestring);
+                                    ota_start(); //启动OTA
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (strcmp(pSubSubSub->valuestring, "command") == 0)
+                {
+                    pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "set_state");
+                    if (pSubSubSub != NULL)
+                    {
+                        Switch_Relay(pSubSubSub->valueint);
+                    }
+                }
+            }
+        }
+        cJSON_Delete(json_data_parse_1);
     }
     cJSON_Delete(json_data_parse);
-    cJSON_Delete(json_data_string_parse);
 
     return 1;
 }

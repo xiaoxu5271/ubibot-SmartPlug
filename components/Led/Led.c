@@ -69,11 +69,11 @@ static void Led_Task(void *arg)
         //配网
         else if (Cnof_net_flag == 1)
         {
-            Led_Y_Off();
+            Led_Off();
             Led_B_On();
             vTaskDelay(500 / portTICK_RATE_MS);
+            Led_Off();
             Led_Y_On();
-            Led_B_Off();
             vTaskDelay(500 / portTICK_RATE_MS);
         }
         //开关以及网络

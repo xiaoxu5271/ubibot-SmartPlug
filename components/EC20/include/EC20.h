@@ -44,8 +44,11 @@ uint8_t EC20_MQTT_PUB(char *data_buff);
 uint8_t EC20_Get_Rssi(float *Rssi_val);
 void EC20_Power_Off(void);
 uint16_t Read_OTA_File(uint8_t flie_handle, char *file_buff);
+uint16_t Read_TCP_OTA_File(char *file_buff);
 uint8_t Start_EC_OTA(char *ota_url, uint32_t *file_len);
+bool Start_EC20_TCP_OTA(void);
 bool End_EC_OTA(uint8_t file_handle);
+bool End_EC_TCP_OTA(void);
 void Check_Module(void);
 
 #endif

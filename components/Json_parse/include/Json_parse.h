@@ -43,6 +43,7 @@ struct
     // char mqtt_Rssi[8];
 
     char mqtt_ota_url[128]; //OTA升级地址
+    uint32_t mqtt_file_size;
     // char mqtt_etx_tem[8];
     // char mqtt_etx_hum[8];
     // char mqtt_DS18B20_TEM[8];
