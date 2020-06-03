@@ -32,22 +32,10 @@ esp_err_t creat_object(void);
 
 struct
 {
-    // int mqtt_Voltage;
-    // double mqtt_Current;
-    // double mqtt_Power;
-    // double mqtt_Energy;
     bool mqtt_switch_status;
-
     char mqtt_command_id[32];
-    // char mqtt_string[256];
-    // char mqtt_Rssi[8];
-
     char mqtt_ota_url[128]; //OTA升级地址
     uint32_t mqtt_file_size;
-    // char mqtt_etx_tem[8];
-    // char mqtt_etx_hum[8];
-    // char mqtt_DS18B20_TEM[8];
-
 } mqtt_json_s;
 
 struct

@@ -415,9 +415,6 @@ end:
 
 int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uint16_t recv_size)
 {
-    // xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
-    //                     false, true, -1); //等网络连接
-
     int32_t ret;
 
     ESP_LOGI(TAG, "wifi send!!!\n");
@@ -432,7 +429,7 @@ bool Send_herat(void)
     char *build_heart_url;
     char *recv_buf;
     bool ret = false;
-    xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等网络连接
 
     xSemaphoreTake(xMutex_Http_Send, -1);
     build_heart_url = (char *)malloc(256);
@@ -477,7 +474,7 @@ bool Send_herat(void)
         }
         else
         {
-            ESP_LOGI(TAG, "active recv:%s", recv_buf);
+            // ESP_LOGI(TAG, "active recv:%s", recv_buf);
             if (parse_objects_heart(recv_buf))
             {
                 ret = true;
@@ -518,7 +515,7 @@ void send_heart_task(void *arg)
 uint16_t http_activate(void)
 {
     char *build_http = (char *)malloc(256);
-    char *recv_buf = (char *)malloc(1024);
+    char *recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
     uint16_t ret;
 
     xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
@@ -526,7 +523,7 @@ uint16_t http_activate(void)
     if (net_mode == NET_WIFI)
     {
         sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
-        if (wifi_http_send(build_http, 256, recv_buf, 1024) < 0)
+        if (wifi_http_send(build_http, 256, recv_buf, HTTP_RECV_BUFF_LEN) < 0)
         {
             Net_sta_flag = false;
             ret = 301;
@@ -584,7 +581,7 @@ void Active_Task(void *arg)
         xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
         while ((Net_ErrCode = http_activate()) != 1) //激活
         {
-            ESP_LOGE("MAIN", "activate fail\n");
+            ESP_LOGE(TAG, "activate fail\n");
             vTaskDelay(2000 / portTICK_PERIOD_MS);
         }
         xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);

@@ -182,12 +182,13 @@ bool EC20_OTA(void)
     bool ret = false;
     int32_t buff_len;
     esp_err_t err;
-    //EC20 文件句柄
-    uint8_t file_handle = 0;
+
     //已写入镜像大小
     uint32_t binary_file_length = 0;
     //报文镜像长度
     uint32_t content_len = 0;
+    //进度 百分比
+    uint8_t percentage = 0;
 
     esp_ota_handle_t update_handle = 0;
     const esp_partition_t *update_partition = NULL;
@@ -221,15 +222,6 @@ bool EC20_OTA(void)
     ESP_LOGI(TAG, "esp_ota_begin succeeded");
 
     //获取升级文件
-
-    // file_handle = Start_EC_OTA(mqtt_json_s.mqtt_ota_url, &content_len);
-    // if (file_handle == 0)
-    // {
-    //     ESP_LOGE(TAG, "%d", __LINE__);
-    //     ret = false;
-    //     goto end;
-    // }
-
     if (Start_EC20_TCP_OTA() == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
@@ -241,12 +233,9 @@ bool EC20_OTA(void)
 
     while (binary_file_length < content_len)
     {
-        // Led_Status = LED_STA_OTA;
-
         //写入之前清0
         memset(ota_write_data, 0, 1000);
         //接收http包
-        // buff_len = Read_OTA_File(file_handle, ota_write_data);
         buff_len = Read_TCP_OTA_File(ota_write_data);
         if (buff_len <= 0)
         {
@@ -267,10 +256,11 @@ bool EC20_OTA(void)
                 goto end;
             }
             binary_file_length += buff_len;
-            // ESP_LOGI(TAG, "Have written image length %d", binary_file_length);
-            // ESP_LOGI(TAG, "OTA %d", binary_file_length);
-            printf("OTA\b\b\b%d%%", (int)(binary_file_length * 100 / content_len));
-            fflush(stdout);
+            if (percentage != (int)(binary_file_length * 100 / content_len))
+            {
+                percentage = (int)(binary_file_length * 100 / content_len);
+                ESP_LOGI(TAG, "%d%%\n", percentage);
+            }
         }
     }
     //OTA写结束
@@ -323,7 +313,7 @@ void ota_start(void) //建立OTA升级任务，目的是为了让此函数被调
 {
     if (OTA_FLAG == false)
     {
-        xTaskCreate(ota_task, "ota task", 8192, NULL, 10, &ota_handle);
+        xTaskCreate(ota_task, "ota task", 5120, NULL, 10, &ota_handle);
     }
 }
 
