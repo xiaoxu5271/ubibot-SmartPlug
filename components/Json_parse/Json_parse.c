@@ -926,7 +926,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
             return 1;
         }
-        //{"command":"SetupHost","Host":"api.ubibot.cn","Port":80}
+        //{"command":"SetupHost","Host":"api.ubibot.cn","Port":"80","MqttHost":"mqtt.ubibot.cn","MqttPort":"1883"}
         else if (!strcmp((char const *)pSub->valuestring, "SetupHost")) //Command:SetupWifi
         {
             pSub = cJSON_GetObjectItem(pJson, "Host"); //"Host"
@@ -959,6 +959,12 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             }
 
             printf("{\"status\":0,\"code\": 0}");
+
+            vTaskDelay(3000 / portTICK_RATE_MS);
+            cJSON_Delete(pJson);
+            esp_restart(); //芯片复位 函数位于esp_system.h
+
+            return ESP_OK;
         }
 
         //{"command":"ReadProduct"}
