@@ -355,7 +355,7 @@ bool Check_First_Key(void)
         i++;
         if (i > 500) //按住按键5s
         {
-            printf("\nNow set defaul\n");
+            printf("\nNow Go Back!!!\n");
             return true;
         }
         vTaskDelay(10 / portTICK_RATE_MS);

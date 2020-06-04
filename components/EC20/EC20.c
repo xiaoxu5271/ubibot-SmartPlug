@@ -688,7 +688,6 @@ uint8_t EC20_MQTT_INIT(void)
     char *ret;
     char *cmd_buf;
     cmd_buf = (char *)malloc(CMD_LEN);
-    memset(cmd_buf, 0, CMD_LEN);
 
     ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 1000, 5);
     if (ret != NULL)
@@ -718,13 +717,16 @@ uint8_t EC20_MQTT_INIT(void)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QMTOPEN=0,\"mqtt.ubibot.cn\",1883\r\n", "+QMTOPEN: 0,0", 6000, 10);
+    memset(cmd_buf, 0, CMD_LEN);
+    sprintf(cmd_buf, "AT+QMTOPEN=0,\"%s\",%s\r\n", MQTT_SERVER, MQTT_PORT);
+    ret = AT_Cmd_Send(cmd_buf, "+QMTOPEN: 0,0", 6000, 10);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
         goto end;
     }
 
+    memset(cmd_buf, 0, CMD_LEN);
     sprintf(cmd_buf, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, ChannelId, ApiKey);
     ret = AT_Cmd_Send(cmd_buf, "+QMTCONN: 0,0,0", 6000, 1);
     if (ret == NULL)
@@ -732,6 +734,7 @@ uint8_t EC20_MQTT_INIT(void)
         ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
         goto end;
     }
+
     memset(cmd_buf, 0, CMD_LEN);
     sprintf(cmd_buf, "AT+QMTSUB=0,1,\"%s\",0\r\n", topic_s);
     ret = AT_Cmd_Send(cmd_buf, "+QMTSUB: ", 6000, 1);

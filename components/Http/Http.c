@@ -123,7 +123,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
     struct in_addr *addr;
     int32_t s = 0, r = 0;
 
-    int err = getaddrinfo((const char *)WEB_SERVER, "80", &hints, &res); //step1：DNS域名解析
+    int err = getaddrinfo((const char *)WEB_SERVER, (const char *)WEB_PORT, &hints, &res); //step1：DNS域名解析
 
     if (err != 0 || res == NULL)
     {
@@ -233,7 +233,7 @@ int32_t http_post_init(uint32_t Content_Length)
         // struct in_addr *addr;
         int32_t s = 0;
 
-        int err = getaddrinfo("api.ubibot.cn", "80", &hints, &res); //step1：DNS域名解析
+        int err = getaddrinfo((const char *)WEB_SERVER, (const char *)WEB_PORT, &hints, &res); //step1：DNS域名解析
 
         if (err != 0 || res == NULL)
         {

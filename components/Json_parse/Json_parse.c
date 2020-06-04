@@ -75,6 +75,9 @@ char ApiKey[API_KEY_LEN] = {0};
 char ChannelId[CHANNEL_ID_LEN] = {0};
 char USER_ID[USER_ID_LEN] = {0};
 char WEB_SERVER[WEB_HOST_LEN] = {0};
+char WEB_PORT[5] = {0};
+char MQTT_SERVER[WEB_HOST_LEN] = {0};
+char MQTT_PORT[5] = {0};
 char BleName[17] = {0};
 char SIM_APN[32] = {0};
 char SIM_USER[32] = {0};
@@ -784,12 +787,14 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
     // sprintf(send_buf, "{\"status\":0,\"code\": 0}");
     if (NULL == pcCmdBuffer) //null
     {
+        ESP_LOGE(TAG, "%d", __LINE__);
         return ESP_FAIL;
     }
 
     cJSON *pJson = cJSON_Parse(pcCmdBuffer); //parse json data
     if (NULL == pJson)
     {
+        ESP_LOGE(TAG, "%d", __LINE__);
         cJSON_Delete(pJson); //delete pJson
         return ESP_FAIL;
     }
@@ -816,51 +821,50 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                     if (NULL != pSub)
                     {
                         printf("SeriesNumber= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        E2P_Write(SERISE_NUM_ADDR, (uint8_t *)pSub->valuestring, SERISE_NUM_LEN); //save SeriesNumber
+                        E2P_Write(SERISE_NUM_ADDR, (uint8_t *)pSub->valuestring, SERISE_NUM_LEN); //save
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "Host"); //"Host"
                     if (NULL != pSub)
                     {
                         printf("Host= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        E2P_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save SeriesNumber
+                        E2P_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save
                     }
 
-                    pSub = cJSON_GetObjectItem(pJson, "apn"); //"apn"
+                    pSub = cJSON_GetObjectItem(pJson, "Port"); //"WEB PORT"
                     if (NULL != pSub)
                     {
 
-                        //E2prom_Write(APN_ADDR, (uint8_t *)pSub->valuestring, strlen(pSub->valuestring), 1); //save apn
+                        printf("Port= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        E2P_Write(WEB_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
                     }
 
-                    pSub = cJSON_GetObjectItem(pJson, "user"); //"user"
+                    pSub = cJSON_GetObjectItem(pJson, "MqttHost"); //"mqtt Host"
                     if (NULL != pSub)
                     {
-
-                        //E2prom_Write(BEARER_USER_ADDR, (uint8_t *)pSub->valuestring, strlen(pSub->valuestring), 1); //save user
+                        printf("MqttHost= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        E2P_Write(MQTT_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save
                     }
 
-                    pSub = cJSON_GetObjectItem(pJson, "pwd"); //"pwd"
+                    pSub = cJSON_GetObjectItem(pJson, "MqttPort"); //"Host"
                     if (NULL != pSub)
                     {
-
-                        // E2prom_Write(BEARER_PWD_ADDR, (uint8_t *)pSub->valuestring, strlen(pSub->valuestring), 1); //save pwd
+                        printf("MqttPort= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        E2P_Write(MQTT_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
                     }
 
-                    // printf("SetupProduct Successed !");
                     printf("{\"status\":0,\"code\": 0}");
 
-                    // if (start_AP == 1)
-                    // {
-                    //     printf("%s\n", send_buf);
-                    //     tcp_send_buff(send_buf, sizeof(send_buf));
-                    // }
                     vTaskDelay(3000 / portTICK_RATE_MS);
                     cJSON_Delete(pJson);
-                    fflush(stdout); //使stdout清空，就会立刻输出所有在缓冲区的内容。
-                    esp_restart();  //芯片复位 函数位于esp_system.h
+                    esp_restart(); //芯片复位 函数位于esp_system.h
 
                     return ESP_OK;
+                }
+                else
+                {
+                    //密码错误
+                    printf("{\"status\":1,\"code\": 101}");
                 }
             }
         }
@@ -931,6 +935,30 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 ESP_LOGI(TAG, "Host= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                 E2P_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save SeriesNumber
             }
+
+            pSub = cJSON_GetObjectItem(pJson, "Port"); //"WEB PORT"
+            if (NULL != pSub)
+            {
+
+                printf("Port= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                E2P_Write(WEB_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
+            }
+
+            pSub = cJSON_GetObjectItem(pJson, "MqttHost"); //"mqtt Host"
+            if (NULL != pSub)
+            {
+                printf("MqttHost= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                E2P_Write(MQTT_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save
+            }
+
+            pSub = cJSON_GetObjectItem(pJson, "MqttPort"); //"Host"
+            if (NULL != pSub)
+            {
+                printf("MqttPort= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                E2P_Write(MQTT_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
+            }
+
+            printf("{\"status\":0,\"code\": 0}");
         }
 
         //{"command":"ReadProduct"}
@@ -1466,6 +1494,12 @@ void Read_Product_E2p(void)
     printf("ProductId=%s\n", ProductId);
     E2P_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
     printf("WEB_SERVER=%s\n", WEB_SERVER);
+    E2P_Read(WEB_PORT_ADD, (uint8_t *)WEB_PORT, 5);
+    printf("WEB_PORT=%s\n", WEB_PORT);
+    E2P_Read(MQTT_HOST_ADD, (uint8_t *)MQTT_SERVER, WEB_HOST_LEN);
+    printf("MQTT_SERVER=%s\n", MQTT_SERVER);
+    E2P_Read(MQTT_PORT_ADD, (uint8_t *)MQTT_PORT, 5);
+    printf("MQTT_PORT=%s\n", MQTT_PORT);
     E2P_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
     printf("ChannelId=%s\n", ChannelId);
     E2P_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
