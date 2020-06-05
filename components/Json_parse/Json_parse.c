@@ -975,11 +975,14 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             uint8_t mac_sys[6] = {0};
             cJSON *root = cJSON_CreateObject();
 
-            E2P_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
-            E2P_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
-            E2P_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
-            E2P_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
-            E2P_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
+            // E2P_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+            // E2P_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+            // E2P_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+            // E2P_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
+            // E2P_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
+            // E2P_Read(WEB_PORT_ADD, (uint8_t *)WEB_PORT, 5);
+            // E2P_Read(MQTT_HOST_ADD, (uint8_t *)MQTT_SERVER, USER_ID_LEN);
+            // E2P_Read(MQTT_PORT_ADD, (uint8_t *)MQTT_PORT, 5);
 
             esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
             sprintf(mac_buff,
@@ -994,6 +997,9 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             cJSON_AddItemToObject(root, "ProductID", cJSON_CreateString(ProductId));
             cJSON_AddItemToObject(root, "SeriesNumber", cJSON_CreateString(SerialNum));
             cJSON_AddItemToObject(root, "Host", cJSON_CreateString(WEB_SERVER));
+            cJSON_AddItemToObject(root, "Port", cJSON_CreateString(WEB_PORT));
+            cJSON_AddItemToObject(root, "MqttHost", cJSON_CreateString(MQTT_SERVER));
+            cJSON_AddItemToObject(root, "MqttPort", cJSON_CreateString(MQTT_PORT));
             cJSON_AddItemToObject(root, "CHANNEL_ID", cJSON_CreateString(ChannelId));
             cJSON_AddItemToObject(root, "USER_ID", cJSON_CreateString(USER_ID));
             cJSON_AddItemToObject(root, "MAC", cJSON_CreateString(mac_buff));
