@@ -108,26 +108,21 @@ void EC20_Power_On(void)
     gpio_set_level(EC20_SW, 1); //
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     gpio_set_level(EC20_SW, 0); //
-    vTaskDelay(30000 / portTICK_PERIOD_MS);
+    vTaskDelay(15000 / portTICK_PERIOD_MS);
     // AT_Cmd_Send(NULL, "RDY", 10000, 1);
-}
-void EC20_Power_Off(void)
-{
-    AT_Cmd_Send("AT+QPOWD=0\r\n", "POWERED DOWN", 1000, 5);
 }
 
 void EC20_Rest(void)
 {
-    if (AT_Cmd_Send("AT+QPOWD=0\r\n", "POWERED DOWN", 1000, 1) != NULL)
+    EC20_Power_On();
+    if (AT_Cmd_Send("AT\r\n", "OK", 200, 5) == NULL)
     {
-        vTaskDelay(30000 / portTICK_PERIOD_MS);
+        EC20_Power_On();
     }
     else
     {
         Net_ErrCode = NO_ARK;
     }
-
-    EC20_Power_On();
 }
 
 void uart_event_task(void *pvParameters)
@@ -343,13 +338,14 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
 {
     char *rst_val = NULL;
     uint8_t i, j;
-    uint8_t *recv_buf = (uint8_t *)malloc(1024);
+
     xSemaphoreTake(EC20_muxtex, -1);
+    uint8_t *recv_buf = (uint8_t *)malloc(1024);
 
     for (i = 0; i < try_num; i++)
     {
         // xQueueReset(EC_at_queue);
-        uart_flush(EX_UART_NUM);
+        // uart_flush(EX_UART_NUM);
         if (cmd_buf != NULL)
         {
             uart_write_bytes(EX_UART_NUM, cmd_buf, strlen(cmd_buf));
@@ -368,7 +364,7 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
             }
             else //未等到数据
             {
-                // ESP_LOGI(TAG, "LINE %d", __LINE__);
+
                 break;
             }
         }
@@ -380,8 +376,9 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
     }
 
     // vTaskDelay(100 / portTICK_PERIOD_MS);
-    xSemaphoreGive(EC20_muxtex);
     free(recv_buf);
+    xSemaphoreGive(EC20_muxtex);
+
     return rst_val; //
 }
 
@@ -390,18 +387,19 @@ uint8_t EC20_Net_Check(void)
     uint8_t ret = 0;
     for (uint8_t i = 0; i < 15; i++)
     {
-        ESP_LOGI(TAG, "EC20 Net_Check");
-        if (AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5) != NULL)
+        ESP_LOGI(TAG, "Net_Check");
+        if (AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 1) != NULL)
         {
             ret = 1;
             break;
         }
-        if (AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 1000, 5) == NULL)
+        if (AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 1000, 1) == NULL)
         {
             ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
         }
     }
 
+    ESP_LOGI(TAG, "Net_Check: %d", ret);
     if (ret == 0) //重启
     {
         Res_EC20_Task();
@@ -417,6 +415,14 @@ uint8_t EC20_Moudle_Init(void)
     char *cmd_buf = (char *)malloc(120);
 
     EC20_Rest();
+
+    ret = AT_Cmd_Send("AT\r\n", "OK", 1000, 5); //回显
+    if (ret == NULL)
+    {
+        Net_ErrCode = NO_ARK;
+        ESP_LOGE(TAG, "%d", __LINE__);
+        return 0;
+    }
 
     ret = AT_Cmd_Send("ATE0\r\n", "OK", 1000, 5); //回显
     if (ret == NULL)
@@ -523,6 +529,7 @@ void EC20_Mqtt_Init_Task(void *arg)
         xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT | MQTT_INITED_BIT, false, true, -1); //等待激活
         if (net_mode != NET_4G)
         {
+            MQTT_E_STA = false;
             break;
         }
 
@@ -785,7 +792,7 @@ end:
     free(cmd_buf);
     if (ret == NULL)
     {
-        Res_EC20_Task();
+        // Res_EC20_Task();
         return 0;
     }
     else

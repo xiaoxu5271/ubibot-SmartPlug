@@ -69,7 +69,7 @@ void WIFI_OTA(void)
     /* Wait for the callback to set the CONNECTED_BIT in the
        event group.
     */
-    xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT,
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT,
                         false, true, portMAX_DELAY);
     ESP_LOGI(TAG, "Connect to Wifi ! Start to Connect to Server....");
 
@@ -222,6 +222,8 @@ bool EC20_OTA(void)
     ESP_LOGI(TAG, "esp_ota_begin succeeded");
 
     //获取升级文件
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等网络连接
+    xSemaphoreTake(xMutex_Http_Send, -1);
     if (Start_EC20_TCP_OTA() == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
@@ -284,6 +286,7 @@ bool EC20_OTA(void)
 end:
     // End_EC_OTA(file_handle);
     End_EC_TCP_OTA();
+    xSemaphoreGive(xMutex_Http_Send);
     return ret;
     // esp_restart();
 }
@@ -291,7 +294,7 @@ end:
 void ota_task(void *pvParameter)
 {
     vTaskDelay(1000 / portTICK_PERIOD_MS); //等待数据同步完成
-    ESP_LOGI(TAG, "Starting OTA example...");
+    ESP_LOGI(TAG, "Starting OTA...");
 
     if (net_mode == NET_WIFI)
     {
@@ -299,12 +302,11 @@ void ota_task(void *pvParameter)
     }
     else
     {
-        xSemaphoreTake(xMutex_Http_Send, -1);
+
         if (EC20_OTA())
         {
             esp_restart();
         }
-        xSemaphoreGive(xMutex_Http_Send);
         vTaskDelete(NULL);
     }
 }

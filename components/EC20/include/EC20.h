@@ -42,7 +42,6 @@ uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size);
 uint8_t EC20_MQTT_INIT(void);
 uint8_t EC20_MQTT_PUB(char *data_buff);
 uint8_t EC20_Get_Rssi(float *Rssi_val);
-void EC20_Power_Off(void);
 uint16_t Read_TCP_OTA_File(char *file_buff);
 bool Start_EC20_TCP_OTA(void);
 bool End_EC_TCP_OTA(void);
