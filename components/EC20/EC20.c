@@ -159,6 +159,7 @@ void uart_event_task(void *pvParameters)
                     case EC_NORMAL:
                         if (EC20_RECV[all_read_len - 1] == '\n')
                         {
+                            xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
                             if (strstr(EC20_RECV, "+QMTRECV:") != NULL)
                             {
                                 // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
@@ -182,10 +183,10 @@ void uart_event_task(void *pvParameters)
                             //     ESP_LOGE("MQTT", "%s\n", EC20_RECV);
                             //     Res_EC20_Task();
                             // }
-                            else
-                            {
-                                xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
-                            }
+                            // else
+                            // {
+                            //     xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
+                            // }
                             all_read_len = 0;
                             memset(EC20_RECV, 0, BUF_SIZE);
                             uart_flush(EX_UART_NUM);
@@ -325,7 +326,7 @@ void EC20_M_Task(void *arg)
         memset(mqtt_recv, 0, 1024);
         if (xQueueReceive(EC_mqtt_queue, (void *)mqtt_recv, -1) == pdPASS)
         {
-            parse_objects_mqtt(mqtt_recv);
+            parse_objects_mqtt(mqtt_recv, true);
         }
     }
 }
@@ -336,16 +337,14 @@ void EC20_M_Task(void *arg)
 *******************************************************************************/
 char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t try_num)
 {
+    xSemaphoreTake(EC20_muxtex, -1);
     char *rst_val = NULL;
     uint8_t i, j;
 
-    xSemaphoreTake(EC20_muxtex, -1);
     uint8_t *recv_buf = (uint8_t *)malloc(1024);
 
     for (i = 0; i < try_num; i++)
     {
-        // xQueueReset(EC_at_queue);
-        // uart_flush(EX_UART_NUM);
         if (cmd_buf != NULL)
         {
             uart_write_bytes(EX_UART_NUM, cmd_buf, strlen(cmd_buf));
@@ -354,7 +353,6 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
         for (j = 0; j < 10; j++)
         {
             if (xQueueReceive(EC_at_queue, (void *)recv_buf, time_out / portTICK_RATE_MS) == pdPASS)
-            // if (xSemaphoreTake(EC20_at_Binary, time_out / portTICK_RATE_MS) == pdTRUE)
             {
                 rst_val = strstr((char *)recv_buf, check_buff); //
                 if (rst_val != NULL)
@@ -387,7 +385,7 @@ uint8_t EC20_Net_Check(void)
     uint8_t ret = 0;
     for (uint8_t i = 0; i < 15; i++)
     {
-        ESP_LOGI(TAG, "Net_Check");
+        // ESP_LOGI(TAG, "Net_Check");
         if (AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 1) != NULL)
         {
             ret = 1;
@@ -399,7 +397,7 @@ uint8_t EC20_Net_Check(void)
         }
     }
 
-    ESP_LOGI(TAG, "Net_Check: %d", ret);
+    // ESP_LOGI(TAG, "Net_Check: %d", ret);
     if (ret == 0) //重启
     {
         Res_EC20_Task();
@@ -640,7 +638,7 @@ uint8_t EC20_Active(char *active_url, char *recv_buf)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 6000, 1);
+    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "CONNECT", 6000, 1);
     if (ret == NULL)
     {
         ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
@@ -679,10 +677,11 @@ uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
 uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size)
 {
     char *rst_val;
-    rst_val = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "{\"result\":", 1000, 1);
+    rst_val = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "CONNECT", 1000, 1);
     if (rst_val == NULL)
     {
         ESP_LOGE(TAG, "EC20_read %d", __LINE__);
+        Res_EC20_Task();
         return 0;
     }
     memcpy(recv_buff, rst_val, buff_size);
@@ -804,24 +803,27 @@ end:
 //获取信号值
 uint8_t EC20_Get_Rssi(float *Rssi_val)
 {
+    xSemaphoreTake(xMutex_Http_Send, -1);
     char *ret_val;
     char *temp_buf;
     char *InpString;
+    temp_buf = (char *)malloc(15);
 
-    xSemaphoreTake(xMutex_Http_Send, -1);
     ret_val = AT_Cmd_Send("AT+CSQ\r\n", "+CSQ", 1000, 1);
     if (ret_val == NULL)
     {
-        return 0;
+        ESP_LOGE(TAG, "%d", __LINE__);
+        goto end;
     }
-    temp_buf = (char *)malloc(15);
+
     memcpy(temp_buf, ret_val, 15);
     InpString = strtok(temp_buf, ":"); //+CSQ: 24,5
     InpString = strtok(NULL, ",");
     *Rssi_val = ((uint8_t)strtoul(InpString, 0, 10)) * 2 - 113; //GPRS Signal Quality
-    xSemaphoreGive(xMutex_Http_Send);
 
+end:
     free(temp_buf);
+    xSemaphoreGive(xMutex_Http_Send);
     return *Rssi_val;
 }
 

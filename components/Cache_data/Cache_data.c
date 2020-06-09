@@ -193,6 +193,7 @@ void Start_Cache(void)
 
 static uint8_t Http_post_fun(void)
 {
+    xSemaphoreTake(xMutex_Http_Send, -1);
     const char *post_header = "{\"feeds\":["; //
     char *status_buff = NULL;                 //],"status":"mac=x","ssid_base64":"x"}
     uint8_t *one_post_buff = NULL;            //一条数据的buff,
@@ -211,7 +212,7 @@ static uint8_t Http_post_fun(void)
     recv_buff = (char *)malloc(HTTP_RECV_BUFF_LEN);
 
     memset(status_buff, 0, STATUS_BUFF_LEN);
-    xSemaphoreTake(xMutex_Http_Send, -1);
+
     Create_Status_Json(status_buff, true); //
     // ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
@@ -328,6 +329,7 @@ static uint8_t Http_post_fun(void)
     if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) == false)
     {
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        Net_sta_flag = false;
         goto end;
     }
     // printf("解析返回数据！\n");
@@ -340,6 +342,7 @@ static uint8_t Http_post_fun(void)
     else
     {
         Net_sta_flag = false;
+        goto end;
     }
 
     E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);

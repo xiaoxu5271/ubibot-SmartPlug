@@ -206,7 +206,7 @@ int32_t http_post_init(uint32_t Content_Length)
     {
         if (post_status == POST_NOCOMMAND) //无commID
         {
-            sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
+            sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&execute=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                     WEB_SERVER,
                     ApiKey,
                     FIRMWARE,
@@ -286,7 +286,7 @@ int32_t http_post_init(uint32_t Content_Length)
         // ESP_LOGI(TAG, "EC20 POST INIT");
         if (post_status == POST_NOCOMMAND) //无commID
         {
-            sprintf(build_po_url, "http://%s/update.json?api_key=%s&metadata=true&firmware=%s\r\n",
+            sprintf(build_po_url, "http://%s/update.json?api_key=%s&metadata=true&execute=true&firmware=%s\r\n",
                     WEB_SERVER,
                     ApiKey,
                     FIRMWARE);
@@ -410,6 +410,7 @@ bool http_post_read(int32_t s, char *recv_buff, uint16_t buff_size)
     }
 
 end:
+    Net_sta_flag = ret;
     return ret;
 }
 
@@ -554,7 +555,7 @@ uint16_t http_activate(void)
         }
         else
         {
-            ESP_LOGI(TAG, "active recv:%s", recv_buf);
+            // ESP_LOGI(TAG, "active recv:%s", recv_buf);
             if (parse_objects_http_active(recv_buf))
             {
                 Net_sta_flag = true;

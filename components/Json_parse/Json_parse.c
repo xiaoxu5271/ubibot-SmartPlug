@@ -282,27 +282,13 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
     {
         cjson_blu_data_parse_command = cJSON_GetObjectItem(cjson_blu_data_parse, "command");
         printf("command=%s\r\n", cjson_blu_data_parse_command->valuestring);
-
-        ParseTcpUartCmd(cJSON_Print(cjson_blu_data_parse));
+        char *Json_temp;
+        Json_temp = cJSON_PrintUnformatted(cjson_blu_data_parse);
+        ParseTcpUartCmd(Json_temp);
+        free(Json_temp);
     }
     cJSON_Delete(cjson_blu_data_parse);
     return 1;
-    // vTaskDelay(60000 / portTICK_PERIOD_MS);
-    // if (xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, 20000 / portTICK_RATE_MS) == pdTRUE)
-    // {
-    //     return 1;
-    // }
-    // else
-    // {
-    //     if (net_mode == NET_WIFI)
-    //     {
-    //         return Net_ErrCode;
-    //     }
-    //     else
-    //     {
-    //         return Net_ErrCode;
-    //     }
-    // }
 }
 
 //解析激活返回数据
@@ -402,10 +388,10 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
 {
     cJSON *json_data_parse = NULL;
     cJSON *json_data_parse_value = NULL;
-    cJSON *json_data_parse_errorcode = NULL;
+    // cJSON *json_data_parse_errorcode = NULL;
 
     char *resp_val = NULL;
-    resp_val = strstr(http_json_data, "{\"result\":\"success\",");
+    resp_val = strstr(http_json_data, "{\"result\":");
     if (resp_val == NULL)
     {
         ESP_LOGE("JSON", "DATA NO JSON");
@@ -422,27 +408,27 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
     }
     else
     {
-        json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "result");
+        // json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "result");
         // printf("result: %s\n", json_data_parse_value->valuestring);
-        if (!(strcmp(json_data_parse_value->valuestring, "error")))
-        {
-            json_data_parse_errorcode = cJSON_GetObjectItem(json_data_parse, "errorCode");
-            printf("post send error_code=%s\n", json_data_parse_errorcode->valuestring);
-            if (!(strcmp(json_data_parse_errorcode->valuestring, "invalid_channel_id"))) //设备空间ID被删除或API——KEY错误，需要重新激活
-            {
-                // //清空API-KEY存储，激活后获取
-                // uint8_t data_write2[33] = "\0";
-                // E2prom_Write(0x00, data_write2, 32);
+        // if (!(strcmp(json_data_parse_value->valuestring, "error")))
+        // {
+        //     json_data_parse_errorcode = cJSON_GetObjectItem(json_data_parse, "errorCode");
+        //     printf("post send error_code=%s\n", json_data_parse_errorcode->valuestring);
+        //     if (!(strcmp(json_data_parse_errorcode->valuestring, "invalid_channel_id"))) //设备空间ID被删除或API——KEY错误，需要重新激活
+        //     {
+        //         // //清空API-KEY存储，激活后获取
+        //         // uint8_t data_write2[33] = "\0";
+        //         // E2prom_Write(0x00, data_write2, 32);
 
-                // //清空channelid，激活后获取
-                // uint8_t data_write3[16] = "\0";
+        //         // //清空channelid，激活后获取
+        //         // uint8_t data_write3[16] = "\0";
 
-                // E2prom_Write(0x20, data_write3, 16);
+        //         // E2prom_Write(0x20, data_write3, 16);
 
-                fflush(stdout); //使stdout清空，就会立刻输出所有在缓冲区的内容。
-                esp_restart();  //芯片复位 函数位于esp_system.h
-            }
-        }
+        //         fflush(stdout); //使stdout清空，就会立刻输出所有在缓冲区的内容。
+        //         esp_restart();  //芯片复位 函数位于esp_system.h
+        //     }
+        // }
 
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "metadata");
         if (json_data_parse_value != NULL)
@@ -455,6 +441,16 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
         if (NULL != json_data_parse_value)
         {
             Parse_fields_num(json_data_parse_value->valuestring); //parse sensors
+        }
+
+        json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "command"); //
+        if (NULL != json_data_parse_value)
+        {
+            char *mqtt_json;
+            mqtt_json = cJSON_PrintUnformatted(json_data_parse_value);
+            ESP_LOGI(TAG, "%s", mqtt_json);
+            parse_objects_mqtt(mqtt_json, false); //parse mqtt
+            free(mqtt_json);
         }
     }
 
@@ -504,7 +500,8 @@ esp_err_t parse_objects_heart(char *json_data)
 }
 
 //解析MQTT指令
-esp_err_t parse_objects_mqtt(char *mqtt_json_data)
+//sw_flag ：false,忽略开关执行指令
+esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
 {
     cJSON *json_data_parse = NULL;
 
@@ -512,7 +509,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
     resp_val = strstr(mqtt_json_data, "{\"command_id\":");
     if (resp_val == NULL)
     {
-        ESP_LOGE("JSON", "DATA NO JSON");
+        // ESP_LOGE("JSON", "DATA NO JSON");
         return 0;
     }
     json_data_parse = cJSON_Parse(resp_val);
@@ -574,7 +571,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data)
                         }
                     }
                 }
-                else if (strcmp(pSubSubSub->valuestring, "command") == 0)
+                else if (strcmp(pSubSubSub->valuestring, "command") == 0 && sw_flag == true)
                 {
                     pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "set_state");
                     if (pSubSubSub != NULL)
@@ -718,7 +715,6 @@ void Create_NET_Json(void)
 
 void Create_Switch_Json(void)
 {
-
     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
     {
         char *OutBuffer;
@@ -1470,6 +1466,7 @@ void Read_Metadate_E2p(void)
     default:
         break;
     }
+
     fn_dp = E2P_ReadLenByte(FN_DP_ADD, 4);           //数据发送频率
     fn_485_t = E2P_ReadLenByte(FN_485_T_ADD, 4);     //
     fn_485_th = E2P_ReadLenByte(FN_485_TH_ADD, 4);   //
@@ -1482,6 +1479,8 @@ void Read_Metadate_E2p(void)
     fn_sw_pc = E2P_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
     cg_data_led = E2P_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
     net_mode = E2P_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+
+    printf("E2P USAGE:%d\n", E2P_USAGED);
 
     printf("fn_dp:%d\n", fn_dp);
     printf("fn_485_t:%d\n", fn_485_t);

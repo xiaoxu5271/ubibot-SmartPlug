@@ -102,6 +102,8 @@
 #define MQTT_HOST_ADD WEB_PORT_ADD + 5 + 1             //MQTT HOST
 #define MQTT_PORT_ADD MQTT_HOST_ADD + WEB_HOST_LEN + 1 //MQTT PORT
 
+#define E2P_USAGED MQTT_PORT_ADD
+
 void E2prom_Init(void);
 esp_err_t E2P_WriteOneByte(uint16_t reg_addr, uint8_t dat);
 uint8_t E2P_ReadOneByte(uint16_t reg_addr);
