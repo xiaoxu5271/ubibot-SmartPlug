@@ -394,7 +394,7 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
     resp_val = strstr(http_json_data, "{\"result\":");
     if (resp_val == NULL)
     {
-        ESP_LOGE("JSON", "DATA NO JSON");
+        ESP_LOGE(TAG, "%d", __LINE__);
         return 0;
     }
     json_data_parse = cJSON_Parse(resp_val);

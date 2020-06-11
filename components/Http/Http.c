@@ -56,7 +56,7 @@ esp_timer_create_args_t timer_heart_arg = {
 void timer_heart_cb(void *arg)
 {
     vTaskNotifyGiveFromISR(Binary_Heart_Send, NULL);
-    static uint32_t min_num = 0;
+    static uint64_t min_num = 0;
     min_num++;
     if (fn_dp)
         if (min_num * 60 % fn_dp == 0)

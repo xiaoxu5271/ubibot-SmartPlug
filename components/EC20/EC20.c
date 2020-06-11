@@ -157,7 +157,7 @@ void uart_event_task(void *pvParameters)
                     switch (EC_RECV_MODE)
                     {
                     case EC_NORMAL:
-                        if (EC20_RECV[all_read_len - 1] == '\n')
+                        if (s_rstrstr(EC20_RECV, all_read_len, 3, "\r\n") != NULL)
                         {
                             xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
                             if (strstr(EC20_RECV, "+QMTRECV:") != NULL)
@@ -414,7 +414,7 @@ uint8_t EC20_Moudle_Init(void)
 
     EC20_Rest();
 
-    ret = AT_Cmd_Send("AT\r\n", "OK", 1000, 5); //回显
+    ret = AT_Cmd_Send("AT\r\n", "OK", 1000, 5);
     if (ret == NULL)
     {
         Net_ErrCode = NO_ARK;
