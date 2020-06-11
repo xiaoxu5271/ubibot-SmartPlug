@@ -634,6 +634,7 @@ uint8_t EC20_Active(char *active_url, char *recv_buf)
     ret = AT_Cmd_Send("AT+QHTTPGET=60\r\n", "+QHTTPGET: 0,200", 6000, 1);
     if (ret == NULL)
     {
+        // Res_EC20_Task();
         ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
         goto end;
     }
@@ -650,7 +651,7 @@ end:
     free(cmd_buf);
     if (ret == NULL)
     {
-        Res_EC20_Task();
+        // Res_EC20_Task();
         return 0;
     }
     else
@@ -667,7 +668,7 @@ uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
         if (AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 6000, 1) == NULL)
         {
             ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-            Res_EC20_Task();
+            // Res_EC20_Task();
             return 0;
         }
     }
@@ -681,7 +682,7 @@ uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size)
     if (rst_val == NULL)
     {
         ESP_LOGE(TAG, "EC20_read %d", __LINE__);
-        Res_EC20_Task();
+        // Res_EC20_Task();
         return 0;
     }
     memcpy(recv_buff, rst_val, buff_size);

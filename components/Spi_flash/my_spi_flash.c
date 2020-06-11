@@ -36,9 +36,6 @@ static const char *TAG = "SPI_FLASH_MODE";
  before the transaction is sent, the callback will set this line to the correct state.
 */
 
-//单次最大发送的数据条数
-#define MAX_READ_NUM 2000
-
 #define PIN_NUM_CS 5
 #define PIN_NUM_MISO 19
 #define PIN_NUM_MOSI 23
@@ -490,7 +487,7 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 }
 
 //单次从flash中读取数据缓存中正确的数据的大小，不跨区
-uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add, uint32_t *data_num)
+uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add, uint32_t *data_num, uint32_t Max_Read)
 {
 	uint32_t i = 0, j = 0;
 	uint8_t Temp = 0;
@@ -527,7 +524,7 @@ uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Re
 				j = 0;
 				start_flag = false;
 				(*data_num)++;
-				if (*data_num >= MAX_READ_NUM)
+				if (*data_num >= Max_Read)
 				{
 					// ESP_LOGI("read_date", "data num = %d", *data_num);
 					break;
@@ -564,7 +561,7 @@ uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Re
 
 //读取数据缓存中正确的数据的大小，
 //一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
-uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add)
+uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add, uint32_t Max_Read)
 {
 	// ESP_LOGI("read_date", "Start_Addr=%d,End_Addr=%d", Start_Addr, End_Addr);
 
@@ -573,7 +570,7 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_En
 
 	if (Start_Addr < End_Addr)
 	{
-		post_len = Read_Post_Len_Once(Start_Addr, End_Addr, Read_End_add, &data_num);
+		post_len = Read_Post_Len_Once(Start_Addr, End_Addr, Read_End_add, &data_num, Max_Read);
 	}
 	else
 	{
@@ -584,9 +581,9 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_En
 			return 0;
 		}
 
-		post_len = Read_Post_Len_Once(Start_Addr, SPI_FLASH_SIZE, Read_End_add, &data_num); //从起始读到flash最大地址
-		if (data_num < MAX_READ_NUM)
-			post_len += Read_Post_Len_Once(0, End_Addr, Read_End_add, &data_num); //从flash头读到结束地址
+		post_len = Read_Post_Len_Once(Start_Addr, SPI_FLASH_SIZE, Read_End_add, &data_num, Max_Read); //从起始读到flash最大地址
+		if (data_num < Max_Read)
+			post_len += Read_Post_Len_Once(0, End_Addr, Read_End_add, &data_num, Max_Read); //从flash头读到结束地址
 	}
 	ESP_LOGI("read_date", "data_num=%d,Read_End_add=%d", data_num, *Read_End_add);
 	// *Read_End_add = i + Start_Addr; //当前截止地址

@@ -30,7 +30,7 @@ uint32_t start_read_num = 0; //读取数据的开始地址
 bool Exhausted_flag = 0;     //整个flash 已全部使用标志
 SemaphoreHandle_t Cache_muxtex = NULL;
 
-static uint8_t Http_post_fun(void);
+static bool Http_post_fun(void);
 //写flash 测试
 void Write_Flash_Test_task(void *pvParameters);
 
@@ -41,17 +41,14 @@ void Data_Post_Task(void *pvParameters)
         ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
+        Create_NET_Json();
 
-        if ((xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1) & ACTIVED_BIT) == ACTIVED_BIT)
+        while (Http_post_fun() == false)
         {
-            Create_NET_Json();
-            if (!Http_post_fun())
-            {
-                // Led_Status = LED_STA_WIFIERR;
-            }
+            vTaskDelay(100 / portTICK_PERIOD_MS);
         }
+
         ulTaskNotifyTake(pdTRUE, -1);
-        // vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -191,8 +188,10 @@ void Start_Cache(void)
 #define ONE_POST_BUFF_LEN 512
 #define STATUS_BUFF_LEN 450
 
-static uint8_t Http_post_fun(void)
+static bool Http_post_fun(void)
 {
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1);
+
     xSemaphoreTake(xMutex_Http_Send, -1);
     const char *post_header = "{\"feeds\":["; //
     char *status_buff = NULL;                 //],"status":"mac=x","ssid_base64":"x"}
@@ -206,6 +205,8 @@ static uint8_t Http_post_fun(void)
     int32_t socket_num;                       //http socket
     bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
     char *recv_buff = NULL;                   //post 返回
+    bool data_err_flag = false;               // 数据中存在错误，会导致 post 失败
+    bool ret;
 
     status_buff = (char *)malloc(STATUS_BUFF_LEN);
     one_post_buff = (uint8_t *)malloc(ONE_POST_BUFF_LEN);
@@ -220,12 +221,13 @@ static uint8_t Http_post_fun(void)
     // ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);
 
     xSemaphoreTake(Cache_muxtex, -1);
-    cache_data_len = Read_Post_Len(start_read_num, E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num);
+    cache_data_len = Read_Post_Len(start_read_num, E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num, MAX_READ_NUM);
     xSemaphoreGive(Cache_muxtex);
 
     if (cache_data_len == 0)
     {
-        ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        ret = true;
+        // ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
 
@@ -235,6 +237,7 @@ static uint8_t Http_post_fun(void)
     socket_num = http_post_init(post_data_len);
     if (socket_num < 0)
     {
+        ret = false;
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
@@ -242,6 +245,7 @@ static uint8_t Http_post_fun(void)
     // if (write(socket_num, post_header, strlen((const char *)post_header)) < 0) //step4：发送http Header
     if (http_send_post(socket_num, (char *)post_header, false) != 1)
     {
+        ret = false;
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
@@ -292,6 +296,7 @@ static uint8_t Http_post_fun(void)
             // if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
             if (http_send_post(socket_num, (char *)one_post_buff, false) != 1)
             {
+                ret = false;
                 ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
                 goto end;
             }
@@ -321,6 +326,9 @@ static uint8_t Http_post_fun(void)
 
     if (http_send_post(socket_num, status_buff, true) != 1)
     {
+        //这里出错很有可能是数据构建出问题，
+        data_err_flag = true;
+        ret = false;
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
@@ -329,6 +337,7 @@ static uint8_t Http_post_fun(void)
     if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) == false)
     {
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
+        ret = false;
         Net_sta_flag = false;
         goto end;
     }
@@ -336,40 +345,73 @@ static uint8_t Http_post_fun(void)
     // ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
     if (parse_objects_http_respond(recv_buff))
     {
+        ret = true;
         Net_sta_flag = true;
         ESP_LOGI(TAG, "post success");
     }
     else
     {
+        ret = false;
         Net_sta_flag = false;
         goto end;
     }
 
-    E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
-    if (Exhausted_flag == 1)
+end:
+    if (ret == true)
     {
-        Exhausted_flag = 0;
-        E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+        xSemaphoreTake(Cache_muxtex, -1);
+        E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
+        if (Exhausted_flag == 1)
+        {
+            Exhausted_flag = 0;
+            E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+        }
+        xSemaphoreGive(Cache_muxtex);
+    }
+    else
+    {
+        if (data_err_flag == true)
+        {
+            xSemaphoreTake(Cache_muxtex, -1);
+            //读flash中的一条数据长度，跳过
+            Read_Post_Len(start_read_num, E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4), &end_read_num, 1);
+            E2P_WriteLenByte(START_READ_NUM_ADD, end_read_num, 4);
+            if (Exhausted_flag == 1)
+            {
+                Exhausted_flag = 0;
+                E2P_WriteOneByte(EXHAUSTED_FLAG_ADD, Exhausted_flag);
+            }
+            xSemaphoreGive(Cache_muxtex);
+            data_err_flag = false;
+        }
     }
 
-end:
     free(status_buff);
     free(recv_buff);
     free(one_post_buff);
 
     xSemaphoreGive(xMutex_Http_Send);
-    return 1;
+    return ret;
 }
 
 //写flash 测试
+void Write_Flash_err_Test(void)
+{
+    char test_buff[20] = {0};
+    sprintf(test_buff, "12345566543}"); //写入错误数据
+    xSemaphoreTake(Cache_muxtex, -1);
+    DataSave((uint8_t *)test_buff, strlen(test_buff));
+    xSemaphoreGive(Cache_muxtex);
+}
+
 void Write_Flash_Test_task(void *pvParameters)
 {
     char test_buff[100] = {0};
     while (1)
     {
-        sprintf(test_buff, "{\"created_at\":\"%s\",\"field1\":1,\"field2\":250,\"field3\":2,\"field4\":3}", Server_Timer_SEND());
+        // sprintf(test_buff, "{\"created_at\":\"%s\",\"field1\":1,\"field2\":250,\"field3\":2,\"field4\":3}", Server_Timer_SEND());
         // printf("test_buff len %d, \n%s \n", strlen(test_buff), test_buff);
-
+        sprintf(test_buff, "{12345566543}"); //写入错误数据
         xSemaphoreTake(Cache_muxtex, -1);
         DataSave((uint8_t *)test_buff, strlen(test_buff));
         xSemaphoreGive(Cache_muxtex);

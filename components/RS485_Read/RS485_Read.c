@@ -78,6 +78,7 @@ void read_485_th_task(void *pvParameters)
     cJSON *pJsonRoot;
     uint8_t *recv_data;
     char *filed_buff;
+    char *time_buff;
     int racv_len = 0;
     while (1)
     {
@@ -104,8 +105,10 @@ void read_485_th_task(void *pvParameters)
                     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
                     {
                         filed_buff = (char *)malloc(9);
+                        time_buff = (char *)malloc(24);
+                        Server_Timer_SEND(time_buff);
                         pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
                         cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ext_tem));
                         snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
@@ -121,7 +124,7 @@ void read_485_th_task(void *pvParameters)
                         DataSave((uint8_t *)OutBuffer, len);
                         xSemaphoreGive(Cache_muxtex);
                         free(OutBuffer);
-                        // free(SaveBuffer);
+                        free(time_buff);
                         free(filed_buff);
                     }
                 }
@@ -158,6 +161,7 @@ void read_485_t_task(void *pvParameters)
     cJSON *pJsonRoot;
     uint8_t *recv_data;
     char *filed_buff;
+    char *time_buff;
     int racv_len;
     while (1)
     {
@@ -182,8 +186,10 @@ void read_485_t_task(void *pvParameters)
                     {
 
                         filed_buff = (char *)malloc(9);
+                        time_buff = (char *)malloc(24);
+                        Server_Timer_SEND(time_buff);
                         pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_t_f_num);
                         cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_t_val));
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
@@ -231,6 +237,7 @@ void read_485_ws_task(void *pvParameters)
     uint8_t *recv_data;
     char *filed_buff;
     int racv_len;
+    char *time_buff;
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
@@ -251,8 +258,10 @@ void read_485_ws_task(void *pvParameters)
                     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
                     {
                         filed_buff = (char *)malloc(9);
+                        time_buff = (char *)malloc(24);
+                        Server_Timer_SEND(time_buff);
                         pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_ws_f_num);
                         cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_ws_val));
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
@@ -297,6 +306,7 @@ void read_485_sth_task(void *pvParameters)
     cJSON *pJsonRoot;
     uint8_t *recv_data;
     char *filed_buff;
+    char *time_buff;
     int racv_len = 0;
     while (1)
     {
@@ -329,8 +339,10 @@ void read_485_sth_task(void *pvParameters)
                     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
                     {
                         filed_buff = (char *)malloc(9);
+                        time_buff = (char *)malloc(24);
+                        Server_Timer_SEND(time_buff);
                         pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_sth_t_f_num);
                         cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(rs485_st_val));
                         snprintf(filed_buff, 9, "field%d", r1_sth_h_f_num);
@@ -379,6 +391,7 @@ void read_485_lt_task(void *pvParameters)
     cJSON *pJsonRoot;
     uint8_t *recv_data;
     char *filed_buff;
+    char *time_buff;
     int racv_len = 0;
     while (1)
     {
@@ -401,8 +414,10 @@ void read_485_lt_task(void *pvParameters)
                     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
                     {
                         filed_buff = (char *)malloc(9);
+                        time_buff = (char *)malloc(24);
+                        Server_Timer_SEND(time_buff);
                         pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_light_f_num);
                         cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(light_val));
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
@@ -450,6 +465,7 @@ void read_485_co2_task(void *pvParameters)
     cJSON *pJsonRoot;
     uint8_t *recv_data;
     char *filed_buff;
+    char *time_buff;
     int racv_len = 0;
     while (1)
     {
@@ -523,8 +539,10 @@ void read_485_co2_task(void *pvParameters)
                             if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
                             {
                                 filed_buff = (char *)malloc(9);
+                                time_buff = (char *)malloc(24);
+                                Server_Timer_SEND(time_buff);
                                 pJsonRoot = cJSON_CreateObject();
-                                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                                 snprintf(filed_buff, 9, "field%d", r1_co2_f_num);
                                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(co2_val));
                                 snprintf(filed_buff, 9, "field%d", r1_co2_t_f_num);
@@ -541,7 +559,7 @@ void read_485_co2_task(void *pvParameters)
                                 DataSave((uint8_t *)OutBuffer, len);
                                 xSemaphoreGive(Cache_muxtex);
                                 free(OutBuffer);
-                                // free(SaveBuffer);
+                                free(time_buff);
                                 free(filed_buff);
                             }
                         }

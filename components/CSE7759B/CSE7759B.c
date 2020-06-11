@@ -55,20 +55,18 @@ double sw_pc_val; //用电量 W/h
 
 typedef struct RuningInf_s
 {
-    unsigned short voltage;     //当前电压值，单位为0.1V
-    unsigned short electricity; //当前电流值,单位为0.01A
-    unsigned short power;       //当前电流值,单位为0.01A
-
+    unsigned short voltage;       //当前电压值，单位为0.1V
+    unsigned short electricity;   //当前电流值,单位为0.01A
+    unsigned short power;         //当前电流值,单位为0.01A
     unsigned long energy;         //当前消耗电能值对应的脉冲个数
     unsigned short energyCurrent; //电能脉冲当前统计值
     unsigned short energyLast;    //电能脉冲上次统计值
     unsigned char energyFlowFlag; //电能脉冲溢出标致
-
-    unsigned long energyUnit; //0.001度点对应的脉冲个数
+    unsigned long energyUnit;     //0.001度点对应的脉冲个数
+    bool init_flag;               //设备第一次上电标志
 } RuningInf_t;
 
-RuningInf_t runingInf;
-
+RuningInf_t runingInf = {0, 0, 0, 0, 0, 0, 0, 0, true};
 // bool CSE_Status = false;
 // bool CSE_Energy_Status = false;
 
@@ -337,8 +335,18 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 
         energyFlowFlag = (inDataBuffer[UART_IND_FG] >> 7);                                              //获取当前电能计数溢出标致
         runingInf.energyCurrent = ((inDataBuffer[UART_IND_EN] << 8) | (inDataBuffer[UART_IND_EN + 1])); //更新当前的脉冲计数值
+
+        //初始化
+        if (runingInf.init_flag == true)
+        {
+            runingInf.init_flag = false;
+            runingInf.energyLast = runingInf.energyCurrent;
+            runingInf.energyFlowFlag = energyFlowFlag;
+        }
+
         if (runingInf.energyFlowFlag != energyFlowFlag)
-        { //每次计数溢出时更新当前脉冲计数值
+        {
+            //每次计数溢出时更新当前脉冲计数值
             runingInf.energyFlowFlag = energyFlowFlag;
             if (runingInf.energyCurrent > runingInf.energyLast)
             {
@@ -350,6 +358,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         {
             energy_cnt = runingInf.energyCurrent - runingInf.energyLast;
         }
+        // ESP_LOGI(TAG, "energy_cnt=%d", energy_cnt);
         runingInf.energyLast = runingInf.energyCurrent;
         runingInf.energy += (energy_cnt * 10); //电能个数累加时扩大10倍，计算电能是除数扩大10倍，保证计算精度
 
@@ -368,7 +377,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         //电能使用量
         // energy = runingInf.energy / runingInf.energyUnit; //单位是0.001度
         // mqtt_json_s.mqtt_Energy = energy / 1000.0;        //单位是度
-        ESP_LOGI(TAG, "energy=%f\n", (double)(runingInf.energy / runingInf.energyUnit));
+        // ESP_LOGI(TAG, "energy=%ld,energyUnit=%ld", runingInf.energy, runingInf.energyUnit);
         break;
 
     case 0xAA:
@@ -590,6 +599,7 @@ void CSE7759B_Read_Task(void *arg)
     uint16_t checksum;
     int len_7759_start;
 
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     while (1)
     {
         memset(data_u1, 0, BUF_SIZE);
@@ -675,6 +685,7 @@ void Energy_Read_Task(void *pvParameters)
 {
     char *filed_buff;
     char *OutBuffer;
+    char *time_buff;
     // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
@@ -687,8 +698,10 @@ void Energy_Read_Task(void *pvParameters)
             if (((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT) && (mqtt_json_s.mqtt_switch_status == 1))
             {
                 filed_buff = (char *)malloc(9);
+                time_buff = (char *)malloc(24);
+                Server_Timer_SEND(time_buff);
                 pJsonRoot = cJSON_CreateObject();
-                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                 // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
                 snprintf(filed_buff, 9, "field%d", sw_v_f_num);
                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
@@ -708,6 +721,7 @@ void Energy_Read_Task(void *pvParameters)
                 xSemaphoreGive(Cache_muxtex);
                 free(OutBuffer);
                 free(filed_buff);
+                free(time_buff);
             }
         }
     }
@@ -717,6 +731,7 @@ void Ele_quan_Task(void *pvParameters)
 {
     char *filed_buff;
     char *OutBuffer;
+    char *time_buff;
     // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
@@ -735,8 +750,10 @@ void Ele_quan_Task(void *pvParameters)
         if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
         {
             filed_buff = (char *)malloc(9);
+            time_buff = (char *)malloc(24);
+            Server_Timer_SEND(time_buff);
             pJsonRoot = cJSON_CreateObject();
-            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
             snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
@@ -750,6 +767,7 @@ void Ele_quan_Task(void *pvParameters)
             xSemaphoreGive(Cache_muxtex);
             free(OutBuffer);
             free(filed_buff);
+            free(time_buff);
         }
     }
 }

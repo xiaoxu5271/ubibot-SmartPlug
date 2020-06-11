@@ -21,6 +21,7 @@
 #include "Switch.h"
 #include "Http.h"
 #include "Led.h"
+#include "Cache_data.h"
 
 #include "user_key.h"
 uint8_t Task_key_num = 0;
@@ -62,6 +63,7 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
             // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 3:
+            // Write_Flash_err_Test();
             // ESP_LOGI("short_pressed_cb", "trible press!!!\n");
             break;
         case 4:

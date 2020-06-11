@@ -673,6 +673,7 @@ void Create_NET_Json(void)
     {
         char *filed_buff;
         char *OutBuffer;
+        char *time_buff;
         float ec_rssi_val;
         // uint8_t *SaveBuffer;
         uint16_t len = 0;
@@ -680,8 +681,10 @@ void Create_NET_Json(void)
         wifi_ap_record_t wifidata_t;
 
         filed_buff = (char *)malloc(9);
+        time_buff = (char *)malloc(24);
+        Server_Timer_SEND(time_buff);
         pJsonRoot = cJSON_CreateObject();
-        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
 
         if ((xEventGroupGetBits(Net_sta_group) & ACTIVED_BIT) == ACTIVED_BIT)
         {
@@ -710,6 +713,7 @@ void Create_NET_Json(void)
         xSemaphoreGive(Cache_muxtex);
         free(OutBuffer);
         free(filed_buff);
+        free(time_buff);
     }
 }
 
@@ -718,12 +722,14 @@ void Create_Switch_Json(void)
     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
     {
         char *OutBuffer;
-
+        char *time_buff;
         uint16_t len = 0;
         cJSON *pJsonRoot;
+        time_buff = (char *)malloc(24);
+        Server_Timer_SEND(time_buff);
 
         pJsonRoot = cJSON_CreateObject();
-        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
+        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
 
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
 
@@ -736,6 +742,7 @@ void Create_Switch_Json(void)
         DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
         free(OutBuffer);
+        free(time_buff);
     }
 }
 

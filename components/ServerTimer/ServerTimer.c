@@ -16,7 +16,6 @@ time_t timer_timstamp;
 time_t base_timstamp;
 time_t now_timstamp;
 struct tm *now_time;
-char time_down[24];
 esp_err_t Server_Timer_GET(char *Server_timer_data)
 {
     struct tm *tmp_time = (struct tm *)malloc(sizeof(struct tm));
@@ -33,12 +32,10 @@ esp_err_t Server_Timer_GET(char *Server_timer_data)
     free(tmp_time);
     return base_timstamp;
 }
-char *Server_Timer_SEND(void)
+void Server_Timer_SEND(char *time_buff)
 {
     time(&now_timstamp);
     now_timstamp -= 28800;
     now_time = gmtime(&now_timstamp);
-    strftime(time_down, sizeof(time_down), "%Y-%m-%dT%H:%M:%SZ", now_time);
-    // printf("this is time %s\r\n", time_down);
-    return time_down;
+    strftime(time_buff, 24, "%Y-%m-%dT%H:%M:%SZ", now_time);
 }
