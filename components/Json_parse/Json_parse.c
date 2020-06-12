@@ -1411,6 +1411,7 @@ char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szK
 
 // return: NULL Not Found
 //buff中正向查找字符串 _ReadLen:查找的长度
+//返回 要查找的字符串之后的地址
 char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_szKey)
 {
     if (NULL == _pBegin || NULL == _szKey || _ReadLen <= 0)
@@ -1438,7 +1439,7 @@ char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_s
                         printf("s_strstr,i=%d\n", i);
                         *first_len = i;
                     }
-                    return (char *)_pBegin + i;
+                    return (char *)_pBegin + i + s32CmpLen;
                 }
             }
         }

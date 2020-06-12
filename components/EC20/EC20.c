@@ -53,6 +53,8 @@ uint8_t EC20_Moudle_Init(void);
 //重启EC20网络初始化任务
 void Res_EC20_Task(void)
 {
+    xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
+    xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
     if ((xEventGroupGetBits(Net_sta_group) & EC20_Task_BIT) != EC20_Task_BIT)
     {
         xTaskCreate(EC20_Task, "EC20_Task", 3072, NULL, 9, &EC20_Task_Handle);
@@ -150,6 +152,8 @@ void uart_event_task(void *pvParameters)
                         uart_flush(EX_UART_NUM);
                         all_read_len = 0;
                         memset(EC20_RECV, 0, BUF_SIZE);
+                        xQueueReset(EC_uart_queue);
+                        continue; //此处需返回循环，否则会导致循环错误
                     }
                     uart_read_bytes(EX_UART_NUM, (uint8_t *)EC20_RECV + all_read_len, event.size, portMAX_DELAY);
                     all_read_len += event.size;
@@ -204,7 +208,7 @@ void uart_event_task(void *pvParameters)
                         break;
 
                     case EC_OTA:
-                        ret_chr = s_rstrstr(EC20_RECV, all_read_len, 30, "\r\nOK\r\n");
+                        ret_chr = s_rstrstr(EC20_RECV, all_read_len, 30, "\r\n\r\nOK\r\n");
                         if (ret_chr != NULL)
                         {
                             // ESP_LOGI("EC_OTA", "%d\n", all_read_len);
@@ -253,7 +257,7 @@ void EC20_Init(void)
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .flow_ctrl = UART_HW_FLOWCTRL_RTS,
         .source_clk = UART_SCLK_APB,
     };
     //Install UART driver, and get the queue.
@@ -290,6 +294,7 @@ void EC20_Task(void *arg)
         MQTT_E_STA = false;
         Net_sta_flag = false;
         xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
+        xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
         Start_Active();
         ret = EC20_Moudle_Init();
         if (ret == 0)
@@ -912,7 +917,7 @@ uint16_t Read_TCP_OTA_File(char *file_buff)
     char *cmd_buf = (char *)malloc(120);
     uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
     char *rst_val = NULL;
-    char num_buff[5] = {0};
+    // char num_buff[5] = {0};
     uint16_t file_len = 0;
 
     xSemaphoreTake(EC20_muxtex, -1);
@@ -924,15 +929,19 @@ uint16_t Read_TCP_OTA_File(char *file_buff)
 
     if (xQueueReceive(EC_at_queue, (void *)recv_buf, 10000 / portTICK_RATE_MS) == pdPASS)
     {
-        rst_val = mid((char *)recv_buf, "+QIRD: ", "\r\n", num_buff);
+        rst_val = s_strstr((const char *)recv_buf, 7, NULL, "+QIRD:");
         if (rst_val == NULL)
         {
             ESP_LOGE(TAG, "EC20 %d", __LINE__);
+            // ESP_LOGI(TAG, "%s", recv_buf);
             file_len = 0;
             goto end;
         }
-        file_len = (uint16_t)strtoul(num_buff, 0, 10);
-        memcpy(file_buff, rst_val + 2, file_len);
+        // rst_val = mid(rst_val, "+QIRD: ", "\r\n", num_buff);
+        file_len = (uint16_t)strtoul(rst_val, 0, 10);
+        // ESP_LOGI(TAG, "file_len:%d", file_len);
+        rst_val = s_strstr(rst_val, 7, NULL, "\r\n");
+        memcpy(file_buff, rst_val, file_len);
     }
     else //未等到数据
     {
