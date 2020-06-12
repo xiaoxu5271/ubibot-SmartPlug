@@ -1436,7 +1436,7 @@ char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_s
                 {
                     if (first_len != NULL)
                     {
-                        printf("s_strstr,i=%d\n", i);
+                        // printf("s_strstr,i=%d\n", i);
                         *first_len = i;
                     }
                     return (char *)_pBegin + i + s32CmpLen;

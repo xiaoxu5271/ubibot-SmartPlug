@@ -34,10 +34,13 @@ char *EC20_RECV;
 
 QueueHandle_t EC_uart_queue;
 QueueHandle_t EC_at_queue;
+QueueHandle_t EC_ota_queue;
 QueueHandle_t EC_mqtt_queue;
 
 char ICCID[24] = {0};
 uint8_t EC_RECV_MODE = EC_NORMAL;
+
+uint16_t file_len = 0;
 
 extern char topic_s[100];
 extern char topic_p[100];
@@ -132,6 +135,7 @@ void uart_event_task(void *pvParameters)
     xEventGroupSetBits(Net_sta_group, Uart1_Task_BIT);
     uart_event_t event;
     uint16_t all_read_len = 0;
+    int header_len = 0;
     EC20_RECV = (char *)malloc(BUF_SIZE);
     char *ret_chr;
 
@@ -211,14 +215,24 @@ void uart_event_task(void *pvParameters)
                         ret_chr = s_rstrstr(EC20_RECV, all_read_len, 30, "\r\n\r\nOK\r\n");
                         if (ret_chr != NULL)
                         {
-                            // ESP_LOGI("EC_OTA", "%d\n", all_read_len);
-                            // if ((memcmp(ret_chr, "OK\r\n", 5) == 0) || (memcmp(ret_chr, "OK\r\n+QIURC", 10) == 0)) // 判断 OK\r\n 是否出现在结尾
-                            // {
-                            xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
-                            all_read_len = 0;
-                            memset(EC20_RECV, 0, BUF_SIZE);
-                            uart_flush(EX_UART_NUM);
-                            // }
+                            // ESP_LOGI("EC_OTA", "all_read_len=%d\n", all_read_len);
+                            ret_chr = s_strstr((const char *)EC20_RECV, 7, NULL, "+QIRD:");
+                            if (ret_chr != NULL)
+                            {
+                                file_len = (uint16_t)strtoul(ret_chr, 0, 10);
+                                ret_chr = s_strstr(ret_chr, 7, NULL, "\r\n");
+                                header_len = (int)(ret_chr - EC20_RECV);
+                                // ESP_LOGI("EC_OTA", "file_len=%d,header_len=%d\n", file_len, header_len);
+                                if ((all_read_len - header_len - 8) >= file_len)
+                                {
+                                    // ESP_LOGI("EC_OTA", "OK");
+                                    xQueueOverwrite(EC_at_queue, (void *)ret_chr);
+                                    all_read_len = 0;
+                                    memset(EC20_RECV, 0, BUF_SIZE);
+                                    uart_flush(EX_UART_NUM);
+                                }
+                            }
+                            // rst_val = mid(rst_val, "+QIRD: ", "\r\n", num_buff);
                         }
 
                     default:
@@ -916,9 +930,9 @@ uint16_t Read_TCP_OTA_File(char *file_buff)
 {
     char *cmd_buf = (char *)malloc(120);
     uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
-    char *rst_val = NULL;
+    // char *rst_val = NULL;
     // char num_buff[5] = {0};
-    uint16_t file_len = 0;
+    uint16_t ret = 0;
 
     xSemaphoreTake(EC20_muxtex, -1);
     EC_RECV_MODE = EC_OTA;
@@ -929,23 +943,26 @@ uint16_t Read_TCP_OTA_File(char *file_buff)
 
     if (xQueueReceive(EC_at_queue, (void *)recv_buf, 10000 / portTICK_RATE_MS) == pdPASS)
     {
-        rst_val = s_strstr((const char *)recv_buf, 7, NULL, "+QIRD:");
-        if (rst_val == NULL)
-        {
-            ESP_LOGE(TAG, "EC20 %d", __LINE__);
-            // ESP_LOGI(TAG, "%s", recv_buf);
-            file_len = 0;
-            goto end;
-        }
-        // rst_val = mid(rst_val, "+QIRD: ", "\r\n", num_buff);
-        file_len = (uint16_t)strtoul(rst_val, 0, 10);
-        // ESP_LOGI(TAG, "file_len:%d", file_len);
-        rst_val = s_strstr(rst_val, 7, NULL, "\r\n");
-        memcpy(file_buff, rst_val, file_len);
+        // rst_val = s_strstr((const char *)recv_buf, 7, NULL, "+QIRD:");
+        // if (rst_val == NULL)
+        // {
+        //     ESP_LOGE(TAG, "EC20 %d", __LINE__);
+        //     // ESP_LOGI(TAG, "%s", recv_buf);
+        //     file_len = 0;
+        //     goto end;
+        // }
+        // // rst_val = mid(rst_val, "+QIRD: ", "\r\n", num_buff);
+        // file_len = (uint16_t)strtoul(rst_val, 0, 10);
+        // // ESP_LOGI(TAG, "file_len:%d", file_len);
+        // rst_val = s_strstr(rst_val, 7, NULL, "\r\n");
+        memcpy(file_buff, recv_buf, file_len);
+        ret = file_len;
+        goto end;
     }
     else //未等到数据
     {
         ESP_LOGE(TAG, "LINE %d", __LINE__);
+        ret = 0;
         goto end;
     }
 
@@ -955,7 +972,7 @@ end:
 
     free(cmd_buf);
     free(recv_buf);
-    return file_len;
+    return ret;
 }
 
 // 检查模块硬件
