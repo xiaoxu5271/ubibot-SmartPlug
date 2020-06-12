@@ -147,6 +147,7 @@ void uart_event_task(void *pvParameters)
                     if (all_read_len + event.size >= BUF_SIZE)
                     {
                         ESP_LOGE(TAG, "read len flow");
+                        uart_flush(EX_UART_NUM);
                         all_read_len = 0;
                         memset(EC20_RECV, 0, BUF_SIZE);
                     }

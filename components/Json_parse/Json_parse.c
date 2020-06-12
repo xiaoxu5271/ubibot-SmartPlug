@@ -867,7 +867,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 else
                 {
                     //密码错误
-                    printf("{\"status\":1,\"code\": 101}");
+                    printf("{\"status\":1,\"code\": 101}\r\n");
                 }
             }
         }
@@ -922,10 +922,10 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 E2P_Write(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
                 printf("pwd = %s\r\n", SIM_PWD);
             }
-            cJSON_Delete(pJson); //delete pJson
-            printf("{\"status\":0,\"code\": 0}");
-            //重置网络
             Net_Switch();
+            cJSON_Delete(pJson); //delete pJson
+            printf("{\"status\":0,\"code\": 0}\r\n");
+            //重置网络
 
             return 1;
         }

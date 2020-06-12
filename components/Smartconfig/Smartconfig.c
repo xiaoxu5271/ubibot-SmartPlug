@@ -144,8 +144,9 @@ void start_user_wifi(void)
 //网络状态转换任务
 void Net_Switch(void)
 {
-    ESP_LOGI("Net_Switch", "net_mode=%d", net_mode);
+    xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
     xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
+    ESP_LOGI("Net_Switch", "net_mode=%d", net_mode);
     switch (net_mode)
     {
     case NET_WIFI:
