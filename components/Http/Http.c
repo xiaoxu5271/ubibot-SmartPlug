@@ -204,7 +204,7 @@ int32_t http_post_init(uint32_t Content_Length)
     {
         if (post_status == POST_NOCOMMAND) //无commID
         {
-            sprintf(build_po_url, "POST /update.json?api_key=%s&metadata=true&execute=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
+            sprintf(build_po_url, "POST /update.json?api_key=%s&metadata=true&execute=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                     ApiKey,
                     FIRMWARE,
                     WEB_SERVER,
@@ -213,7 +213,7 @@ int32_t http_post_init(uint32_t Content_Length)
         else
         {
             post_status = POST_NOCOMMAND;
-            sprintf(build_po_url, "POST /update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
+            sprintf(build_po_url, "POST /update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                     ApiKey,
                     FIRMWARE,
                     mqtt_json_s.mqtt_command_id,

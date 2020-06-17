@@ -6,7 +6,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-#define FIRMWARE "SP1-V0.1.38"
+#define FIRMWARE "SP1-V0.1.39"
 
 #define POST_NORMAL 0X00
 #define POST_HEIGHT_ADD 0X01
@@ -26,7 +26,7 @@
 #define NOHUMAN 0x00
 #define HAVEHUMAN 0x01
 
-#define HTTP_RECV_BUFF_LEN 1024
+#define HTTP_RECV_BUFF_LEN 2048
 
 SemaphoreHandle_t xMutex_Http_Send;
 

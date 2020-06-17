@@ -316,8 +316,8 @@ esp_err_t parse_objects_http_active(char *http_json_data)
 
     if (json_data_parse == NULL)
     {
-        printf("Json Formatting error3\n");
-
+        // printf("Json Formatting error3\n");
+        ESP_LOGE(TAG, "%s", http_json_data);
         cJSON_Delete(json_data_parse);
         return 0;
     }
@@ -402,7 +402,8 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
     if (json_data_parse == NULL)
     {
 
-        printf("Json Formatting error3\n");
+        // printf("Json Formatting error3\n");
+        ESP_LOGE(TAG, "%s", http_json_data);
         cJSON_Delete(json_data_parse);
         return 0;
     }
