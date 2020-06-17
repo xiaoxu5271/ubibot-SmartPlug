@@ -146,7 +146,6 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
         // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
-    ESP_LOGI(TAG, "... allocated socket");
 
     if (connect(s, res->ai_addr, res->ai_addrlen) != 0) //step3：连接IP
     {
@@ -157,10 +156,9 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
         return -1;
     }
 
-    ESP_LOGI(TAG, "... connected");
     freeaddrinfo(res);
 
-    ESP_LOGD(TAG, "http_send_buff send_buff: %s\n", (char *)send_buff);
+    // ESP_LOGD(TAG, "http_send_buff send_buff: %s\n", (char *)send_buff);
     if (write(s, (char *)send_buff, send_size) < 0) //step4：发送http包
     {
         ESP_LOGE(TAG, "... socket send failed");
@@ -168,7 +166,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
         // vTaskDelay(4000 / portTICK_PERIOD_MS);
         return -1;
     }
-    ESP_LOGI(TAG, "... socket send success");
+    // ESP_LOGI(TAG, "... socket send success");
     struct timeval receiving_timeout;
     receiving_timeout.tv_sec = 5;
     receiving_timeout.tv_usec = 0;
@@ -180,7 +178,7 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
         // vTaskDelay(1000 / portTICK_PERIOD_MS);
         return -1;
     }
-    ESP_LOGI(TAG, "... set socket receiving timeout success");
+    // ESP_LOGI(TAG, "... set socket receiving timeout success");
 
     /* Read HTTP response */
 
@@ -206,8 +204,7 @@ int32_t http_post_init(uint32_t Content_Length)
     {
         if (post_status == POST_NOCOMMAND) //无commID
         {
-            sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&execute=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
-                    WEB_SERVER,
+            sprintf(build_po_url, "POST /update.json?api_key=%s&metadata=true&execute=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                     ApiKey,
                     FIRMWARE,
                     WEB_SERVER,
@@ -216,8 +213,7 @@ int32_t http_post_init(uint32_t Content_Length)
         else
         {
             post_status = POST_NOCOMMAND;
-            sprintf(build_po_url, "POST http://%s/update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
-                    WEB_SERVER,
+            sprintf(build_po_url, "POST /update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json;charset=UTF-8\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                     ApiKey,
                     FIRMWARE,
                     mqtt_json_s.mqtt_command_id,
@@ -309,7 +305,7 @@ int32_t http_post_init(uint32_t Content_Length)
         }
 
         sprintf(cmd_buf, "AT+QHTTPURL=%d,60\r\n", (strlen(build_po_url) - 2));
-        if (AT_Cmd_Send(cmd_buf, "CONNECT", 1000, 1) == NULL)
+        if (AT_Cmd_Send(cmd_buf, "CONNECT", 2000, 1) == NULL)
         {
             ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
             ret = -1;
@@ -437,14 +433,12 @@ bool Send_herat(void)
     recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
     if (net_mode == NET_WIFI)
     {
-        sprintf(build_heart_url, "GET http://%s/heartbeat?api_key=%s HTTP/1.0\r\nHost: %sUser-Agent: dalian urban ILS1\r\n\r\n",
-                WEB_SERVER,
+        sprintf(build_heart_url, "GET /heartbeat?api_key=%s HTTP/1.1\r\nHost: %s\r\n\r\n",
                 ApiKey,
                 WEB_SERVER);
 
         if ((http_send_buff(build_heart_url, 256, recv_buf, HTTP_RECV_BUFF_LEN)) > 0)
         {
-            ESP_LOGI(TAG, "hart recv:%s", recv_buf);
             if (parse_objects_heart(recv_buf))
             {
                 //successed
@@ -453,6 +447,7 @@ bool Send_herat(void)
             }
             else
             {
+                ESP_LOGE(TAG, "hart recv:%s", recv_buf);
                 ret = false;
                 Net_sta_flag = false;
             }
@@ -523,7 +518,8 @@ uint16_t http_activate(void)
     xSemaphoreTake(xMutex_Http_Send, -1);
     if (net_mode == NET_WIFI)
     {
-        sprintf(build_http, "GET http://%s/products/%s/devices/%s/activate\r\n\r\n", WEB_SERVER, ProductId, SerialNum);
+        sprintf(build_http, "GET /products/%s/devices/%s/activate HTTP/1.1\r\nHost: %s\r\n\r\n", ProductId, SerialNum, WEB_SERVER);
+        ESP_LOGI(TAG, "%s", build_http);
         if (wifi_http_send(build_http, 256, recv_buf, HTTP_RECV_BUFF_LEN) < 0)
         {
             Net_sta_flag = false;
@@ -531,7 +527,6 @@ uint16_t http_activate(void)
         }
         else
         {
-            ESP_LOGI(TAG, "active recv:%s", recv_buf);
             if (parse_objects_http_active(recv_buf))
             {
                 Net_sta_flag = true;
@@ -539,6 +534,7 @@ uint16_t http_activate(void)
             }
             else
             {
+                ESP_LOGE(TAG, "active recv:%s", recv_buf);
                 Net_sta_flag = false;
                 ret = 302;
             }

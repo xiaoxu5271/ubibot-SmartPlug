@@ -929,7 +929,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
             return 1;
         }
-        //{"command":"SetupHost","Host":"api.ubibot.cn","Port":"80","MqttHost":"mqtt.ubibot.cn","MqttPort":"1883"}
+        //{"command":"SetupHost","Host":"api.ubibot.io","Port":"80","MqttHost":"mqtt.ubibot.io","MqttPort":"1883"}
         else if (!strcmp((char const *)pSub->valuestring, "SetupHost")) //Command:SetupWifi
         {
             pSub = cJSON_GetObjectItem(pJson, "Host"); //"Host"

@@ -896,7 +896,7 @@ bool Start_EC20_TCP_OTA(void)
         goto end;
     }
 
-    sprintf(cmd_buf, "AT+QISEND=0,%d\r\n", (strlen(mqtt_json_s.mqtt_ota_url) + strlen(host_buf) + 13));
+    sprintf(cmd_buf, "AT+QISEND=0,%d\r\n", (strlen(mqtt_json_s.mqtt_ota_url) + strlen(host_buf) + 14));
     rst_val = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
     if (rst_val == NULL)
     {
@@ -904,7 +904,7 @@ bool Start_EC20_TCP_OTA(void)
         goto end;
     }
 
-    sprintf(cmd_buf, "GET %s\r\nHost:%s\r\n", mqtt_json_s.mqtt_ota_url, host_buf);
+    sprintf(cmd_buf, "GET %s\r\nHost:%s\r\n\r\n", mqtt_json_s.mqtt_ota_url, host_buf);
     rst_val = AT_Cmd_Send(cmd_buf, "+QIURC: \"recv\",0", 5000, 1);
     if (rst_val == NULL)
     {
