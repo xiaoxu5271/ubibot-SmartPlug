@@ -13,17 +13,6 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer);
 
 esp_err_t creat_object(void);
 
-#define WORK_INIT 0X00       //初始化
-#define WORK_AUTO 0x01       //平台自动模式
-#define WORK_HAND 0x02       //网页版手动模式
-#define WORK_HANDTOAUTO 0x03 //用于自动回复时执行一次自动控制指令
-#define WORK_LOCAL 0x04      //本地计算控制模式
-#define WORK_WAITLOCAL 0x05  //本地计算等待模式（用于状态机空闲状态）
-#define WORK_WALLKEY 0X06    //本地墙壁开关控制模式
-#define WORK_PROTECT 0X07    //风速和结霜保护
-#define WORK_FIREINIT 0X08   //开机就火灾
-#define WORK_FIRE 0x09       //火灾保护状态
-
 #define NET_AUTO 2 //上网模式 自动
 #define NET_4G 1   //上网模式 4G
 #define NET_WIFI 0 //上网模式 wifi
@@ -112,7 +101,7 @@ extern char WEB_SERVER[WEB_HOST_LEN];
 extern char MQTT_SERVER[WEB_HOST_LEN];
 extern char WEB_PORT[5];
 extern char MQTT_PORT[5];
-extern char BleName[17];
+extern char BleName[100];
 extern char SIM_APN[32];
 extern char SIM_USER[32];
 extern char SIM_PWD[32];

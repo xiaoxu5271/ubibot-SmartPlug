@@ -405,12 +405,21 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         gl_profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.len = ESP_UUID_LEN_16;
         gl_profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID_TEST_A;
 
-        char BleName_N[5];
-        bzero(BleName_N, sizeof(BleName_N));
-        bzero(BleName, sizeof(BleName));
-        strncpy(BleName_N, SerialNum, 5);
-        snprintf(BleName, sizeof(BleName), "%s%s", "Ubibot-SP1-", BleName_N);
-        ESP_LOGI(GATTS_TAG, "BleName:%s", BleName);
+        char BleName_N[10] = {0};
+
+        for (uint8_t i = 0; i < 5; i++)
+        {
+            BleName_N[i] = SerialNum[i];
+        }
+
+        ESP_LOGI(GATTS_TAG, "BleName_N:%s,len=%d", BleName_N, strlen((const char *)BleName_N));
+        memset(BleName, 0, sizeof(BleName));
+        sprintf(BleName, "%s-%s", ProductId, BleName_N);
+        if (BleName[0] >= 61)
+        {
+            BleName[0] = BleName[0] - 32;
+        }
+        ESP_LOGI(GATTS_TAG, "BleName:%s,len=%d,BleName_N:%s,len=%d", BleName, strlen(BleName), BleName_N, strlen((const char *)BleName_N));
         esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(BleName);
         if (set_dev_name_ret)
         {

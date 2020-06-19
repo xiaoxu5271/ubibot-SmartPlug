@@ -78,7 +78,7 @@ char WEB_SERVER[WEB_HOST_LEN] = {0};
 char WEB_PORT[5] = {0};
 char MQTT_SERVER[WEB_HOST_LEN] = {0};
 char MQTT_PORT[5] = {0};
-char BleName[17] = {0};
+char BleName[100] = {0};
 char SIM_APN[32] = {0};
 char SIM_USER[32] = {0};
 char SIM_PWD[32] = {0};
@@ -409,28 +409,6 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
     }
     else
     {
-        // json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "result");
-        // printf("result: %s\n", json_data_parse_value->valuestring);
-        // if (!(strcmp(json_data_parse_value->valuestring, "error")))
-        // {
-        //     json_data_parse_errorcode = cJSON_GetObjectItem(json_data_parse, "errorCode");
-        //     printf("post send error_code=%s\n", json_data_parse_errorcode->valuestring);
-        //     if (!(strcmp(json_data_parse_errorcode->valuestring, "invalid_channel_id"))) //设备空间ID被删除或API——KEY错误，需要重新激活
-        //     {
-        //         // //清空API-KEY存储，激活后获取
-        //         // uint8_t data_write2[33] = "\0";
-        //         // E2prom_Write(0x00, data_write2, 32);
-
-        //         // //清空channelid，激活后获取
-        //         // uint8_t data_write3[16] = "\0";
-
-        //         // E2prom_Write(0x20, data_write3, 16);
-
-        //         fflush(stdout); //使stdout清空，就会立刻输出所有在缓冲区的内容。
-        //         esp_restart();  //芯片复位 函数位于esp_system.h
-        //     }
-        // }
-
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "metadata");
         if (json_data_parse_value != NULL)
         {
@@ -943,7 +921,6 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             pSub = cJSON_GetObjectItem(pJson, "Port"); //"WEB PORT"
             if (NULL != pSub)
             {
-
                 printf("Port= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                 E2P_Write(WEB_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
             }
