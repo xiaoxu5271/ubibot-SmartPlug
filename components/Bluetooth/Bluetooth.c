@@ -405,14 +405,9 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         gl_profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.len = ESP_UUID_LEN_16;
         gl_profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID_TEST_A;
 
-        char BleName_N[10] = {0};
+        char BleName_N[6] = {0};
 
-        for (uint8_t i = 0; i < 5; i++)
-        {
-            BleName_N[i] = SerialNum[i];
-        }
-
-        ESP_LOGI(GATTS_TAG, "BleName_N:%s,len=%d", BleName_N, strlen((const char *)BleName_N));
+        strncpy(BleName_N, SerialNum, 5);
         memset(BleName, 0, sizeof(BleName));
         sprintf(BleName, "%s-%s", ProductId, BleName_N);
         if (BleName[0] >= 61)
