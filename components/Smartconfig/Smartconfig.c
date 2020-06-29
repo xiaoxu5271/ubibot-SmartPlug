@@ -152,18 +152,6 @@ void Net_Switch(void)
     case NET_WIFI:
         start_user_wifi();
         Start_W_Mqtt();
-        EC20_Stop();
-        break;
-
-    case NET_4G:
-        stop_user_wifi();
-        Stop_W_Mqtt();
-        EC20_Start();
-        // if (eTaskGetState(EC20_Task_Handle) == eSuspended)
-        // {
-        //     vTaskResume(EC20_Task_Handle);
-        // }
-
         break;
 
     default:

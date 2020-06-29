@@ -175,122 +175,6 @@ void WIFI_OTA(void)
     return;
 }
 
-//EC20 OTA
-bool EC20_OTA(void)
-{
-    ESP_LOGI(TAG, "EC20 OTA");
-    bool ret = false;
-    int32_t buff_len;
-    esp_err_t err;
-
-    //已写入镜像大小
-    uint32_t binary_file_length = 0;
-    //报文镜像长度
-    uint32_t content_len = 0;
-    //进度 百分比
-    uint8_t percentage = 0;
-
-    esp_ota_handle_t update_handle = 0;
-    const esp_partition_t *update_partition = NULL;
-
-    //获取当前boot位置
-    const esp_partition_t *configured = esp_ota_get_boot_partition();
-    //获取当前系统执行的固件所在的Flash分区
-    const esp_partition_t *running = esp_ota_get_running_partition();
-
-    if (configured != running)
-    {
-        ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
-                 configured->address, running->address);
-        ESP_LOGW(TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
-    }
-    ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)",
-             running->type, running->subtype, running->address);
-
-    //获取当前系统下一个（紧邻当前使用的OTA_X分区）可用于烧录升级固件的Flash分区
-    update_partition = esp_ota_get_next_update_partition(NULL);
-    ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x",
-             update_partition->subtype, update_partition->address);
-    assert(update_partition != NULL);
-    err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "esp_ota_begin failed, error=%d", err);
-        ret = false;
-        goto end;
-    }
-    ESP_LOGI(TAG, "esp_ota_begin succeeded");
-
-    //获取升级文件
-    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等网络连接
-    xSemaphoreTake(xMutex_Http_Send, -1);
-    if (Start_EC20_TCP_OTA() == false)
-    {
-        ESP_LOGE(TAG, "%d", __LINE__);
-        ret = false;
-        goto end;
-    }
-    content_len = mqtt_json_s.mqtt_file_size;
-    ESP_LOGI(TAG, "content_len:%d", content_len);
-
-    while (binary_file_length < content_len)
-    {
-        //写入之前清0
-        memset(ota_write_data, 0, 1000);
-        //接收http包
-        buff_len = Read_TCP_OTA_File(ota_write_data);
-        if (buff_len <= 0)
-        {
-            //包异常
-            ESP_LOGE(TAG, "Error: receive data error! errno=%d buff_len=%d", errno, buff_len);
-            ret = false;
-            goto end;
-            // task_fatal_error();
-        }
-        else
-        {
-            //写flash
-            err = esp_ota_write(update_handle, (const void *)ota_write_data, buff_len);
-            if (err != ESP_OK)
-            {
-                ESP_LOGE(TAG, "Error: esp_ota_write failed! err=0x%x", err);
-                ret = false;
-                goto end;
-            }
-            binary_file_length += buff_len;
-            if (percentage != (int)(binary_file_length * 100 / content_len))
-            {
-                percentage = (int)(binary_file_length * 100 / content_len);
-                ESP_LOGI(TAG, "%d%%\n", percentage);
-            }
-        }
-    }
-    //OTA写结束
-    if (esp_ota_end(update_handle) != ESP_OK)
-    {
-        ESP_LOGE(TAG, "esp_ota_end failed!");
-        ret = false;
-        goto end;
-    }
-    //升级完成更新OTA data区数据，重启时根据OTA data区数据到Flash分区加载执行目标（新）固件
-    err = esp_ota_set_boot_partition(update_partition);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "esp_ota_set_boot_partition failed! err=0x%x", err);
-        ret = false;
-        goto end;
-    }
-    ESP_LOGI(TAG, "Update Successed\r\n ");
-    ret = true;
-
-end:
-    // End_EC_OTA(file_handle);
-    End_EC_TCP_OTA();
-    xSemaphoreGive(xMutex_Http_Send);
-    return ret;
-    // esp_restart();
-}
-
 void ota_task(void *pvParameter)
 {
     vTaskDelay(1000 / portTICK_PERIOD_MS); //等待数据同步完成
@@ -299,15 +183,6 @@ void ota_task(void *pvParameter)
     if (net_mode == NET_WIFI)
     {
         WIFI_OTA();
-    }
-    else
-    {
-
-        if (EC20_OTA())
-        {
-            esp_restart();
-        }
-        vTaskDelete(NULL);
     }
 }
 

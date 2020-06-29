@@ -597,18 +597,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
                     field_buff);
             free(ssid64_buff);
         }
-        else
-        {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"sensors\":[%s]}",
-                    mac_sys[0],
-                    mac_sys[1],
-                    mac_sys[2],
-                    mac_sys[3],
-                    mac_sys[4],
-                    mac_sys[5],
-                    ICCID,
-                    field_buff);
-        }
+
         free(field_buff);
     }
     else
@@ -628,17 +617,6 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
                     mac_sys[5],
                     ssid64_buff);
             free(ssid64_buff);
-        }
-        else
-        {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\"}",
-                    mac_sys[0],
-                    mac_sys[1],
-                    mac_sys[2],
-                    mac_sys[3],
-                    mac_sys[4],
-                    mac_sys[5],
-                    ICCID);
         }
     }
 
@@ -672,12 +650,6 @@ void Create_NET_Json(void)
                 esp_wifi_sta_get_ap_info(&wifidata_t);
                 snprintf(filed_buff, 9, "field%d", rssi_w_f_num);
                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(wifidata_t.rssi));
-            }
-            else
-            {
-                EC20_Get_Rssi(&ec_rssi_val);
-                snprintf(filed_buff, 9, "field%d", rssi_g_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
             }
         }
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
@@ -880,8 +852,8 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 strcpy(SIM_APN, pSub->valuestring);
                 E2P_Write(APN_ADDR, (uint8_t *)SIM_APN, sizeof(SIM_APN));
                 printf("apn = %s\r\n", SIM_APN);
-                net_mode = NET_4G;
-                E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
+                // net_mode = NET_4G;
+                // E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
             }
 
             pSub = cJSON_GetObjectItem(pJson, "user"); //"user"
@@ -1110,10 +1082,10 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             free(json_temp);
         }
         //{"command":"CheckModule"}
-        else if (!strcmp((char const *)pSub->valuestring, "CheckModule"))
-        {
-            Check_Module();
-        }
+        // else if (!strcmp((char const *)pSub->valuestring, "CheckModule"))
+        // {
+        //     Check_Module();
+        // }
         //{"command":"ScanWifiList"}
         else if (!strcmp((char const *)pSub->valuestring, "ScanWifiList"))
         {

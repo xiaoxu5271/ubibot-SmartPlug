@@ -162,20 +162,5 @@ void Send_Mqtt_Task(void *arg)
             free(mqtt_buff);
             // return 1;
         }
-        else if (MQTT_E_STA == true)
-        {
-            xSemaphoreTake(xMutex_Http_Send, -1);
-            uint8_t *status_buff = (uint8_t *)malloc(MQTT_STATUS_BUFF_LEN);
-            char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
-            memset(status_buff, 0, MQTT_STATUS_BUFF_LEN);
-            memset(mqtt_buff, 0, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
-            Create_Status_Json((char *)status_buff, false); //
-            snprintf(mqtt_buff, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
-            EC20_MQTT_PUB(mqtt_buff);
-            xSemaphoreGive(xMutex_Http_Send);
-
-            free(status_buff);
-            free(mqtt_buff);
-        }
     }
 }
