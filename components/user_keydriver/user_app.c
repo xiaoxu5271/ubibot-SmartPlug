@@ -10,7 +10,7 @@
 #include "freertos/event_groups.h"
 
 #include <esp_log.h>
-#include "tcp_bsp.h"
+// #include "tcp_bsp.h"
 #include "Smartconfig.h"
 #include "Mqtt.h"
 // #include "w5500_driver.h"
@@ -20,10 +20,13 @@
 #include "Json_parse.h"
 #include "Switch.h"
 #include "Http.h"
+#include "Led.h"
+#include "Cache_data.h"
 
 #include "user_key.h"
 uint8_t Task_key_num = 0;
 TaskHandle_t view_sys_handle = NULL;
+TaskHandle_t User_Key_handle = NULL;
 
 /* 填充需要配置的按键个数以及对应的相关参数 */
 static key_config_t gs_m_key_config[BOARD_BUTTON_COUNT] =
@@ -48,18 +51,23 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
         switch (*short_pressed_counts)
         {
         case 1:
-            ESP_LOGI("short_pressed_cb", "first press!!!\n");
-            Task_key_num = 1;
+            // ESP_LOGI("short_pressed_cb", "first press!!!\n");
+            // Task_key_num = 1;
+            Switch_Relay(-1);
+            // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 2:
-            ESP_LOGI("short_pressed_cb", "double press!!!\n");
-            Task_key_num = 2;
+            ble_app_start();
+            // ESP_LOGI("short_pressed_cb", "double press!!!\n");
+            // Task_key_num = 2;
+            // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 3:
-            ESP_LOGI("short_pressed_cb", "trible press!!!\n");
+            // Write_Flash_err_Test();
+            // ESP_LOGI("short_pressed_cb", "trible press!!!\n");
             break;
         case 4:
-            ESP_LOGI("short_pressed_cb", "quatary press!!!\n");
+            // ESP_LOGI("short_pressed_cb", "quatary press!!!\n");
             break;
             // case ....:
             // break;
@@ -89,9 +97,10 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
     switch (key_num)
     {
     case BOARD_BUTTON:
-        ESP_LOGI("long_pressed_cb", "long press!!!\n");
-
-        Task_key_num = 5;
+        Set_defaul_flag = true;
+        E2prom_set_defaul(true);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        esp_restart();
 
         break;
     default:
@@ -104,15 +113,16 @@ void user_key_cd_task(void *arg)
 {
     while (1)
     {
+        ulTaskNotifyTake(pdTRUE, -1);
         switch (Task_key_num)
         {
         case 1:
-            Switch_Relay(-1);
+            // Switch_Relay(-1);
             // lan_ota();
             break;
 
         case 2:
-            vTaskNotifyGiveFromISR(view_sys_handle, NULL);
+            // xTaskNotifyGive(view_sys_handle);
             break;
 
         case 5:
@@ -124,7 +134,6 @@ void user_key_cd_task(void *arg)
             break;
         }
         Task_key_num = 0;
-        vTaskDelay(100 / portTICK_RATE_MS);
     }
 }
 
@@ -135,9 +144,9 @@ static void vTask_view_Work(void *pvParameters)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        ESP_LOGW("memroy check", "%d: - INTERNAL RAM left %dKB", __LINE__,
-                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024);
-        printf("free Heap:%d\n", esp_get_free_heap_size());
+        ESP_LOGW("heart_memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
+                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
+                 esp_get_free_heap_size());
         /* K1键按下 打印任务执行情况 */
 
         printf("=======================================================\r\n");
@@ -166,6 +175,6 @@ void user_app_key_init(void)
     int32_t err_code;
     err_code = user_key_init(gs_m_key_config, BOARD_BUTTON_COUNT, DECOUNE_TIMER, long_pressed_cb, short_pressed_cb);
     ESP_LOGI("user_app_key_init", "user_key_init is %d\n", err_code);
-    xTaskCreate(vTask_view_Work, "vTask_view_Work", 10240, NULL, 5, &view_sys_handle);
-    xTaskCreate(user_key_cd_task, "user_key_cd_task", 4096, NULL, 8, NULL);
+    // xTaskCreate(vTask_view_Work, "Task_view", 4096, NULL, 3, &view_sys_handle);
+    // xTaskCreate(user_key_cd_task, "user_key", 4096, NULL, 17, &User_Key_handle); //优先级需要高，保证按键可以随时响应开关
 }

@@ -9,6 +9,7 @@
 #include "user_key.h"
 #include "Led.h"
 #include "crc8_16.h"
+#include "ota.h"
 
 #include "E2prom.h"
 
@@ -39,17 +40,10 @@ void E2prom_Init(void)
     {
         vTaskDelay(1000 / portTICK_RATE_MS);
         ESP_LOGE(TAG, "eeprom err !");
-        Led_Status = LED_STA_HEARD_ERR;
+        E2P_FLAG = false;
         return;
     }
-    // fm24c_test();
-    if (Check_Set_defaul())
-    {
-        Led_Status = LED_STA_REST;
-        E2prom_read_defaul();
-        E2prom_set_defaul(true);
-        Led_Status = LED_STA_INIT;
-    }
+    E2P_FLAG = true;
 }
 
 esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat)
@@ -424,17 +418,17 @@ void E2P_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite)
 
 void E2prom_empty_all(void)
 {
-    printf("\nempty all set\n");
+    ESP_LOGI(TAG, "\nempty all set\n");
     // for (uint16_t i = 0; i < 1024; i++)
     // {
     //     E2P_WriteOneByte(i, 0);
     // }
-    FM24C_Empty(E2P_SIZE);
+    FM24C_Empty(E2P_SIZE / 8);
 }
 
 static void E2prom_read_defaul(void)
 {
-    printf("\nread defaul\n");
+    ESP_LOGI(TAG, "\nread defaul\n");
 
     E2P_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
     E2P_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
@@ -446,9 +440,10 @@ static void E2prom_read_defaul(void)
 //flag =0 不写入序列号相关
 void E2prom_set_defaul(bool flag)
 {
+    E2prom_read_defaul();
     E2prom_empty_all();
     //写入默认值
-    printf("set defaul\n");
+    ESP_LOGI(TAG, "set defaul\n");
 
     if (flag == true)
     {
@@ -479,6 +474,8 @@ void E2prom_set_defaul(bool flag)
     E2P_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num);
     E2P_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num);
     E2P_WriteOneByte(SW_PC_F_NUM_ADDR, sw_pc_f_num);
+    E2P_WriteOneByte(RS485_CO2_T_NUM_ADDR, r1_co2_t_f_num);
+    E2P_WriteOneByte(RS485_CO2_H_NUM_ADDR, r1_co2_h_f_num);
 }
 
 //检查AT24CXX是否正常,以及是否为新EEPROM
@@ -497,14 +494,14 @@ static bool AT24CXX_Check(void)
         FM24C_Read((E2P_SIZE - 10), &temp, 1);
         if (temp == 0XFF)
         {
-            printf("\nnew eeprom\n");
+            ESP_LOGI(TAG, "\nnew eeprom\n");
             E2prom_set_defaul(false);
         }
     }
 
     if (temp == Check_dat)
     {
-        printf("eeprom check ok!\n");
+        ESP_LOGI(TAG, "eeprom check ok!\n");
         return true;
     }
     else //排除第一次初始化的情况
@@ -513,10 +510,10 @@ static bool AT24CXX_Check(void)
         FM24C_Read((E2P_SIZE - 1), &temp, 1);
         if (temp == Check_dat)
         {
-            printf("eeprom check ok!\n");
+            ESP_LOGI(TAG, "eeprom check ok!\n");
             return true;
         }
     }
-    printf("eeprom check fail!\n");
+    ESP_LOGI(TAG, "eeprom check fail!\n");
     return false;
 }

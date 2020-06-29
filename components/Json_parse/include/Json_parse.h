@@ -6,45 +6,25 @@
 
 esp_err_t parse_objects_http_active(char *http_json_data);
 esp_err_t parse_objects_bluetooth(char *blu_json_data);
-esp_err_t parse_objects_mqtt(char *json_data);
+esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag);
 esp_err_t parse_objects_heart(char *json_data);
 esp_err_t parse_objects_http_respond(char *http_json_data);
 esp_err_t ParseTcpUartCmd(char *pcCmdBuffer);
 
 esp_err_t creat_object(void);
 
-#define WORK_INIT 0X00       //初始化
-#define WORK_AUTO 0x01       //平台自动模式
-#define WORK_HAND 0x02       //网页版手动模式
-#define WORK_HANDTOAUTO 0x03 //用于自动回复时执行一次自动控制指令
-#define WORK_LOCAL 0x04      //本地计算控制模式
-#define WORK_WAITLOCAL 0x05  //本地计算等待模式（用于状态机空闲状态）
-#define WORK_WALLKEY 0X06    //本地墙壁开关控制模式
-#define WORK_PROTECT 0X07    //风速和结霜保护
-#define WORK_FIREINIT 0X08   //开机就火灾
-#define WORK_FIRE 0x09       //火灾保护状态
+#define NET_AUTO 2 //上网模式 自动
+#define NET_4G 1   //上网模式 4G
+#define NET_WIFI 0 //上网模式 wifi
 
-#define NET_AUTO 0 //上网模式 自动
-#define NET_LAN 1  //上网模式 网线
-#define NET_WIFI 2 //上网模式 wifi
+#define FILED_BUFF_SIZE 350
 
 struct
 {
-    // int mqtt_Voltage;
-    // double mqtt_Current;
-    // double mqtt_Power;
-    // double mqtt_Energy;
     bool mqtt_switch_status;
-
     char mqtt_command_id[32];
-    // char mqtt_string[256];
-    // char mqtt_Rssi[8];
-
     char mqtt_ota_url[128]; //OTA升级地址
-    // char mqtt_etx_tem[8];
-    // char mqtt_etx_hum[8];
-    // char mqtt_DS18B20_TEM[8];
-
+    uint32_t mqtt_file_size;
 } mqtt_json_s;
 
 struct
@@ -70,7 +50,11 @@ void Read_Metadate_E2p(void);
 void Read_Product_E2p(void);
 void Read_Fields_E2p(void);
 void Create_NET_Json(void);
-uint16_t Create_Status_Json(char *status_buff);
+void Create_Switch_Json(void);
+uint16_t Create_Status_Json(char *status_buff, bool filed_flag);
+char *mid(char *src, char *s1, char *s2, char *sub);
+char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szKey);
+char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_szKey);
 
 /************metadata 参数***********/
 extern uint32_t fn_dp;      //数据发送频率
@@ -105,6 +89,8 @@ extern uint8_t r1_t_f_num;     //485温度探头温度
 extern uint8_t r1_ws_f_num;    //485风速
 extern uint8_t r1_co2_f_num;   //485 CO2
 extern uint8_t r1_ph_f_num;    //485 PH
+extern uint8_t r1_co2_t_f_num; // CO2 温度
+extern uint8_t r1_co2_h_f_num; //CO2 湿度
 
 extern char SerialNum[SERISE_NUM_LEN];
 extern char ProductId[PRODUCT_ID_LEN];
@@ -112,6 +98,12 @@ extern char ApiKey[API_KEY_LEN];
 extern char ChannelId[CHANNEL_ID_LEN];
 extern char USER_ID[USER_ID_LEN];
 extern char WEB_SERVER[WEB_HOST_LEN];
-extern char BleName[17];
+extern char MQTT_SERVER[WEB_HOST_LEN];
+extern char WEB_PORT[5];
+extern char MQTT_PORT[5];
+extern char BleName[100];
+extern char SIM_APN[32];
+extern char SIM_USER[32];
+extern char SIM_PWD[32];
 
 #endif

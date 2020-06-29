@@ -6,13 +6,15 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 #include "Json_parse.h"
-#include "CSE7759B.h"
+
 #include "Uart0.h"
 #include "Http.h"
 #include "Cache_data.h"
 #include "ServerTimer.h"
 #include "Led.h"
+#include "Smartconfig.h"
 
+#include "CSE7759B.h"
 #define TAG "CSE7759B"
 TaskHandle_t CSE7759B_Handle = NULL;
 SemaphoreHandle_t Energy_read_Binary = NULL;
@@ -53,20 +55,18 @@ double sw_pc_val; //用电量 W/h
 
 typedef struct RuningInf_s
 {
-    unsigned short voltage;     //当前电压值，单位为0.1V
-    unsigned short electricity; //当前电流值,单位为0.01A
-    unsigned short power;       //当前电流值,单位为0.01A
-
+    unsigned short voltage;       //当前电压值，单位为0.1V
+    unsigned short electricity;   //当前电流值,单位为0.01A
+    unsigned short power;         //当前电流值,单位为0.01A
     unsigned long energy;         //当前消耗电能值对应的脉冲个数
     unsigned short energyCurrent; //电能脉冲当前统计值
     unsigned short energyLast;    //电能脉冲上次统计值
     unsigned char energyFlowFlag; //电能脉冲溢出标致
-
-    unsigned long energyUnit; //0.001度点对应的脉冲个数
+    unsigned long energyUnit;     //0.001度点对应的脉冲个数
+    bool init_flag;               //设备第一次上电标志
 } RuningInf_t;
 
-RuningInf_t runingInf;
-
+RuningInf_t runingInf = {0, 0, 0, 0, 0, 0, 0, 0, true};
 // bool CSE_Status = false;
 // bool CSE_Energy_Status = false;
 
@@ -209,6 +209,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         else
         {
             ESP_LOGE(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
+            return -1;
         }
 
         if ((inDataBuffer[UART_IND_FG] & 0x20) == 0x20)
@@ -251,6 +252,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         else
         {
             ESP_LOGE(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
+            return -1;
         }
 
         if ((inDataBuffer[UART_IND_FG] & 0x10) == 0x10)
@@ -333,8 +335,18 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 
         energyFlowFlag = (inDataBuffer[UART_IND_FG] >> 7);                                              //获取当前电能计数溢出标致
         runingInf.energyCurrent = ((inDataBuffer[UART_IND_EN] << 8) | (inDataBuffer[UART_IND_EN + 1])); //更新当前的脉冲计数值
+
+        //初始化
+        if (runingInf.init_flag == true)
+        {
+            runingInf.init_flag = false;
+            runingInf.energyLast = runingInf.energyCurrent;
+            runingInf.energyFlowFlag = energyFlowFlag;
+        }
+
         if (runingInf.energyFlowFlag != energyFlowFlag)
-        { //每次计数溢出时更新当前脉冲计数值
+        {
+            //每次计数溢出时更新当前脉冲计数值
             runingInf.energyFlowFlag = energyFlowFlag;
             if (runingInf.energyCurrent > runingInf.energyLast)
             {
@@ -346,13 +358,13 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         {
             energy_cnt = runingInf.energyCurrent - runingInf.energyLast;
         }
+        // ESP_LOGI(TAG, "energy_cnt=%d", energy_cnt);
         runingInf.energyLast = runingInf.energyCurrent;
         runingInf.energy += (energy_cnt * 10); //电能个数累加时扩大10倍，计算电能是除数扩大10倍，保证计算精度
 
         runingInf.energyUnit = 0xD693A400 >> 1;
-        // if (power_k == 0)
-        //     return -1;
-        runingInf.energyUnit /= (power_k >> 1); //1mR采样电阻0.001度电对应的脉冲个数
+        if (power_k != 0)
+            runingInf.energyUnit /= (power_k >> 1); //1mR采样电阻0.001度电对应的脉冲个数
 
 #if (SAMPLE_RESISTANCE_MR == 1)
 //1mR锰铜电阻对应的脉冲个数
@@ -365,7 +377,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
         //电能使用量
         // energy = runingInf.energy / runingInf.energyUnit; //单位是0.001度
         // mqtt_json_s.mqtt_Energy = energy / 1000.0;        //单位是度
-        // ESP_LOGD(TAG, "energy=%ld\n", energy);
+        // ESP_LOGI(TAG, "energy=%ld,energyUnit=%ld", runingInf.energy, runingInf.energyUnit);
         break;
 
     case 0xAA:
@@ -519,6 +531,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
             else
             {
                 ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
+                return -1;
             }
         }
 
@@ -564,12 +577,13 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
             else
             {
                 ESP_LOGE(TAG, "%s(%d):V Flag Error\r\n", __func__, __LINE__);
+                return -1;
             }
         }
 
         break;
     }
-    ESP_LOGI(TAG, "0x%x:V = %ld;I = %ld;P = %ld;\r\n", startFlag, voltage, electricity, power);
+    // ESP_LOGI(TAG, "0x%x:V = %ld;I = %ld;P = %ld;\r\n", startFlag, voltage, electricity, power);
     sw_v_val = voltage / 1000;
     sw_c_val = electricity / 1000.0;
     sw_p_val = power / 1000.0;
@@ -578,77 +592,92 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
 }
 
 //串口读取原始数据
-int8_t CSE7759B_Read(void)
+void CSE7759B_Read_Task(void *arg)
 {
-    uint8_t data_u1[BUF_SIZE] = {0};
-    uint8_t data_7759b[24] = {0};
-    uint16_t checksum = 0;
-    int len_7759_start = 0;
+    uint8_t data_u1[BUF_SIZE];
+    uint8_t data_7759b[24];
+    uint16_t checksum;
+    int len_7759_start;
 
-    sw_uart2(uart2_cse);
-    int len1 = uart_read_bytes(UART_NUM_2, data_u1, BUF_SIZE, 150 / portTICK_RATE_MS);
-    xSemaphoreGive(xMutex_uart2_sw);
-
-    if (len1 != 0) //读取到数据
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    while (1)
     {
-        // ESP_LOGD(TAG,"CSE7759B_Read len1 = %d\n", len1);
-        //查找数据头
-        for (int i = 0; i < len1; i++)
-        {
-            if ((data_u1[i] == 0x5a) && (((data_u1[i - 1] & 0xf0) == 0xf0) || (data_u1[i - 1] == 0xaa) || (data_u1[i - 1] == 0x55)))
-            {
-                len_7759_start = i - 1;
-                //取得24byte计量数据
-                for (int i = 0; i < 24; i++)
-                {
-                    data_7759b[i] = data_u1[len_7759_start + i];
-                }
+        memset(data_u1, 0, BUF_SIZE);
+        memset(data_7759b, 0, 24);
+        checksum = 0;
+        len_7759_start = 0;
 
-                // ESP_LOGI(TAG, "7759b=");
-                for (int i = 0; i < 24; i++)
+        sw_uart2(uart2_cse);
+        int len1 = uart_read_bytes(UART_NUM_2, data_u1, BUF_SIZE, 150 / portTICK_RATE_MS);
+        xSemaphoreGive(xMutex_uart2_sw);
+
+        if (len1 != 0) //读取到数据
+        {
+            // ESP_LOGD(TAG,"CSE7759B_Read len1 = %d\n", len1);
+            //查找数据头
+            for (int i = 0; i < len1; i++)
+            {
+                if ((data_u1[i] == 0x5a) && (((data_u1[i - 1] & 0xf0) == 0xf0) || (data_u1[i - 1] == 0xaa) || (data_u1[i - 1] == 0x55)))
                 {
-                    // ESP_LOGI(TAG, "0x%02x ", data_7759b[i]);
-                    if (i >= 2 && i <= 22)
+                    len_7759_start = i - 1;
+                    //取得24byte计量数据
+                    for (int i = 0; i < 24; i++)
                     {
-                        checksum += data_7759b[i];
+                        data_7759b[i] = data_u1[len_7759_start + i];
                     }
-                    else if (i == 23)
+
+                    // ESP_LOGI(TAG, "7759b=");
+                    for (int i = 0; i < 24; i++)
                     {
-                        checksum = checksum & 0xff;
-                        if (checksum == data_7759b[23])
+                        // ESP_LOGI(TAG, "0x%02x ", data_7759b[i]);
+                        if (i >= 2 && i <= 22)
                         {
-                            ESP_LOGI(TAG, "checksum = 0x%02x ,7759b checksum ok!", checksum);
-                            if (DealUartInf(data_7759b, 24)) //处理7759B数据
+                            checksum += data_7759b[i];
+                        }
+                        else if (i == 23)
+                        {
+                            checksum = checksum & 0xff;
+                            if (checksum == data_7759b[23])
                             {
-                                return 1;
+                                // ESP_LOGI(TAG, "checksum = 0x%02x ,7759b checksum ok!", checksum);
+                                if (DealUartInf(data_7759b, 24)) //处理7759B数据
+                                {
+                                    CSE_FLAG = true;
+                                    xEventGroupSetBits(Net_sta_group, CSE_CHECK_BIT);
+                                }
+                                else
+                                {
+                                    CSE_FLAG = false;
+                                    xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
+                                    ESP_LOGE(TAG, "%d", __LINE__);
+                                }
                             }
-                            ESP_LOGE(TAG, "Chip CSE7759B ERR!");
-                            return 0;
-                        }
-                        else
-                        {
-                            // CSE_Status = false;
-                            ESP_LOGE(TAG, "checksum = 0x%02x ,7759b checksum fail!", checksum);
-                            return 0;
+                            else
+                            {
+                                // CSE_FLAG = false;
+                                // xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
+                                // ESP_LOGE(TAG, "%d", __LINE__);
+                            }
                         }
                     }
+                }
+                else
+                {
+                    // CSE_FLAG = false;
+                    // xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
+                    // ESP_LOGE(TAG, "%d", __LINE__);
                 }
             }
         }
-        ESP_LOGE(TAG, "CSE7759B Date Err！\n");
-        // CSE_Status = false;
-        return 0;
-    }
-    else
-    {
-        ESP_LOGE(TAG, "No CSE7759B Date！\n");
-        // CSE_Status = false;
-        return 0;
-    }
-}
+        else
+        {
+            CSE_FLAG = false;
+            xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
+            ESP_LOGE(TAG, "%d", __LINE__);
+        }
 
-void Creat_Ele_quan_Json(void)
-{
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
 }
 
 //读取，构建电能信息
@@ -656,52 +685,44 @@ void Energy_Read_Task(void *pvParameters)
 {
     char *filed_buff;
     char *OutBuffer;
+    char *time_buff;
     // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
 
-    CSE7759B_Read();
-    vTaskDelay(2000 / portTICK_PERIOD_MS); //上电初始化
-    CSE7759B_Read();
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        if (mqtt_json_s.mqtt_switch_status)
+        if ((xEventGroupWaitBits(Net_sta_group, CSE_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & CSE_CHECK_BIT) == CSE_CHECK_BIT)
         {
-            while (CSE7759B_Read() != 1)
+            if (((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT) && (mqtt_json_s.mqtt_switch_status == 1))
             {
-                Led_Status = LED_STA_HEARD_ERR;
-                vTaskDelay(2000 / portTICK_PERIOD_MS); //
+                filed_buff = (char *)malloc(9);
+                time_buff = (char *)malloc(24);
+                Server_Timer_SEND(time_buff);
+                pJsonRoot = cJSON_CreateObject();
+                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+                snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
+                snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
+                snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
+
+                OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                cJSON_Delete(pJsonRoot);                       //delete cjson root
+                len = strlen(OutBuffer);
+                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                // SaveBuffer = (uint8_t *)malloc(len);
+                // memcpy(SaveBuffer, OutBuffer, len);
+                xSemaphoreTake(Cache_muxtex, -1);
+                DataSave((uint8_t *)OutBuffer, len);
+                xSemaphoreGive(Cache_muxtex);
+                free(OutBuffer);
+                free(filed_buff);
+                free(time_buff);
             }
-            filed_buff = (char *)malloc(9);
-
-            pJsonRoot = cJSON_CreateObject();
-            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-            // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-            snprintf(filed_buff, 9, "field%d", sw_v_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
-            snprintf(filed_buff, 9, "field%d", sw_c_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
-            snprintf(filed_buff, 9, "field%d", sw_p_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
-
-            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                       //delete cjson root
-            len = strlen(OutBuffer);
-            printf("len:%d\n%s\n", len, OutBuffer);
-            // SaveBuffer = (uint8_t *)malloc(len);
-            // memcpy(SaveBuffer, OutBuffer, len);
-            xSemaphoreTake(Cache_muxtex, -1);
-            DataSave((uint8_t *)OutBuffer, len);
-            xSemaphoreGive(Cache_muxtex);
-            free(OutBuffer);
-            free(filed_buff);
-            // free(SaveBuffer);
-        }
-
-        if (Binary_mqtt != NULL)
-        {
-            xTaskNotifyGive(Binary_mqtt);
         }
     }
 }
@@ -710,6 +731,7 @@ void Ele_quan_Task(void *pvParameters)
 {
     char *filed_buff;
     char *OutBuffer;
+    char *time_buff;
     // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
@@ -725,24 +747,28 @@ void Ele_quan_Task(void *pvParameters)
         // ESP_LOGI(TAG, "energy=%f\n", mqtt_json_s.mqtt_Energy);
         runingInf.energy = 0; //清除本次统计
 
-        filed_buff = (char *)malloc(9);
-
-        pJsonRoot = cJSON_CreateObject();
-        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-        snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
-        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
-        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-        cJSON_Delete(pJsonRoot);                       //delete cjson root
-        len = strlen(OutBuffer);
-        printf("len:%d\n%s\n", len, OutBuffer);
-        // SaveBuffer = (uint8_t *)malloc(len);
-        // memcpy(SaveBuffer, OutBuffer, len);
-        xSemaphoreTake(Cache_muxtex, -1);
-        DataSave((uint8_t *)OutBuffer, len);
-        xSemaphoreGive(Cache_muxtex);
-        free(OutBuffer);
-        // free(SaveBuffer);
-        free(filed_buff);
+        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+        {
+            filed_buff = (char *)malloc(9);
+            time_buff = (char *)malloc(24);
+            Server_Timer_SEND(time_buff);
+            pJsonRoot = cJSON_CreateObject();
+            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+            snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
+            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+            cJSON_Delete(pJsonRoot);                       //delete cjson root
+            len = strlen(OutBuffer);
+            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+            // SaveBuffer = (uint8_t *)malloc(len);
+            // memcpy(SaveBuffer, OutBuffer, len);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave((uint8_t *)OutBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            free(OutBuffer);
+            free(filed_buff);
+            free(time_buff);
+        }
     }
 }
 
@@ -750,4 +776,5 @@ void CSE7759B_Init(void)
 {
     xTaskCreate(Energy_Read_Task, "Energy_Read_Task", 4096, NULL, 5, &Binary_energy);
     xTaskCreate(Ele_quan_Task, "Ele_quan_Task", 4096, NULL, 5, &Binary_ele_quan);
+    xTaskCreate(CSE7759B_Read_Task, "CSE7759B_Read", 2048, NULL, 4, NULL);
 }

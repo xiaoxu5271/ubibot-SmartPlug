@@ -12,6 +12,7 @@
 #include "ServerTimer.h"
 #include "Cache_data.h"
 #include "Json_parse.h"
+#include "Smartconfig.h"
 
 #include "ds18b20.h"
 
@@ -19,7 +20,7 @@
 #define ds18b20_gpio GPIO_NUM_4
 
 //采集数据的次数
-#define Cla_Num 9
+#define Cla_Num 3
 
 #define DATA_IO_ON() gpio_set_level(ds18b20_gpio, 1)
 #define DATA_IO_OFF() gpio_set_level(ds18b20_gpio, 0)
@@ -244,6 +245,7 @@ void get_ds18b20_task(void *org)
 {
     char *Field_e1_t = NULL;
     char *OutBuffer;
+    char *time_buff;
     // uint8_t *SaveBuffer;
     uint16_t len = 0;
     cJSON *pJsonRoot;
@@ -251,27 +253,29 @@ void get_ds18b20_task(void *org)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, -1);
-        printf("start 18b20!");
         if (ds18b20_get_temp() > 0)
         {
-            Field_e1_t = (char *)malloc(9);
-            snprintf(Field_e1_t, 9, "field%d", e1_t_f_num);
-
-            pJsonRoot = cJSON_CreateObject();
-            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)Server_Timer_SEND());
-            cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(DS18B20_TEM));
-            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                       //delete cjson root
-            len = strlen(OutBuffer);
-            printf("len:%d\n%s\n", len, OutBuffer);
-            // SaveBuffer = (uint8_t *)malloc(len);
-            // memcpy(SaveBuffer, OutBuffer, len);
-            xSemaphoreTake(Cache_muxtex, -1);
-            DataSave((uint8_t *)OutBuffer, len);
-            xSemaphoreGive(Cache_muxtex);
-            free(OutBuffer);
-            // free(SaveBuffer);
-            free(Field_e1_t);
+            xEventGroupSetBits(Net_sta_group, DS18B20_CHECK_BIT);
+            if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+            {
+                Field_e1_t = (char *)malloc(9);
+                time_buff = (char *)malloc(24);
+                Server_Timer_SEND(time_buff);
+                snprintf(Field_e1_t, 9, "field%d", e1_t_f_num);
+                pJsonRoot = cJSON_CreateObject();
+                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(DS18B20_TEM));
+                OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                cJSON_Delete(pJsonRoot);                       //delete cjson root
+                len = strlen(OutBuffer);
+                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                xSemaphoreTake(Cache_muxtex, -1);
+                DataSave((uint8_t *)OutBuffer, len);
+                xSemaphoreGive(Cache_muxtex);
+                free(OutBuffer);
+                free(Field_e1_t);
+                free(time_buff);
+            }
         }
         else
         {

@@ -3,12 +3,17 @@
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "Smartconfig.h"
+#include "Json_parse.h"
+#include "esp_log.h"
 
 #include "Led.h"
+
+#define TAG "LED"
 
 #if 1
 
 #define GPIO_LED_B GPIO_NUM_33
+#define GPIO_LED_Y GPIO_NUM_13
 
 #else
 
@@ -21,91 +26,86 @@
 TaskHandle_t Led_Task_Handle = NULL;
 uint8_t Last_Led_Status;
 
+bool CSE_FLAG = false;
+bool E2P_FLAG = false;
+bool FLASH_FLAG = false;
+
+bool Set_defaul_flag = false;
+bool Net_sta_flag = false;
+bool Cnof_net_flag = false;
+bool No_ser_flag = false;
+
+/*******************************************
+黄灯闪烁：硬件错误
+蓝灯闪烁：恢复出厂
+黄蓝交替闪烁：配置网络
+
+蓝灯常亮：开关开启，网络正常
+黄灯常亮：电源开启，网络断开
+灯熄灭：电源断开 
+ 
+*******************************************/
 static void Led_Task(void *arg)
 {
     while (1)
     {
-        if (bl_flag == 1)
+        //硬件错误
+        if ((CSE_FLAG == false) || (E2P_FLAG == false) || (FLASH_FLAG == false))
         {
-            Led_B_On();
-            vTaskDelay(400 / portTICK_RATE_MS);
+            // ESP_LOGI(TAG, "CSE_FLAG=:%d,E2P_FLAG=:%d,FLASH_FLAG=:%d", CSE_FLAG, E2P_FLAG, FLASH_FLAG);
             Led_Off();
-            vTaskDelay(100 / portTICK_RATE_MS);
+            vTaskDelay(500 / portTICK_RATE_MS);
+            Led_Y_On();
+            vTaskDelay(500 / portTICK_RATE_MS);
         }
+        //恢复出厂
+        else if (Set_defaul_flag == true)
+        {
+            Led_Off();
+            vTaskDelay(500 / portTICK_RATE_MS);
+            Led_B_On();
+            vTaskDelay(500 / portTICK_RATE_MS);
+        }
+        //配网
+        else if (Cnof_net_flag == 1)
+        {
+            Led_Off();
+            Led_B_On();
+            vTaskDelay(500 / portTICK_RATE_MS);
+            Led_Off();
+            Led_Y_On();
+            vTaskDelay(500 / portTICK_RATE_MS);
+        }
+        //开关以及网络
         else
         {
-            switch (Led_Status)
+            if (cg_data_led == 1)
             {
-            case LED_STA_INIT:
-                Led_B_On();
-                vTaskDelay(10 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_WORK:
-                // Led_G_On();
-                // vTaskDelay(100 / portTICK_RATE_MS);
+                //开关
+                if (mqtt_json_s.mqtt_switch_status == true)
+                {
+                    //网络
+                    if (Net_sta_flag == true)
+                    {
+                        Led_Off();
+                        Led_B_On();
+                    }
+                    else
+                    {
+                        Led_Off();
+                        Led_Y_On();
+                    }
+                }
+                else
+                {
+                    Led_Off();
+                }
+                vTaskDelay(100 / portTICK_RATE_MS);
+            }
+            else
+            {
                 Led_Off();
                 vTaskDelay(100 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_AP:
-                Led_B_On();
-                vTaskDelay(400 / portTICK_RATE_MS);
-                Led_Off();
-                vTaskDelay(100 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_NOSER:
-                Led_Off();
-                vTaskDelay(400 / portTICK_RATE_MS);
-                Led_B_On();
-                vTaskDelay(100 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_WIFIERR:
-                Led_Off();
-                vTaskDelay(500 / portTICK_RATE_MS);
-                Led_B_On();
-                vTaskDelay(500 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_ACTIVE_ERR:
-                Led_Off();
-                vTaskDelay(500 / portTICK_RATE_MS);
-                Led_B_On();
-                vTaskDelay(500 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_SEND:
-
-                Led_Status = Last_Led_Status;
-                break;
-
-            case LED_STA_HEARD_ERR:
-                Led_Off();
-                vTaskDelay(100 / portTICK_RATE_MS);
-                Led_B_On();
-                vTaskDelay(100 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_OTA:
-                Led_Off();
-                vTaskDelay(50 / portTICK_RATE_MS);
-                Led_B_On();
-                vTaskDelay(50 / portTICK_RATE_MS);
-                break;
-
-            case LED_STA_REST:
-                Led_B_On();
-                vTaskDelay(100 / portTICK_RATE_MS);
-                Led_Off();
-                vTaskDelay(100 / portTICK_RATE_MS);
-                Led_B_On();
-                vTaskDelay(100 / portTICK_RATE_MS);
-                Led_Off();
-                vTaskDelay(500 / portTICK_RATE_MS);
-
-                break;
             }
         }
     }
@@ -120,7 +120,7 @@ void Led_Init(void)
     //set as output mode
     io_conf.mode = GPIO_MODE_OUTPUT;
     //bit mask of the pins that you want to set,e.g.GPIO16
-    io_conf.pin_bit_mask = (1ULL << GPIO_LED_B);
+    io_conf.pin_bit_mask = (1ULL << GPIO_LED_B) | (1ULL << GPIO_LED_Y);
     //disable pull-down mode
     io_conf.pull_down_en = 1;
     //disable pull-up mode
@@ -128,9 +128,7 @@ void Led_Init(void)
     //configure GPIO with the given settings
     gpio_config(&io_conf);
 
-    Led_Status = LED_STA_INIT;
-
-    xTaskCreate(Led_Task, "Led_Task", 4096, NULL, 2, &Led_Task_Handle);
+    xTaskCreate(Led_Task, "Led_Task", 3072, NULL, 2, &Led_Task_Handle);
 }
 
 void Led_R_On(void)
@@ -161,9 +159,11 @@ void Led_B_Off(void)
 
 void Led_Y_On(void)
 {
-    // gpio_set_level(GPIO_LED_R, 0);
-    // gpio_set_level(GPIO_LED_G, 0);
-    // gpio_set_level(GPIO_LED_B, 1);
+    gpio_set_level(GPIO_LED_Y, 1);
+}
+void Led_Y_Off(void)
+{
+    gpio_set_level(GPIO_LED_Y, 0);
 }
 
 void Led_C_On(void) //
@@ -175,9 +175,8 @@ void Led_C_On(void) //
 
 void Led_Off(void)
 {
-    // gpio_set_level(GPIO_LED_R, 1);
-    // gpio_set_level(GPIO_LED_G, 1);
-    gpio_set_level(GPIO_LED_B, 0);
+    Led_B_Off();
+    Led_Y_Off();
 }
 
 void Turn_Off_LED(void)

@@ -6,9 +6,7 @@
 // extern bool CSE_Status;
 // extern bool CSE_Energy_Status;
 
-extern int8_t
-CSE7759B_Read(void);
-
+int8_t CSE7759B_Read(void);
 void STOP_7759B_READ(void);
 void START_7759B_READ(void);
 void CSE7759B_Init(void);

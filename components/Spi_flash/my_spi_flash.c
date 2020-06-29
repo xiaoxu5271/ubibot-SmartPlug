@@ -36,9 +36,6 @@ static const char *TAG = "SPI_FLASH_MODE";
  before the transaction is sent, the callback will set this line to the correct state.
 */
 
-//单次最大发送的数据条数
-#define MAX_READ_NUM 2000
-
 #define PIN_NUM_CS 5
 #define PIN_NUM_MISO 19
 #define PIN_NUM_MOSI 23
@@ -490,7 +487,7 @@ uint16_t W25QXX_Read_Data(uint8_t *Temp_buff, uint32_t ReadAddr, uint16_t Size_T
 }
 
 //单次从flash中读取数据缓存中正确的数据的大小，不跨区
-uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add, uint32_t *data_num)
+uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add, uint32_t *data_num, uint32_t Max_Read)
 {
 	uint32_t i = 0, j = 0;
 	uint8_t Temp = 0;
@@ -527,9 +524,9 @@ uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Re
 				j = 0;
 				start_flag = false;
 				(*data_num)++;
-				if (*data_num >= MAX_READ_NUM)
+				if (*data_num >= Max_Read)
 				{
-					ESP_LOGI("read_date", "data num = %d", *data_num);
+					// ESP_LOGI("read_date", "data num = %d", *data_num);
 					break;
 				}
 			}
@@ -556,7 +553,7 @@ uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Re
 			// ESP_LOGE("read_date", "no data");
 		}
 	}
-	ESP_LOGI("read_date", "no_data_len=%d", no_data_len);
+	// ESP_LOGI("read_date", "no_data_len=%d", no_data_len);
 	W25QXX_CS_H;
 	*Read_End_add = i + Start_Addr; //当前截止地址
 	return post_len;
@@ -564,16 +561,16 @@ uint32_t Read_Post_Len_Once(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Re
 
 //读取数据缓存中正确的数据的大小，
 //一组数据：{"created_at":"2020-02-20T08:52:08Z","field1":1.001,"field2":1.002,"field2":1.003}
-uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add)
+uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_End_add, uint32_t Max_Read)
 {
-	ESP_LOGI("read_date", "Start_Addr=%d,End_Addr=%d", Start_Addr, End_Addr);
+	// ESP_LOGI("read_date", "Start_Addr=%d,End_Addr=%d", Start_Addr, End_Addr);
 
 	uint32_t post_len = 0;
 	uint32_t data_num = 0;
 
 	if (Start_Addr < End_Addr)
 	{
-		post_len = Read_Post_Len_Once(Start_Addr, End_Addr, Read_End_add, &data_num);
+		post_len = Read_Post_Len_Once(Start_Addr, End_Addr, Read_End_add, &data_num, Max_Read);
 	}
 	else
 	{
@@ -584,9 +581,9 @@ uint32_t Read_Post_Len(uint32_t Start_Addr, uint32_t End_Addr, uint32_t *Read_En
 			return 0;
 		}
 
-		post_len = Read_Post_Len_Once(Start_Addr, SPI_FLASH_SIZE, Read_End_add, &data_num); //从起始读到flash最大地址
-		if (data_num < MAX_READ_NUM)
-			post_len += Read_Post_Len_Once(0, End_Addr, Read_End_add, &data_num); //从flash头读到结束地址
+		post_len = Read_Post_Len_Once(Start_Addr, SPI_FLASH_SIZE, Read_End_add, &data_num, Max_Read); //从起始读到flash最大地址
+		if (data_num < Max_Read)
+			post_len += Read_Post_Len_Once(0, End_Addr, Read_End_add, &data_num, Max_Read); //从flash头读到结束地址
 	}
 	ESP_LOGI("read_date", "data_num=%d,Read_End_add=%d", data_num, *Read_End_add);
 	// *Read_End_add = i + Start_Addr; //当前截止地址
@@ -624,7 +621,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 		}
 		if (i < secremain) //需要擦除
 		{
-			ESP_LOGI("w25_writr", "W25QXX_Erase_Sector:%d", secpos);
+			// ESP_LOGI("w25_writr", "W25QXX_Erase_Sector:%d", secpos);
 			W25QXX_Erase_Sector(secpos);	//擦除整个扇区
 			for (i = 0; i < secremain; i++) //复制
 			{
@@ -670,7 +667,7 @@ void SPI_FLASH_Init(void)
 	gpio_config(&io_conf);
 
 	VprocHALInit();
-	ESP_LOGI(TAG, "SPI_SET 1.0 \n");
+	// ESP_LOGI(TAG, "SPI_SET 1.0 \n");
 	W25QXX_CS_H; //SPI FLASH不选中
 	//W25QXX_WAKEUP();
 	W25QXX_TYPE = W25QXX_ReadID(); //读取FLASH ID.
@@ -679,9 +676,9 @@ void SPI_FLASH_Init(void)
 		vTaskDelay(1000 / portTICK_RATE_MS);
 		W25QXX_TYPE = W25QXX_ReadID(); //读取FLASH ID.
 		ESP_LOGE(TAG, "W25QXX_TYPE = %x\n", W25QXX_TYPE);
-		Led_Status = LED_STA_HEARD_ERR;
+		FLASH_FLAG = false;
 	}
-
+	FLASH_FLAG = true;
 	W25QXX_Write_Enable(); //SPI_FLASH写使能
 	W25QXX_Write_SR(0);
 	W25QXX_Wait_Busy();
