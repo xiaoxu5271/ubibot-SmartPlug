@@ -3,6 +3,9 @@
 #define _CACHE_H_
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 
 //单次最大发送的数据条数
 #define MAX_READ_NUM 2000

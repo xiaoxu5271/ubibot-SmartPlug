@@ -102,7 +102,10 @@
 #define MQTT_HOST_ADD WEB_PORT_ADD + 5 + 1             //MQTT HOST
 #define MQTT_PORT_ADD MQTT_HOST_ADD + WEB_HOST_LEN + 1 //MQTT PORT
 
-#define E2P_USAGED MQTT_PORT_ADD
+#define FN_SW_ON_ADD MQTT_PORT_ADD + 5 + 1    //4 B
+#define SW_ON_F_NUM_ADDR FN_SW_ON_ADD + 4 + 1 //1 B
+
+#define E2P_USAGED SW_ON_F_NUM_ADDR
 
 void E2prom_Init(void);
 esp_err_t E2P_WriteOneByte(uint16_t reg_addr, uint8_t dat);

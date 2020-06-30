@@ -6,7 +6,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-#define FIRMWARE "SP1-V0.1.40"
+#define FIRMWARE "SP1-V0.1.41"
 
 #define POST_NORMAL 0X00
 #define POST_HEIGHT_ADD 0X01
@@ -43,6 +43,7 @@ extern TaskHandle_t Binary_ext;
 extern TaskHandle_t Binary_energy;
 extern TaskHandle_t Binary_ele_quan;
 extern TaskHandle_t Active_Task_Handle;
+extern TaskHandle_t Sw_on_Task_Handle;
 esp_timer_handle_t http_timer_suspend_p;
 
 extern uint8_t post_status;

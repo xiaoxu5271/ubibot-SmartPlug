@@ -46,6 +46,7 @@ uint32_t fn_sw_pc = 3600; //用电量统计
 uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
 uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 uint8_t de_sw_s = 0;      //开关默认上电状态
+uint32_t fn_sw_on = 0;    //开启时长统计
 
 // field num 相关参数
 uint8_t sw_s_f_num = 1;      //开关状态
@@ -58,15 +59,16 @@ uint8_t rssi_g_f_num = 7;    //4G信号
 uint8_t r1_light_f_num = 8;  //485光照
 uint8_t r1_th_t_f_num = 9;   //485空气温度
 uint8_t r1_th_h_f_num = 10;  //485空气湿度
-uint8_t r1_sth_t_f_num = 11; //485土壤温度
-uint8_t r1_sth_h_f_num = 12; //485土壤湿度
-uint8_t e1_t_f_num = 13;     //DS18B20温度
-uint8_t r1_t_f_num = 14;     //485温度探头温度
-uint8_t r1_ws_f_num = 15;    //485风速
-uint8_t r1_co2_f_num = 16;   //485 CO2
-uint8_t r1_ph_f_num = 17;    //485 PH
-uint8_t r1_co2_t_f_num = 18; // CO2 温度
-uint8_t r1_co2_h_f_num = 19; //CO2 湿度
+uint8_t sw_on_f_num = 11;    //累积开启时长
+uint8_t r1_sth_t_f_num = 12; //485土壤温度
+uint8_t r1_sth_h_f_num = 13; //485土壤湿度
+uint8_t e1_t_f_num = 14;     //DS18B20温度
+uint8_t r1_t_f_num = 15;     //485温度探头温度
+uint8_t r1_ws_f_num = 16;    //485风速
+uint8_t r1_co2_f_num = 17;   //485 CO2
+uint8_t r1_ph_f_num = 18;    //485 PH
+uint8_t r1_co2_t_f_num = 19; // CO2 温度
+uint8_t r1_co2_h_f_num = 20; //CO2 湿度
 
 //
 char SerialNum[SERISE_NUM_LEN] = {0};
@@ -201,6 +203,16 @@ static short Parse_metadata(char *ptrptr)
             fn_sw_pc = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_ELE_QUAN_ADD, fn_sw_pc, 4);
             printf("fn_sw_pc = %d\n", fn_sw_pc);
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_on"); //"fn_sw_pc"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_sw_on)
+        {
+            fn_sw_on = (uint32_t)pSubSubSub->valueint;
+            E2P_WriteLenByte(FN_SW_ON_ADD, fn_sw_on, 4);
+            printf("fn_sw_on = %d\n", fn_sw_on);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "cg_data_led"); //"cg_data_led"
@@ -755,6 +767,7 @@ void Create_fields_num(char *read_buf)
     cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);       //r1_ph_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_co2_t", r1_co2_t_f_num); //r1_co2_t_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_co2_h", r1_co2_h_f_num); //r1_co2_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_on", sw_on_f_num);       //sw_on_f_num
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
     data_len = strlen(out_buf);
@@ -1155,7 +1168,7 @@ static short Parse_fields_num(char *ptrptr)
     cJSON *pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_s"); //"sw_s"
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_s_f_num)
         {
             sw_s_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_S_F_NUM_ADDR, sw_s_f_num);
@@ -1164,7 +1177,7 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_v"); //"sw_v"
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_v_f_num)
         {
             sw_v_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_V_F_NUM_ADDR, sw_v_f_num); //
@@ -1173,7 +1186,7 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_c"); //""
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_c_f_num)
         {
             sw_c_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num); //
@@ -1182,7 +1195,7 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_p"); //""
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_p_f_num)
         {
             sw_p_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num); //
@@ -1191,10 +1204,19 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_pc"); //""
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_pc_f_num)
         {
             sw_pc_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_PC_F_NUM_ADDR, sw_pc_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_on"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != sw_on_f_num)
+        {
+            sw_on_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(SW_ON_F_NUM_ADDR, sw_on_f_num); //
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "rssi_w"); //"rssi_w"

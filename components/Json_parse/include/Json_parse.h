@@ -70,6 +70,7 @@ extern uint32_t fn_sw_pc;   //用电量统计
 extern uint8_t cg_data_led; //发送数据 LED状态 0关闭，1打开
 extern uint8_t net_mode;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 extern uint8_t de_sw_s;     //开关默认上电状态
+extern uint32_t fn_sw_on;   //开启时长 统计周期
 
 /*********field num 相关参数************/
 extern uint8_t sw_s_f_num;     //开关状态
@@ -91,6 +92,7 @@ extern uint8_t r1_co2_f_num;   //485 CO2
 extern uint8_t r1_ph_f_num;    //485 PH
 extern uint8_t r1_co2_t_f_num; // CO2 温度
 extern uint8_t r1_co2_h_f_num; //CO2 湿度
+extern uint8_t sw_on_f_num;    //累积开启时长
 
 extern char SerialNum[SERISE_NUM_LEN];
 extern char ProductId[PRODUCT_ID_LEN];

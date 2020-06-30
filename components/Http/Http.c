@@ -36,8 +36,9 @@ TaskHandle_t Binary_485_co2 = NULL;
 TaskHandle_t Binary_ext = NULL;
 TaskHandle_t Binary_energy = NULL;
 TaskHandle_t Binary_ele_quan = NULL;
-
 TaskHandle_t Active_Task_Handle = NULL;
+TaskHandle_t Sw_on_Task_Handle = NULL;
+
 // extern uint8_t data_read[34];
 
 static char *TAG = "HTTP";
@@ -109,6 +110,12 @@ void timer_heart_cb(void *arg)
         if (min_num * 60 % fn_ext == 0)
         {
             vTaskNotifyGiveFromISR(Binary_ext, NULL);
+        }
+
+    if (fn_sw_on)
+        if (min_num * 60 % fn_sw_on == 0)
+        {
+            vTaskNotifyGiveFromISR(Sw_on_Task_Handle, NULL);
         }
 }
 
