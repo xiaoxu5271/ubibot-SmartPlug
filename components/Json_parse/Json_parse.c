@@ -46,7 +46,7 @@ uint32_t fn_sw_pc = 3600; //用电量统计
 uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
 uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 uint8_t de_sw_s = 0;      //开关默认上电状态
-uint32_t fn_sw_on = 0;    //开启时长统计
+uint32_t fn_sw_on = 3600; //开启时长统计
 
 // field num 相关参数
 uint8_t sw_s_f_num = 1;      //开关状态

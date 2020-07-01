@@ -89,9 +89,10 @@ void Sw_on_quan_Task(void *pvParameters)
         //仍处于开启状态
         if (mqtt_json_s.mqtt_switch_status == 1)
         {
-            SW_last_time = (uint64_t)esp_timer_get_time();
             SW_on_time += (uint64_t)esp_timer_get_time() - SW_last_time;
+            SW_last_time = (uint64_t)esp_timer_get_time();
         }
+        ESP_LOGI(TAG, "SW_on_time:%lld", SW_on_time);
 
         if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
         {
@@ -101,9 +102,9 @@ void Sw_on_quan_Task(void *pvParameters)
             pJsonRoot = cJSON_CreateObject();
             cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
             snprintf(filed_buff, 9, "field%d", sw_on_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber((double)(SW_on_time / 1000000)));
-            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                       //delete cjson root
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber((uint64_t)((SW_on_time + 500000) / 1000000))); //四舍五入
+            OutBuffer = cJSON_PrintUnformatted(pJsonRoot);                                                                 //cJSON_Print(Root)
+            cJSON_Delete(pJsonRoot);                                                                                       //delete cjson root
             len = strlen(OutBuffer);
             ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
 
