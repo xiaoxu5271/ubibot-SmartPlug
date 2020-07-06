@@ -428,12 +428,12 @@ int32_t http_send_buff(char *send_buff, uint16_t send_size, char *recv_buff, uin
 }
 
 //发送心跳包
-bool Send_herat(void)
+Net_Err Send_herat(void)
 {
     char *build_heart_url;
     char *recv_buf;
-    bool ret = false;
-    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等网络连接
+    Net_Err ret = NET_OK;
+    xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
 
     xSemaphoreTake(xMutex_Http_Send, -1);
     build_heart_url = (char *)malloc(256);
@@ -449,19 +449,19 @@ bool Send_herat(void)
             if (parse_objects_heart(recv_buf))
             {
                 //successed
-                ret = true;
+                ret = NET_OK;
                 Net_sta_flag = true;
             }
             else
             {
                 ESP_LOGE(TAG, "hart recv:%s", recv_buf);
-                ret = false;
+                ret = NET_400;
                 Net_sta_flag = false;
             }
         }
         else
         {
-            ret = false;
+            ret = NET_DIS;
             Net_sta_flag = false;
             ESP_LOGE(TAG, "hart recv 0!\r\n");
         }
@@ -471,7 +471,7 @@ bool Send_herat(void)
         sprintf(build_heart_url, "http://%s/heartbeat?api_key=%s\r\n", WEB_SERVER, ApiKey);
         if (EC20_Active(build_heart_url, recv_buf) == 0)
         {
-            ret = false;
+            ret = NET_DIS;
             Net_sta_flag = false;
             ESP_LOGE(TAG, "hart recv 0!\r\n");
         }
@@ -480,12 +480,12 @@ bool Send_herat(void)
             // ESP_LOGI(TAG, "active recv:%s", recv_buf);
             if (parse_objects_heart(recv_buf))
             {
-                ret = true;
+                ret = NET_OK;
                 Net_sta_flag = true;
             }
             else
             {
-                ret = false;
+                ret = NET_400;
                 Net_sta_flag = false;
             }
         }
@@ -499,15 +499,21 @@ bool Send_herat(void)
 
 void send_heart_task(void *arg)
 {
+    Net_Err ret;
     while (1)
     {
         ESP_LOGW("heart_memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
                  heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
                  esp_get_free_heap_size());
 
-        while (Send_herat() == false)
+        while ((ret = Send_herat()) != NET_OK)
         {
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            if (ret != NET_DIS) //非网络错误，需重新激活
+            {
+                Start_Active();
+                break;
+            }
+            vTaskDelay(10000 / portTICK_PERIOD_MS);
         }
 
         ulTaskNotifyTake(pdTRUE, -1);
@@ -580,13 +586,22 @@ uint16_t http_activate(void)
 void Active_Task(void *arg)
 {
     xEventGroupSetBits(Net_sta_group, ACTIVE_S_BIT);
+    uint8_t Retry_num = 0;
+    uint32_t Delay_ms;
     while (1)
     {
         xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
         while ((Net_ErrCode = http_activate()) != 1) //激活
         {
-            ESP_LOGE(TAG, "activate fail\n");
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            if (Net_ErrCode = 302)
+            {
+                Retry_num++;
+                vTaskDelay(10000 / portTICK_PERIOD_MS);
+            }
+            else
+            {
+                vTaskDelay(2000 / portTICK_PERIOD_MS);
+            }
         }
         xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
         break;

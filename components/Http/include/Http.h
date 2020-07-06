@@ -28,6 +28,15 @@
 
 #define HTTP_RECV_BUFF_LEN 2048
 
+typedef enum
+{
+    NET_OK = 0,
+    NET_DIS,
+    NET_410,
+    NET_400,
+    NET_402,
+} Net_Err;
+
 SemaphoreHandle_t xMutex_Http_Send;
 
 //需要发送的二值信号量

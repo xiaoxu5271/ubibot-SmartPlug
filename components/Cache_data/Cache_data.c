@@ -30,12 +30,13 @@ uint32_t start_read_num = 0; //读取数据的开始地址
 bool Exhausted_flag = 0;     //整个flash 已全部使用标志
 SemaphoreHandle_t Cache_muxtex = NULL;
 
-static bool Http_post_fun(void);
+static Net_Err Http_post_fun(void);
 //写flash 测试
 void Write_Flash_Test_task(void *pvParameters);
 
 void Data_Post_Task(void *pvParameters)
 {
+    Net_Err ret;
     while (1)
     {
         ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
@@ -43,9 +44,14 @@ void Data_Post_Task(void *pvParameters)
                  esp_get_free_heap_size());
         Create_NET_Json();
 
-        while (Http_post_fun() == false)
+        while ((ret = Http_post_fun()) != NET_OK)
         {
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+            if (ret != NET_DIS)
+            {
+                Start_Active();
+                break;
+            }
+            vTaskDelay(500 / portTICK_PERIOD_MS);
         }
 
         ulTaskNotifyTake(pdTRUE, -1);
@@ -206,7 +212,7 @@ static bool Http_post_fun(void)
     bool send_status = false;                 //http 发送状态标志 ，false:发送未完成
     char *recv_buff = NULL;                   //post 返回
     bool data_err_flag = false;               // 数据中存在错误，会导致 post 失败
-    bool ret;
+    Net_Err ret;
 
     status_buff = (char *)malloc(STATUS_BUFF_LEN);
     one_post_buff = (uint8_t *)malloc(ONE_POST_BUFF_LEN);
@@ -226,7 +232,7 @@ static bool Http_post_fun(void)
 
     if (cache_data_len == 0)
     {
-        ret = true;
+        ret = NET_OK;
         // ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
@@ -237,7 +243,7 @@ static bool Http_post_fun(void)
     socket_num = http_post_init(post_data_len);
     if (socket_num < 0)
     {
-        ret = false;
+        ret = NET_DIS;
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
@@ -245,7 +251,7 @@ static bool Http_post_fun(void)
     // if (write(socket_num, post_header, strlen((const char *)post_header)) < 0) //step4：发送http Header
     if (http_send_post(socket_num, (char *)post_header, false) != 1)
     {
-        ret = false;
+        ret = NET_DIS;
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
@@ -296,7 +302,7 @@ static bool Http_post_fun(void)
             // if (write(socket_num, one_post_buff, strlen((const char *)one_post_buff)) < 0) //post_buff
             if (http_send_post(socket_num, (char *)one_post_buff, false) != 1)
             {
-                ret = false;
+                ret = NET_DIS;
                 ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
                 goto end;
             }
@@ -328,7 +334,7 @@ static bool Http_post_fun(void)
     {
         //这里出错很有可能是数据构建出问题，
         data_err_flag = true;
-        ret = false;
+        ret = NET_DIS;
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
@@ -337,7 +343,7 @@ static bool Http_post_fun(void)
     if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) == false)
     {
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
-        ret = false;
+        ret = NET_DIS;
         Net_sta_flag = false;
         goto end;
     }
@@ -345,19 +351,19 @@ static bool Http_post_fun(void)
     // ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
     if (parse_objects_http_respond(recv_buff))
     {
-        ret = true;
+        ret = NET_OK;
         Net_sta_flag = true;
         ESP_LOGI(TAG, "post success");
     }
     else
     {
-        ret = false;
+        ret = NET_400;
         Net_sta_flag = false;
         goto end;
     }
 
 end:
-    if (ret == true)
+    if (ret == NET_OK)
     {
         xSemaphoreTake(Cache_muxtex, -1);
         E2P_WriteLenByte(START_READ_NUM_ADD, start_read_num_oen, 4);
