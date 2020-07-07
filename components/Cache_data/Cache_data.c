@@ -194,7 +194,7 @@ void Start_Cache(void)
 #define ONE_POST_BUFF_LEN 512
 #define STATUS_BUFF_LEN 450
 
-static bool Http_post_fun(void)
+static Net_Err Http_post_fun(void)
 {
     xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1);
 

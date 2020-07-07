@@ -1533,6 +1533,23 @@ void Read_Product_E2p(void)
     E2P_Read(BEARER_USER_ADDR, (uint8_t *)SIM_USER, sizeof(SIM_USER));
     E2P_Read(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
     printf("APN=%s,USER=%s,PWD=%s\n", SIM_APN, SIM_USER, SIM_PWD);
+
+    if (strlen(WEB_SERVER) == 0)
+    {
+        sprintf(WEB_SERVER, "api.ubibot.cn");
+    }
+    if (strlen(WEB_PORT) == 0)
+    {
+        sprintf(WEB_PORT, "80");
+    }
+    if (strlen(MQTT_SERVER) == 0)
+    {
+        sprintf(MQTT_SERVER, "mqtt.ubibot.cn");
+    }
+    if (strlen(MQTT_PORT) == 0)
+    {
+        sprintf(MQTT_PORT, "1883");
+    }
 }
 
 void Read_Fields_E2p(void)

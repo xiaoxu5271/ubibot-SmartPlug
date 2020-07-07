@@ -587,15 +587,20 @@ void Active_Task(void *arg)
 {
     xEventGroupSetBits(Net_sta_group, ACTIVE_S_BIT);
     uint8_t Retry_num = 0;
-    uint32_t Delay_ms;
     while (1)
     {
         xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
         while ((Net_ErrCode = http_activate()) != 1) //激活
         {
-            if (Net_ErrCode = 302)
+            if (Net_ErrCode == 302)
             {
                 Retry_num++;
+                if (Retry_num > 60)
+                {
+                    xEventGroupClearBits(Net_sta_group, ACTIVE_S_BIT);
+                    vTaskDelete(NULL);
+                }
+
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
             else
