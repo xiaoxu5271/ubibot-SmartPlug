@@ -560,7 +560,7 @@ uint16_t http_activate(void)
         {
             ESP_LOGE(TAG, "active ERR");
             Net_sta_flag = false;
-            ret = 101;
+            ret = 301;
         }
         else
         {
@@ -573,7 +573,7 @@ uint16_t http_activate(void)
             else
             {
                 Net_sta_flag = false;
-                ret = 102;
+                ret = 302;
             }
         }
     }
