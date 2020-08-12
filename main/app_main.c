@@ -40,6 +40,8 @@ void app_main(void)
 		ota_back();
 	}
 
+	printf("double:%d,float:%d,uint32:%d\n", sizeof(double), sizeof(float), sizeof(uint32_t));
+
 	Cache_muxtex = xSemaphoreCreateMutex();
 	xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
 	EC20_muxtex = xSemaphoreCreateMutex();

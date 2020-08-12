@@ -85,7 +85,96 @@ char SIM_APN[32] = {0};
 char SIM_USER[32] = {0};
 char SIM_PWD[32] = {0};
 
+//cali 相关 f1_a,f1_b,f1_a,f2_b,,,,,
+f_cali f_cali_u[40] = {
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+};
+
+const char f_cali_str[40][6] =
+    {
+        "f1_a", //
+        "f1_b", //
+        "f2_a",
+        "f2_b",
+        "f3_a",
+        "f3_b",
+        "f4_a",
+        "f4_b",
+        "f5_a",
+        "f5_b",
+        "f6_a",
+        "f6_b",
+        "f7_a",
+        "f7_b",
+        "f8_a",
+        "f8_b",
+        "f9_a",
+        "f9_b",
+        "f10_a",
+        "f10_b",
+        "f11_a",
+        "f11_b",
+        "f12_a",
+        "f12_b",
+        "f13_a",
+        "f13_b",
+        "f14_a",
+        "f14_b",
+        "f15_a",
+        "f15_b",
+        "f16_a",
+        "f16_b",
+        "f17_a",
+        "f17_b",
+        "f18_a",
+        "f18_b",
+        "f19_a",
+        "f19_b",
+        "f20_a",
+        "f20_b"};
+
 static short Parse_fields_num(char *ptrptr);
+static short Parse_cali_dat(char *ptrptr);
+
 void Create_fields_num(char *read_buf);
 
 static short Parse_metadata(char *ptrptr)
@@ -443,6 +532,12 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
             parse_objects_mqtt(mqtt_json, false); //parse mqtt
             free(mqtt_json);
         }
+
+        json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "cali"); //cali
+        if (NULL != json_data_parse_value)
+        {
+            Parse_cali_dat(json_data_parse_value->valuestring); //parse cali
+        }
     }
 
     cJSON_Delete(json_data_parse);
@@ -587,10 +682,13 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
 
     if (filed_flag == true)
     {
-        char *field_buff;
+        char *field_buff, *cali_buff;
         field_buff = (char *)malloc(FILED_BUFF_SIZE);
+        cali_buff = (char *)malloc(CALI_BUFF_SIZE);
         memset(field_buff, 0, FILED_BUFF_SIZE);
+        memset(cali_buff, 0, CALI_BUFF_SIZE);
         Create_fields_num(field_buff);
+        Create_cali_buf(cali_buff);
 
         if (net_mode == NET_WIFI)
         {
@@ -598,7 +696,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
             memset(ssid64_buff, 0, 64);
             base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
@@ -606,12 +704,13 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
                     mac_sys[4],
                     mac_sys[5],
                     ssid64_buff,
-                    field_buff);
+                    field_buff,
+                    cali_buff);
             free(ssid64_buff);
         }
         else
         {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"sensors\":[%s]}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"sensors\":[%s],\"cali\":[%s]}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
@@ -619,9 +718,11 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
                     mac_sys[4],
                     mac_sys[5],
                     ICCID,
-                    field_buff);
+                    field_buff,
+                    cali_buff);
         }
         free(field_buff);
+        free(cali_buff);
     }
     else
     {
@@ -743,7 +844,7 @@ void Create_Switch_Json(void)
 void Create_fields_num(char *read_buf)
 {
     char *out_buf;
-    uint8_t data_len;
+    uint16_t data_len;
     cJSON *pJsonRoot;
 
     pJsonRoot = cJSON_CreateObject();
@@ -773,6 +874,27 @@ void Create_fields_num(char *read_buf)
     data_len = strlen(out_buf);
     cJSON_Delete(pJsonRoot); //delete cjson root
     memcpy(read_buf, out_buf, data_len);
+    free(out_buf);
+}
+
+/*******************************************************************************
+// create cali num 
+*******************************************************************************/
+void Create_cali_buf(char *read_buf)
+{
+    char *out_buf;
+    cJSON *pJsonRoot;
+
+    pJsonRoot = cJSON_CreateObject();
+
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        cJSON_AddNumberToObject(pJsonRoot, f_cali_str[i], f_cali_u[i].val); //sw_s_f_num
+    }
+
+    out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    cJSON_Delete(pJsonRoot);                     //delete cjson root
+    strcpy(read_buf, out_buf);
     free(out_buf);
 }
 
@@ -1354,6 +1476,50 @@ static short Parse_fields_num(char *ptrptr)
     return ESP_OK;
 }
 
+/*******************************************************************************
+// parse sensors fields num
+*******************************************************************************/
+static short Parse_cali_dat(char *ptrptr)
+{
+    cJSON *pSubSubSub;
+
+    if (NULL == ptrptr)
+    {
+        return ESP_FAIL;
+    }
+    cJSON *pJsonJson = cJSON_Parse(ptrptr);
+    if (NULL == pJsonJson)
+    {
+        cJSON_Delete(pJsonJson); //delete pJson
+        return ESP_FAIL;
+    }
+
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        pSubSubSub = cJSON_GetObjectItem(pJsonJson, f_cali_str[i]); //
+        if (NULL != pSubSubSub)
+        {
+            if ((float)pSubSubSub->valuedouble != f_cali_u[i].val)
+            {
+                f_cali_u[i].val = (float)pSubSubSub->valuedouble;
+                E2P_WriteLenByte(5 * i + F1_A_ADDR, f_cali_u[i].dat, 4);
+            }
+        }
+    }
+
+    cJSON_Delete(pJsonJson);
+    return ESP_OK;
+}
+
+//计算 filed 校准值
+double Cali_filed(uint8_t filed_num, double filed_val)
+{
+    double filed_val_c;
+    filed_val_c = (double)f_cali_u[(filed_num - 1) * 2].val * filed_val + f_cali_u[(filed_num - 1) * 2 + 1].val; //a*X+b
+
+    return filed_val_c;
+}
+
 // get mid str 把src中 s1 到 s2之间的数据拷贝（包括s1不包括S2）到 sub中 ,返回 s2地址
 char *mid(char *src, char *s1, char *s2, char *sub)
 {
@@ -1573,6 +1739,17 @@ void Read_Fields_E2p(void)
     r1_ph_f_num = E2P_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
     r1_co2_t_f_num = E2P_ReadOneByte(RS485_CO2_T_NUM_ADDR);
     r1_co2_h_f_num = E2P_ReadOneByte(RS485_CO2_H_NUM_ADDR);
+
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        f_cali_u[i].dat = E2P_ReadLenByte(5 * i + F1_A_ADDR, 4);
+        if (i % 2 == 0 && f_cali_u[i].val == 0)
+        {
+            f_cali_u[i].val = 1;
+        }
+
+        printf("%s:%f\n", f_cali_str[i], f_cali_u[i].val);
+    }
 
     printf("sw_s_f_num:%d\n", sw_s_f_num);
     printf("sw_v_f_num:%d\n", sw_v_f_num);

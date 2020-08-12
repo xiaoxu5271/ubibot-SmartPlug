@@ -191,8 +191,8 @@ void Start_Cache(void)
 /*******************************************************************************
 //  HTTP POST 
 *******************************************************************************/
-#define ONE_POST_BUFF_LEN 512
-#define STATUS_BUFF_LEN 450
+#define ONE_POST_BUFF_LEN 1536
+#define STATUS_BUFF_LEN 1024
 
 static Net_Err Http_post_fun(void)
 {
@@ -221,7 +221,7 @@ static Net_Err Http_post_fun(void)
     memset(status_buff, 0, STATUS_BUFF_LEN);
 
     Create_Status_Json(status_buff, true); //
-    // ESP_LOGI(TAG, "status_buff_len:%d,strlen:%d,buff:%s", status_buff_len, strlen(status_buff), status_buff);
+    // ESP_LOGI(TAG, "strlen:%d,\nbuff:%s", strlen(status_buff), status_buff);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
     // ESP_LOGI(TAG, "start_read_num_oen=%d", start_read_num_oen);

@@ -18,6 +18,7 @@ esp_err_t creat_object(void);
 #define NET_WIFI 0 //上网模式 wifi
 
 #define FILED_BUFF_SIZE 350
+#define CALI_BUFF_SIZE 512
 
 struct
 {
@@ -44,6 +45,11 @@ typedef struct
     uint8_t len;
 } creat_json;
 
+typedef union {
+    float val;
+    uint32_t dat;
+} f_cali;
+
 //creat_json *create_http_json(uint8_t post_status);
 void create_http_json(creat_json *pCreat_json, uint8_t flag);
 void Read_Metadate_E2p(void);
@@ -55,6 +61,8 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag);
 char *mid(char *src, char *s1, char *s2, char *sub);
 char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szKey);
 char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_szKey);
+double Cali_filed(uint8_t filed_num, double filed_val);
+void Create_cali_buf(char *read_buf);
 
 /************metadata 参数***********/
 extern uint32_t fn_dp;      //数据发送频率
@@ -93,6 +101,9 @@ extern uint8_t r1_ph_f_num;    //485 PH
 extern uint8_t r1_co2_t_f_num; // CO2 温度
 extern uint8_t r1_co2_h_f_num; //CO2 湿度
 extern uint8_t sw_on_f_num;    //累积开启时长
+
+//cali 相关
+extern f_cali fn_val[40];
 
 extern char SerialNum[SERISE_NUM_LEN];
 extern char ProductId[PRODUCT_ID_LEN];
