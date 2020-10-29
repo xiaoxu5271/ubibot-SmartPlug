@@ -32,7 +32,7 @@
 #define DECOUNE_TIMER 10 * 1000            ///< 10mS
 #define SHORT_PRESS_DELAY_CHECK 150 * 1000 ///< 150ms
 #define LONG_PRESSED_TIMER 5000 * 1000     ///< 5000mS
-#define MULTI_PRESSED_TIMER 250            ///< 250mS,,表示前一个按键释放与后一个按键按下的时间小于等于此值说明是多击
+#define MULTI_PRESSED_TIMER 1000           ///单位ms  < 250mS,,表示前一个按键释放与后一个按键按下的时间小于等于此值说明是多击
 #define APP_KEY_PUSH 0                     ///< 表示按键按下
 #define APP_KEY_RELEASE 1                  ///< 表示按键释放
 #define APP_KEY_ACTIVE_HIGH 1              ///< 按键按下是高电平有效
@@ -62,7 +62,7 @@ typedef struct key_config
     uint8_t key_number;           ///< 按键对应的GPIO口
     uint8_t active_state;         ///< 指定按键按下是高电平有效,还是低电平有效
     uint8_t short_pressed_counts; ///< 保存按键短按的次数,用于多击的判断
-    uint32_t long_pressed_time;   ///< 按键长按时间,单位us
+    uint32_t long_pressed_time;   ///< 按键长按时间,单位uslong_pressed_time
 } key_config_t;
 
 /* 定义一个按键相关参数的结构体 */

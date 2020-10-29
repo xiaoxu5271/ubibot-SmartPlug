@@ -57,12 +57,22 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
             // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 2:
-            ble_app_start();
+
+            // ble_app_start();
             // ESP_LOGI("short_pressed_cb", "double press!!!\n");
             // Task_key_num = 2;
             // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 3:
+
+            if (Cnof_net_flag == true)
+            {
+                Set_defaul_flag = true;
+                E2prom_set_defaul(true);
+                vTaskDelay(5000 / portTICK_PERIOD_MS);
+                esp_restart();
+            }
+
             // Write_Flash_err_Test();
             // ESP_LOGI("short_pressed_cb", "trible press!!!\n");
             break;
@@ -97,11 +107,8 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
     switch (key_num)
     {
     case BOARD_BUTTON:
-        Set_defaul_flag = true;
-        E2prom_set_defaul(true);
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-        esp_restart();
-
+        ESP_LOGI("long_pressed_cb", "long press!!!\n");
+        ble_app_start();
         break;
     default:
         break;
@@ -109,33 +116,6 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
 }
 
 // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-void user_key_cd_task(void *arg)
-{
-    while (1)
-    {
-        ulTaskNotifyTake(pdTRUE, -1);
-        switch (Task_key_num)
-        {
-        case 1:
-            // Switch_Relay(-1);
-            // lan_ota();
-            break;
-
-        case 2:
-            // xTaskNotifyGive(view_sys_handle);
-            break;
-
-        case 5:
-            ble_app_start();
-            // wifi_init_softap();
-            break;
-
-        default:
-            break;
-        }
-        Task_key_num = 0;
-    }
-}
 
 static void vTask_view_Work(void *pvParameters)
 {

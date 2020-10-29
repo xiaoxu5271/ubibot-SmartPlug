@@ -56,64 +56,81 @@ esp_timer_create_args_t timer_heart_arg = {
 //1min 定时，用来触发各组数据采集/发送
 void timer_heart_cb(void *arg)
 {
-    vTaskNotifyGiveFromISR(Binary_Heart_Send, NULL);
     static uint64_t min_num = 0;
     min_num++;
+
+    static uint64_t ble_num = 0;
+    //超时关闭蓝牙广播
+    if (Cnof_net_flag == true)
+    {
+        ble_num++;
+        if (ble_num >= 60)
+        {
+            ble_app_stop();
+        }
+    }
+
+    //心跳
+    if (min_num % 60 == 0)
+    {
+        vTaskNotifyGiveFromISR(Binary_Heart_Send, NULL);
+    }
+
     if (fn_dp)
-        if (min_num * 60 % fn_dp == 0)
+        if (min_num % fn_dp == 0)
         {
             vTaskNotifyGiveFromISR(Binary_dp, NULL);
         }
     if (fn_485_t)
-        if (min_num * 60 % fn_485_t == 0)
+        if (min_num % fn_485_t == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_t, NULL);
         }
     if (fn_485_th)
-        if (min_num * 60 % fn_485_th == 0)
+        if (min_num % fn_485_th == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_th, NULL);
         }
     if (fn_485_sth)
-        if (min_num * 60 % fn_485_sth == 0)
+        if (min_num % fn_485_sth == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_sth, NULL);
         }
 
     if (fn_485_ws)
-        if (min_num * 60 % fn_485_ws == 0)
+        if (min_num % fn_485_ws == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_ws, NULL);
         }
     if (fn_485_lt)
-        if (min_num * 60 % fn_485_lt == 0)
+        if (min_num % fn_485_lt == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_lt, NULL);
         }
     if (fn_485_co2)
-        if (min_num * 60 % fn_485_co2 == 0)
+        if (min_num % fn_485_co2 == 0)
         {
             vTaskNotifyGiveFromISR(Binary_485_co2, NULL);
         }
 
     if (fn_sw_e)
-        if (min_num * 60 % fn_sw_e == 0)
+        if (min_num % fn_sw_e == 0)
         {
             vTaskNotifyGiveFromISR(Binary_energy, NULL);
         }
     if (fn_sw_pc)
-        if (min_num * 60 % fn_sw_pc == 0)
+        if (min_num % fn_sw_pc == 0)
         {
             vTaskNotifyGiveFromISR(Binary_ele_quan, NULL);
         }
     if (fn_ext)
-        if (min_num * 60 % fn_ext == 0)
+        if (min_num % fn_ext == 0)
         {
             vTaskNotifyGiveFromISR(Binary_ext, NULL);
         }
 
     if (fn_sw_on)
-        if (min_num * 60 % fn_sw_on == 0)
+        if (min_num % fn_sw_on == 0)
         {
             vTaskNotifyGiveFromISR(Sw_on_Task_Handle, NULL);
         }
@@ -609,11 +626,12 @@ void Active_Task(void *arg)
             }
         }
 
+        xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
         if (Binary_dp != NULL)
         {
             xTaskNotifyGive(Binary_dp);
         }
-        xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
         break;
     }
     xEventGroupClearBits(Net_sta_group, ACTIVE_S_BIT);
@@ -632,7 +650,7 @@ void initialise_http(void)
 {
     xTaskCreate(send_heart_task, "send_heart_task", 4096, NULL, 5, &Binary_Heart_Send);
     esp_err_t err = esp_timer_create(&timer_heart_arg, &timer_heart_handle);
-    err = esp_timer_start_periodic(timer_heart_handle, 60 * 1000000); //创建定时器，单位us，定时60s
+    err = esp_timer_start_periodic(timer_heart_handle, 1000000); //创建定时器，单位us，定时1s
     if (err != ESP_OK)
     {
         ESP_LOGI(TAG, "timer heart create err code:%d\n", err);
