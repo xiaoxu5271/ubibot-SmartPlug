@@ -45,7 +45,8 @@ typedef struct
     uint8_t len;
 } creat_json;
 
-typedef union {
+typedef union
+{
     float val;
     uint32_t dat;
 } f_cali;

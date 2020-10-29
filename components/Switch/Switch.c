@@ -48,10 +48,10 @@ void Switch_Relay(int8_t set_value)
     }
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
     Create_Switch_Json(); //构建开关状态
-    if (Binary_energy != NULL)
-    {
-        xTaskNotifyGive(Binary_energy);
-    }
+    // if (Binary_energy != NULL)
+    // {
+    //     xTaskNotifyGive(Binary_energy);
+    // }
     if (Binary_dp != NULL)
     {
         xTaskNotifyGive(Binary_dp);

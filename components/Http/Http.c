@@ -608,6 +608,11 @@ void Active_Task(void *arg)
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
             }
         }
+
+        if (Binary_dp != NULL)
+        {
+            xTaskNotifyGive(Binary_dp);
+        }
         xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
         break;
     }

@@ -157,6 +157,7 @@ void Send_Mqtt_Task(void *arg)
             Create_Status_Json((char *)status_buff, false); //
             snprintf(mqtt_buff, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
             esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
+            // ESP_LOGI(TAG, "MQTT:%s", mqtt_buff);
 
             free(status_buff);
             free(mqtt_buff);

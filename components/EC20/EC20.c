@@ -442,6 +442,27 @@ uint8_t EC20_Moudle_Init(void)
         return 0;
     }
 
+    //查询模块型号
+    // ret = AT_Cmd_Send("AT+CGMM\r\n", "OK", 1000, 5);
+    // if (ret == NULL)
+    // {
+    //     ESP_LOGE(TAG, "%d", __LINE__);
+    //     return 0;
+    // }
+    // else
+    // {
+    //     if ((ret = s_rstrstr(ret, 50, 6, "SIMCOM")) != NULL)
+    //     {
+    //         model_id = SIM7600;
+    //         ESP_LOGI(TAG, "model_id = SIM7600");
+    //     }
+    //     else
+    //     {
+    //         model_id = EC20;
+    //         ESP_LOGI(TAG, "model_id = EC20");
+    //     }
+    // }
+
     ret = AT_Cmd_Send("ATE0\r\n", "OK", 1000, 5); //回显
     if (ret == NULL)
     {
@@ -464,6 +485,7 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
+    //AT+CICCID +ICCID: 89860439101880927899
     ret = AT_Cmd_Send("AT+QCCID\r\n", "+QCCID:", 1000, 5);
     if (ret == NULL)
     {
@@ -477,6 +499,7 @@ uint8_t EC20_Moudle_Init(void)
         ESP_LOGI(TAG, "ICCID=%s", ICCID);
     }
 
+    // ？
     sprintf(cmd_buf, "AT+QICSGP=1,1,\"%s\",\"%s\",\"%s\",1\r\n", SIM_APN, SIM_USER, SIM_PWD);
     ret = AT_Cmd_Send(cmd_buf, "OK", 1000, 5);
     if (ret == NULL)
@@ -486,6 +509,7 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
+    //OK
     ret = AT_Cmd_Send("AT+CGATT=1\r\n", "OK", 1000, 5);
     if (ret == NULL)
     {
@@ -493,7 +517,7 @@ uint8_t EC20_Moudle_Init(void)
         Net_ErrCode = CGATT_ERR;
         goto end;
     }
-
+    //OK
     ret = AT_Cmd_Send("AT+CGATT?\r\n", "+CGATT: 1", 1000, 10);
     if (ret == NULL)
     {
@@ -502,6 +526,8 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
+    //AT+CGACT?
+    //+CGACT: 1,1
     ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5);
     if (ret != NULL)
     {
@@ -509,6 +535,8 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
+    //AT+CGACT=1,1
+    //OK
     ret = AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 1000, 10);
     if (ret == NULL)
     {
@@ -517,6 +545,8 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
+    //AT+CGACT?
+    //+CGACT: 1,1
     ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5);
     if (ret != NULL)
     {
@@ -1061,3 +1091,17 @@ end:
     cJSON_Delete(root); //delete pJson
     free(json_temp);
 }
+
+// int helperParseCommand(char buffer[],
+//                        char stringArray[MAX_COMMAND_ARGUMENTS][MAX_COMMAND_ARGUMENT_LENGTH])
+// {
+//     char delimiters[] = " ,:/+\"\r\n";
+//     char *token = strtok(buffer, delimiters);
+//     int count = 0;
+//     while (token != NULL && count < MAX_COMMAND_ARGUMENTS)
+//     {
+//         strncpy(stringArray[count++], token, MAX_COMMAND_ARGUMENT_LENGTH);
+//         token = strtok(NULL, delimiters);
+//     }
+//     return count;
+// }

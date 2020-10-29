@@ -56,10 +56,10 @@ uint8_t sw_p_f_num = 4;      //插座功率
 uint8_t sw_pc_f_num = 5;     //累计用电量
 uint8_t rssi_w_f_num = 6;    //wifi信号
 uint8_t rssi_g_f_num = 7;    //4G信号
-uint8_t r1_light_f_num = 8;  //485光照
-uint8_t r1_th_t_f_num = 9;   //485空气温度
-uint8_t r1_th_h_f_num = 10;  //485空气湿度
-uint8_t sw_on_f_num = 11;    //累积开启时长
+uint8_t sw_on_f_num = 8;     //累积开启时长
+uint8_t r1_light_f_num = 9;  //485光照
+uint8_t r1_th_t_f_num = 10;  //485空气温度
+uint8_t r1_th_h_f_num = 11;  //485空气湿度
 uint8_t r1_sth_t_f_num = 12; //485土壤温度
 uint8_t r1_sth_h_f_num = 13; //485土壤湿度
 uint8_t e1_t_f_num = 14;     //DS18B20温度
@@ -536,6 +536,7 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "cali"); //cali
         if (NULL != json_data_parse_value)
         {
+            // printf("cali: %s\n", json_data_parse_value->valuestring);
             Parse_cali_dat(json_data_parse_value->valuestring); //parse cali
         }
     }
@@ -613,10 +614,10 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
         memset(mqtt_json_s.mqtt_command_id, 0, sizeof(mqtt_json_s.mqtt_command_id));
         strncpy(mqtt_json_s.mqtt_command_id, pSubSubSub->valuestring, strlen(pSubSubSub->valuestring));
         post_status = POST_NORMAL;
-        if (Binary_dp != NULL)
-        {
-            xTaskNotifyGive(Binary_dp);
-        }
+        // if (Binary_dp != NULL)
+        // {
+        //     xTaskNotifyGive(Binary_dp);
+        // }
     }
 
     pSubSubSub = cJSON_GetObjectItem(json_data_parse, "command_string"); //
@@ -793,7 +794,7 @@ void Create_NET_Json(void)
                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
             }
         }
-        cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+        // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -1653,6 +1654,7 @@ void Read_Metadate_E2p(void)
     fn_sw_pc = E2P_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
     cg_data_led = E2P_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
     net_mode = E2P_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+    fn_sw_on = E2P_ReadLenByte(FN_SW_ON_ADD, 4);     //累积开启时长统计周期
 
     printf("E2P USAGE:%d\n", E2P_USAGED);
 
@@ -1668,6 +1670,7 @@ void Read_Metadate_E2p(void)
     printf("cg_data_led:%d\n", cg_data_led);
     printf("net_mode:%d\n", net_mode);
     printf("de_sw_s:%d\n", de_sw_s);
+    printf("fn_sw_on:%d\n", fn_sw_on);
 }
 
 void Read_Product_E2p(void)
@@ -1720,25 +1723,88 @@ void Read_Product_E2p(void)
 
 void Read_Fields_E2p(void)
 {
-    sw_s_f_num = E2P_ReadOneByte(SW_S_F_NUM_ADDR);
-    sw_v_f_num = E2P_ReadOneByte(SW_V_F_NUM_ADDR);
-    sw_c_f_num = E2P_ReadOneByte(SW_C_F_NUM_ADDR);
-    sw_p_f_num = E2P_ReadOneByte(SW_P_F_NUM_ADDR);
-    sw_pc_f_num = E2P_ReadOneByte(SW_PC_F_NUM_ADDR);
-    rssi_w_f_num = E2P_ReadOneByte(RSSI_NUM_ADDR);          //rssi_w
-    rssi_g_f_num = E2P_ReadOneByte(GPRS_RSSI_NUM_ADDR);     //rssi_g
-    r1_light_f_num = E2P_ReadOneByte(RS485_LIGHT_NUM_ADDR); //r1_light
-    r1_th_t_f_num = E2P_ReadOneByte(RS485_TEMP_NUM_ADDR);   //r1_th_t_f_num
-    r1_th_h_f_num = E2P_ReadOneByte(RS485_HUMI_NUM_ADDR);   //r1_th_h_f_num
-    r1_sth_t_f_num = E2P_ReadOneByte(RS485_STEMP_NUM_ADDR); //r1_sth_t_f_num
-    r1_sth_h_f_num = E2P_ReadOneByte(RS485_SHUMI_NUM_ADDR); //r1_sth_h_f_num
-    e1_t_f_num = E2P_ReadOneByte(EXT_TEMP_NUM_ADDR);        //e1_t_f_num
-    r1_t_f_num = E2P_ReadOneByte(RS485_T_NUM_ADDR);         //r1_t_f_num
-    r1_ws_f_num = E2P_ReadOneByte(RS485_WS_NUM_ADDR);       //r1_ws_f_num
-    r1_co2_f_num = E2P_ReadOneByte(RS485_CO2_NUM_ADDR);     //r1_co2_f_num
-    r1_ph_f_num = E2P_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
-    r1_co2_t_f_num = E2P_ReadOneByte(RS485_CO2_T_NUM_ADDR);
-    r1_co2_h_f_num = E2P_ReadOneByte(RS485_CO2_H_NUM_ADDR);
+    uint8_t sensors_temp;
+
+    if ((sensors_temp = E2P_ReadOneByte(SW_S_F_NUM_ADDR)) != 0)
+    {
+        sw_s_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_V_F_NUM_ADDR)) != 0)
+    {
+        sw_v_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_C_F_NUM_ADDR)) != 0)
+    {
+        sw_c_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_P_F_NUM_ADDR)) != 0)
+    {
+        sw_p_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_PC_F_NUM_ADDR)) != 0)
+    {
+        sw_pc_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RSSI_NUM_ADDR)) != 0)
+    {
+        rssi_w_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(GPRS_RSSI_NUM_ADDR)) != 0)
+    {
+        rssi_g_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_LIGHT_NUM_ADDR)) != 0)
+    {
+        r1_light_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_TEMP_NUM_ADDR)) != 0)
+    {
+        r1_th_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_HUMI_NUM_ADDR)) != 0)
+    {
+        r1_th_h_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_STEMP_NUM_ADDR)) != 0)
+    {
+        r1_sth_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_SHUMI_NUM_ADDR)) != 0)
+    {
+        r1_sth_h_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(EXT_TEMP_NUM_ADDR)) != 0)
+    {
+        e1_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_T_NUM_ADDR)) != 0)
+    {
+        r1_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_WS_NUM_ADDR)) != 0)
+    {
+        r1_ws_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_CO2_NUM_ADDR)) != 0)
+    {
+        r1_co2_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_PH_NUM_ADDR)) != 0)
+    {
+        r1_ph_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_CO2_T_NUM_ADDR)) != 0)
+    {
+        r1_co2_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_CO2_H_NUM_ADDR)) != 0)
+    {
+        r1_co2_h_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_ON_F_NUM_ADDR)) != 0)
+    {
+        sw_on_f_num = sensors_temp;
+    }
 
     for (uint8_t i = 0; i < 40; i++)
     {
@@ -1758,6 +1824,7 @@ void Read_Fields_E2p(void)
     printf("sw_pc_f_num:%d\n", sw_pc_f_num);
     printf("rssi_w_f_num:%d\n", rssi_w_f_num);
     printf("rssi_g_f_num:%d\n", rssi_g_f_num);
+    printf("sw_on_f_num:%d\n", sw_on_f_num);
     printf("r1_light_f_num:%d\n", r1_light_f_num);
     printf("r1_th_t_f_num:%d\n", r1_th_t_f_num);
     printf("r1_th_h_f_num:%d\n", r1_th_h_f_num);
