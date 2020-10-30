@@ -761,7 +761,6 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
 
 void Create_NET_Json(void)
 {
-
     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
     {
         char *filed_buff;
@@ -794,7 +793,7 @@ void Create_NET_Json(void)
                 cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
             }
         }
-        // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+        cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
         cJSON_Delete(pJsonRoot);                       //delete cjson root

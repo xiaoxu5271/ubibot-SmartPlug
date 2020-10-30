@@ -39,9 +39,9 @@ void Data_Post_Task(void *pvParameters)
     Net_Err ret;
     while (1)
     {
-        ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
-                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
-                 esp_get_free_heap_size());
+        // ESP_LOGW("memroy check", " INTERNAL RAM left %dKB，free Heap:%d",
+        //          heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024,
+        //          esp_get_free_heap_size());
         Create_NET_Json();
 
         while ((ret = Http_post_fun()) != NET_OK)
