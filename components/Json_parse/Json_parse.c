@@ -655,6 +655,10 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
                                 if (strcmp(pSubSubSub->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
                                 {
                                     ESP_LOGI(TAG, "OTA_VERSION=%s", pSubSubSub->valuestring);
+                                    if (Binary_dp != NULL)
+                                    {
+                                        xTaskNotifyGive(Binary_dp);
+                                    }
                                     ota_start(); //启动OTA
                                 }
                             }
@@ -663,18 +667,17 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
                 }
                 else if (strcmp(pSubSubSub->valuestring, "command") == 0 && sw_flag == true)
                 {
-                    pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "set_state");
-                    if (pSubSubSub != NULL)
-                    {
-                        Switch_Relay(pSubSubSub->valueint);
-                    }
-
                     pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "c_type");
                     if (pSubSubSub != NULL)
                     {
 
                         memcpy(C_TYPE, pSubSubSub->valuestring, 10);
                         // ESP_LOGI(TAG, "C_TYPE=%s", pSubSubSub->valuestring);
+                    }
+                    pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "set_state");
+                    if (pSubSubSub != NULL)
+                    {
+                        Switch_Relay(pSubSubSub->valueint);
                     }
                 }
             }
@@ -708,7 +711,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
             memset(ssid64_buff, 0, 64);
             base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"c_type\":\"%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
@@ -723,7 +726,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
         }
         else
         {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"c_type\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\",\"sensors\":[%s],\"cali\":[%s]}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
@@ -746,7 +749,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
             memset(ssid64_buff, 0, 64);
             base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"c_type\":\"%s\",\"ssid_base64\":\"%s\"}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\"}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
@@ -759,7 +762,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
         }
         else
         {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"c_type\":\"%s\"}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\"}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
@@ -786,7 +789,7 @@ void Create_NET_Json(void)
         uint16_t len = 0;
         cJSON *pJsonRoot;
         wifi_ap_record_t wifidata_t;
-
+        char *status_buf = (char *)malloc(20);
         filed_buff = (char *)malloc(9);
         time_buff = (char *)malloc(24);
         Server_Timer_SEND(time_buff);
@@ -809,6 +812,8 @@ void Create_NET_Json(void)
             }
         }
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+        sprintf(status_buf, "c_type=%s", C_TYPE);
+        cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -818,6 +823,7 @@ void Create_NET_Json(void)
         xSemaphoreTake(Cache_muxtex, -1);
         DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
+        free(status_buf);
         free(OutBuffer);
         free(filed_buff);
         free(time_buff);
@@ -832,6 +838,7 @@ void Create_Switch_Json(void)
         char *time_buff;
         uint16_t len = 0;
         cJSON *pJsonRoot;
+        char *status_buf = (char *)malloc(20);
         time_buff = (char *)malloc(24);
         Server_Timer_SEND(time_buff);
 
@@ -839,6 +846,8 @@ void Create_Switch_Json(void)
         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
 
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+        sprintf(status_buf, "c_type=%s", C_TYPE);
+        cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -848,6 +857,7 @@ void Create_Switch_Json(void)
         xSemaphoreTake(Cache_muxtex, -1);
         DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
+        free(status_buf);
         free(OutBuffer);
         free(time_buff);
     }
@@ -946,7 +956,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                     if (NULL != pSub)
                     {
                         printf("ProductID= %s, len= %d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        E2P_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save ProductID
+                        E2P_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save Prfield1uctID
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "SeriesNumber"); //"SeriesNumber"
