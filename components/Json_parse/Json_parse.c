@@ -85,6 +85,9 @@ char SIM_APN[32] = {0};
 char SIM_USER[32] = {0};
 char SIM_PWD[32] = {0};
 
+//c-type
+char C_TYPE[10] = "initial";
+
 //cali 相关 f1_a,f1_b,f1_a,f2_b,,,,,
 f_cali f_cali_u[40] = {
     {1},
@@ -665,6 +668,14 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
                     {
                         Switch_Relay(pSubSubSub->valueint);
                     }
+
+                    pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "c_type");
+                    if (pSubSubSub != NULL)
+                    {
+
+                        memcpy(C_TYPE, pSubSubSub->valuestring, 10);
+                        // ESP_LOGI(TAG, "C_TYPE=%s", pSubSubSub->valuestring);
+                    }
                 }
             }
         }
@@ -697,13 +708,14 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
             memset(ssid64_buff, 0, 64);
             base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"c_type\":\"%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
                     mac_sys[3],
                     mac_sys[4],
                     mac_sys[5],
+                    C_TYPE,
                     ssid64_buff,
                     field_buff,
                     cali_buff);
@@ -711,7 +723,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
         }
         else
         {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"sensors\":[%s],\"cali\":[%s]}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"c_type\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
@@ -719,6 +731,7 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
                     mac_sys[4],
                     mac_sys[5],
                     ICCID,
+                    C_TYPE,
                     field_buff,
                     cali_buff);
         }
@@ -733,26 +746,28 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
             memset(ssid64_buff, 0, 64);
             base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\"}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"c_type\":\"%s\",\"ssid_base64\":\"%s\"}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
                     mac_sys[3],
                     mac_sys[4],
                     mac_sys[5],
+                    C_TYPE,
                     ssid64_buff);
             free(ssid64_buff);
         }
         else
         {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\"}",
+            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"c_type\":\"%s\"}",
                     mac_sys[0],
                     mac_sys[1],
                     mac_sys[2],
                     mac_sys[3],
                     mac_sys[4],
                     mac_sys[5],
-                    ICCID);
+                    ICCID,
+                    C_TYPE);
         }
     }
 

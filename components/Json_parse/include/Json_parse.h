@@ -51,6 +51,15 @@ typedef union
     uint32_t dat;
 } f_cali;
 
+// enum
+// {
+//     loop = 0,
+//     physica,
+//     console,
+//     app,
+//     alexa
+// } c_type;
+
 //creat_json *create_http_json(uint8_t post_status);
 void create_http_json(creat_json *pCreat_json, uint8_t flag);
 void Read_Metadate_E2p(void);
@@ -119,5 +128,8 @@ extern char BleName[100];
 extern char SIM_APN[32];
 extern char SIM_USER[32];
 extern char SIM_PWD[32];
+
+//c-type
+extern char C_TYPE[10];
 
 #endif

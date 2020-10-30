@@ -30,6 +30,7 @@ void Switch_Relay(int8_t set_value)
     if (set_value == -1)
     {
         mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
+        memcpy(C_TYPE, "physical", 9);
     }
 
     else if (set_value >= 1 && set_value < 100)
