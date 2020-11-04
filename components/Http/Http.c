@@ -61,13 +61,18 @@ void timer_heart_cb(void *arg)
 
     static uint64_t ble_num = 0;
     //超时关闭蓝牙广播
-    if (Cnof_net_flag == true)
+    if (Cnof_net_flag == true && BLE_CON_FLAG == false)
     {
         ble_num++;
-        if (ble_num >= 60)
+        if (ble_num >= 60 * 15)
         {
             ble_app_stop();
+            ble_num = 0;
         }
+    }
+    else
+    {
+        ble_num = 0;
     }
 
     //心跳
