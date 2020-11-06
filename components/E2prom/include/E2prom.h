@@ -155,7 +155,7 @@ void E2P_WriteLenByte(uint16_t WriteAddr, uint32_t DataToWrite, uint8_t Len);
 uint32_t E2P_ReadLenByte(uint16_t ReadAddr, uint8_t Len);
 void E2P_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead);
 void E2P_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite);
-void E2prom_empty_all(void);
+void E2prom_empty_all(bool flag);
 void E2prom_set_defaul(bool flag);
 
 #endif

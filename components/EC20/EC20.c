@@ -29,6 +29,7 @@ char *EC20_RECV;
 
 #define EC20_SW 25
 #define BUF_SIZE 1024
+#define CMD_LEN 256
 
 #define EX_UART_NUM UART_NUM_1
 
@@ -430,7 +431,7 @@ uint8_t EC20_Net_Check(void)
 uint8_t EC20_Moudle_Init(void)
 {
     char *ret;
-    char *cmd_buf = (char *)malloc(120);
+    char *cmd_buf = (char *)malloc(CMD_LEN);
 
     EC20_Rest();
 
@@ -500,7 +501,7 @@ uint8_t EC20_Moudle_Init(void)
     }
 
     // ？
-    sprintf(cmd_buf, "AT+QICSGP=1,1,\"%s\",\"%s\",\"%s\",1\r\n", SIM_APN, SIM_USER, SIM_PWD);
+    snprintf(cmd_buf,CMD_LEN, "AT+QICSGP=1,1,\"%s\",\"%s\",\"%s\",1\r\n", SIM_APN, SIM_USER, SIM_PWD);
     ret = AT_Cmd_Send(cmd_buf, "OK", 1000, 5);
     if (ret == NULL)
     {
@@ -664,10 +665,10 @@ uint8_t EC20_Active(char *active_url, char *recv_buf)
     char *ret;
     char *cmd_buf;
     uint8_t active_len;
-    cmd_buf = (char *)malloc(24);
+    cmd_buf = (char *)malloc(CMD_LEN);
     memset(cmd_buf, 0, 24);
     active_len = strlen(active_url) - 2; //不包含换行符
-    sprintf(cmd_buf, "AT+QHTTPURL=%d,60\r\n", active_len);
+    snprintf(cmd_buf,CMD_LEN, "AT+QHTTPURL=%d,60\r\n", active_len);
     ret = AT_Cmd_Send(cmd_buf, "CONNECT", 1000, 1);
     if (ret == NULL)
     {
@@ -739,7 +740,6 @@ uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size)
     return 1;
 }
 
-#define CMD_LEN 150
 uint8_t EC20_MQTT_INIT(void)
 {
     char *ret;
@@ -775,7 +775,7 @@ uint8_t EC20_MQTT_INIT(void)
     }
 
     memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTOPEN=0,\"%s\",%s\r\n", MQTT_SERVER, MQTT_PORT);
+    snprintf(cmd_buf,CMD_LEN, "AT+QMTOPEN=0,\"%s\",%s\r\n", MQTT_SERVER, MQTT_PORT);
     ret = AT_Cmd_Send(cmd_buf, "+QMTOPEN: 0,0", 6000, 10);
     if (ret == NULL)
     {
@@ -784,7 +784,7 @@ uint8_t EC20_MQTT_INIT(void)
     }
 
     memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, ChannelId, ApiKey);
+    snprintf(cmd_buf,CMD_LEN, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, ChannelId, ApiKey);
     ret = AT_Cmd_Send(cmd_buf, "+QMTCONN: 0,0,0", 6000, 1);
     if (ret == NULL)
     {
@@ -793,7 +793,7 @@ uint8_t EC20_MQTT_INIT(void)
     }
 
     memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTSUB=0,1,\"%s\",0\r\n", topic_s);
+    snprintf(cmd_buf,CMD_LEN, "AT+QMTSUB=0,1,\"%s\",0\r\n", topic_s);
     ret = AT_Cmd_Send(cmd_buf, "+QMTSUB: ", 6000, 1);
     if (ret == NULL)
     {
@@ -822,7 +822,7 @@ uint8_t EC20_MQTT_PUB(char *data_buff)
     cmd_buf = (char *)malloc(CMD_LEN);
     memset(cmd_buf, 0, CMD_LEN);
     // ESP_LOGI(TAG, "MQTT LEN:%d,\n%s", strlen(data_buff), data_buff);
-    sprintf(cmd_buf, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic_p, strlen(data_buff) - 2);
+    snprintf(cmd_buf,CMD_LEN, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic_p, strlen(data_buff) - 2);
     ret = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
     if (ret == NULL)
     {
@@ -894,7 +894,7 @@ bool End_EC_TCP_OTA(void)
 //tcp 模式OTA
 bool Start_EC20_TCP_OTA(void)
 {
-    char *cmd_buf = (char *)malloc(256);
+    char *cmd_buf = (char *)malloc(CMD_LEN);
     // char *get_buf = (char *)malloc(256);
     char *host_buf = (char *)malloc(128);
     char *rst_val = NULL;
@@ -918,7 +918,7 @@ bool Start_EC20_TCP_OTA(void)
     }
 
     //建立TCP连接
-    sprintf(cmd_buf, "AT+QIOPEN=1,0,\"TCP\",\"%s\",80,0,0\r\n", host_buf);
+    snprintf(cmd_buf,CMD_LEN, "AT+QIOPEN=1,0,\"TCP\",\"%s\",80,0,0\r\n", host_buf);
     rst_val = AT_Cmd_Send(cmd_buf, "+QIOPEN: 0,0", 5000, 1);
     if (rst_val == NULL)
     {
@@ -926,7 +926,7 @@ bool Start_EC20_TCP_OTA(void)
         goto end;
     }
 
-    sprintf(cmd_buf, "AT+QISEND=0,%d\r\n", (strlen(mqtt_json_s.mqtt_ota_url) + strlen(host_buf) + 14));
+    snprintf(cmd_buf,CMD_LEN, "AT+QISEND=0,%d\r\n", (strlen(mqtt_json_s.mqtt_ota_url) + strlen(host_buf) + 14));
     rst_val = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
     if (rst_val == NULL)
     {
@@ -934,7 +934,7 @@ bool Start_EC20_TCP_OTA(void)
         goto end;
     }
 
-    sprintf(cmd_buf, "GET %s\r\nHost:%s\r\n\r\n", mqtt_json_s.mqtt_ota_url, host_buf);
+    snprintf(cmd_buf,CMD_LEN, "GET %s\r\nHost:%s\r\n\r\n", mqtt_json_s.mqtt_ota_url, host_buf);
     rst_val = AT_Cmd_Send(cmd_buf, "+QIURC: \"recv\",0", 5000, 1);
     if (rst_val == NULL)
     {
@@ -958,7 +958,7 @@ end:
 //读取升级文件 tcp
 uint16_t Read_TCP_OTA_File(char *file_buff)
 {
-    char *cmd_buf = (char *)malloc(120);
+    char *cmd_buf = (char *)malloc(CMD_LEN);
     uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
     // char *rst_val = NULL;
     // char num_buff[5] = {0};
@@ -966,7 +966,7 @@ uint16_t Read_TCP_OTA_File(char *file_buff)
 
     xSemaphoreTake(EC20_muxtex, -1);
     EC_RECV_MODE = EC_OTA;
-    sprintf(cmd_buf, "AT+QIRD=0,%d\r\n", BUF_SIZE - 25);
+    snprintf(cmd_buf,CMD_LEN, "AT+QIRD=0,%d\r\n", BUF_SIZE - 25);
 
     uart_flush(EX_UART_NUM);
     uart_write_bytes(EX_UART_NUM, cmd_buf, strlen(cmd_buf));

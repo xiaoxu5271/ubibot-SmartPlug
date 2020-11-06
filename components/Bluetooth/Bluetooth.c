@@ -409,7 +409,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
 
         strncpy(BleName_N, SerialNum, 5);
         memset(BleName, 0, sizeof(BleName));
-        sprintf(BleName, "%s-%s", ProductId, BleName_N);
+        snprintf(BleName, sizeof(BleName), "%s-%s", ProductId, BleName_N);
         if (BleName[0] >= 61)
         {
             BleName[0] = BleName[0] - 32;
@@ -478,7 +478,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 {
                     // ble_resp_flag = false;
                     xEventGroupClearBits(Net_sta_group, BLE_RESP_BIT);
-                    sprintf(BleRespond, "{\"result\":\"error\",\"code\":%d}", Net_ErrCode);
+                    snprintf(BleRespond, sizeof(BleRespond), "{\"result\":\"error\",\"code\":%d}", Net_ErrCode);
                 }
             }
         }
@@ -826,7 +826,7 @@ void ble_respon_process(void *arg)
             {
                 // ble_resp_flag = false;
                 xEventGroupClearBits(Net_sta_group, BLE_RESP_BIT);
-                sprintf(BleRespond, "{\"result\":\"error\",\"code\":%d}", Net_ErrCode);
+                snprintf(BleRespond, sizeof(BleRespond), "{\"result\":\"error\",\"code\":%d}", Net_ErrCode);
                 break;
             }
         }

@@ -123,12 +123,12 @@ void Send_Mqtt_Task(void *arg)
     char mqtt_usr[23];
     char mqtt_uri[64];
 
-    sprintf(topic_s, "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/control", '\0');
-    sprintf(topic_p, "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/status", '\0');
+    snprintf(topic_s, sizeof(topic_s), "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/control", '\0');
+    snprintf(topic_p, sizeof(topic_p), "%s%s%s%s%s%c", "/product/", ProductId, "/channel/", ChannelId, "/status", '\0');
 
-    sprintf(mqtt_pwd, "%s%s%c", "api_key=", ApiKey, '\0');
-    sprintf(mqtt_usr, "%s%s%c", "c_id=", ChannelId, '\0');
-    sprintf(mqtt_uri, "mqtt://%s", MQTT_SERVER);
+    snprintf(mqtt_pwd, sizeof(mqtt_pwd), "%s%s%c", "api_key=", ApiKey, '\0');
+    snprintf(mqtt_usr, sizeof(mqtt_usr), "%s%s%c", "c_id=", ChannelId, '\0');
+    snprintf(mqtt_uri, sizeof(mqtt_uri), "mqtt://%s", MQTT_SERVER);
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = mqtt_uri,
         .username = mqtt_usr,
@@ -154,7 +154,7 @@ void Send_Mqtt_Task(void *arg)
             char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
             memset(status_buff, 0, MQTT_STATUS_BUFF_LEN);
             memset(mqtt_buff, 0, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
-            Create_Status_Json((char *)status_buff, false); //
+            Create_Status_Json((char *)status_buff, MQTT_STATUS_BUFF_LEN, false); //
             snprintf(mqtt_buff, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
             esp_mqtt_client_publish(client, topic_p, mqtt_buff, 0, 1, 0);
             // ESP_LOGI(TAG, "MQTT:%s", mqtt_buff);
@@ -170,7 +170,7 @@ void Send_Mqtt_Task(void *arg)
             char *mqtt_buff = (char *)malloc(Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
             memset(status_buff, 0, MQTT_STATUS_BUFF_LEN);
             memset(mqtt_buff, 0, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10);
-            Create_Status_Json((char *)status_buff, false); //
+            Create_Status_Json((char *)status_buff, MQTT_STATUS_BUFF_LEN, false); //
             snprintf(mqtt_buff, Mqtt_Send.buff_len + MQTT_STATUS_BUFF_LEN + 10, "{\"feeds\":[%s%s\r\n", Mqtt_Send.buff, status_buff);
             EC20_MQTT_PUB(mqtt_buff);
             xSemaphoreGive(xMutex_Http_Send);

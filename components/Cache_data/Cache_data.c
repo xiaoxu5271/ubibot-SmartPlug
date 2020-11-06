@@ -220,7 +220,7 @@ static Net_Err Http_post_fun(void)
 
     memset(status_buff, 0, STATUS_BUFF_LEN);
 
-    Create_Status_Json(status_buff, true); //
+    Create_Status_Json(status_buff, STATUS_BUFF_LEN, true); //
     // ESP_LOGI(TAG, "strlen:%d,\nbuff:%s", strlen(status_buff), status_buff);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
     start_read_num_oen = start_read_num;
