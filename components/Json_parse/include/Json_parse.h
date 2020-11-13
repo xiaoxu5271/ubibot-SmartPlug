@@ -70,6 +70,7 @@ void Create_Switch_Json(void);
 uint16_t Create_Status_Json(char *status_buff, uint16_t buff_len, bool filed_flag);
 char *mid(char *src, char *s1, char *s2, char *sub);
 char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szKey);
+char *s_rstrstr_2(const char *_pBegin, int _MaxLen, const char *_szKey);
 char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_szKey);
 double Cali_filed(uint8_t filed_num, double filed_val);
 void Create_cali_buf(char *read_buf);
@@ -82,7 +83,7 @@ extern uint32_t fn_485_sth; //485 土壤探头
 extern uint32_t fn_485_ws;  //485 风速
 extern uint32_t fn_485_lt;  //485 光照
 extern uint32_t fn_485_co2; //485二氧化碳
-extern uint32_t fn_ext;     //18b20
+extern uint32_t fn_ext_t;   //18b20
 extern uint32_t fn_sw_e;    //电能信息：电压/电流/功率
 extern uint32_t fn_sw_pc;   //用电量统计
 extern uint8_t cg_data_led; //发送数据 LED状态 0关闭，1打开

@@ -128,8 +128,8 @@ void timer_heart_cb(void *arg)
         {
             vTaskNotifyGiveFromISR(Binary_ele_quan, NULL);
         }
-    if (fn_ext)
-        if (min_num % fn_ext == 0)
+    if (fn_ext_t)
+        if (min_num % fn_ext_t == 0)
         {
             vTaskNotifyGiveFromISR(Binary_ext, NULL);
         }
@@ -221,13 +221,13 @@ int32_t wifi_http_send(char *send_buff, uint16_t send_size, char *recv_buff, uin
 
 //http post 初始化
 //return socke
-#define POST_LEN 512
-#define CMD_LEN 128
+#define POST_URL_LEN 512
+#define CMD_LEN 1024
 int32_t http_post_init(uint32_t Content_Length)
 {
-    char *build_po_url = (char *)malloc(POST_LEN);
+    char *build_po_url = (char *)malloc(POST_URL_LEN);
     char *cmd_buf = (char *)malloc(CMD_LEN);
-    bzero(build_po_url, POST_LEN);
+    bzero(build_po_url, POST_URL_LEN);
     bzero(cmd_buf, CMD_LEN);
     int32_t ret;
 
@@ -235,7 +235,7 @@ int32_t http_post_init(uint32_t Content_Length)
     {
         if (post_status == POST_NOCOMMAND) //无commID
         {
-            snprintf(build_po_url, POST_LEN, "POST /update.json?api_key=%s&metadata=true&execute=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
+            snprintf(build_po_url, POST_URL_LEN, "POST /update.json?api_key=%s&metadata=true&execute=true&firmware=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                      ApiKey,
                      FIRMWARE,
                      WEB_SERVER,
@@ -244,7 +244,7 @@ int32_t http_post_init(uint32_t Content_Length)
         else
         {
             post_status = POST_NOCOMMAND;
-            snprintf(build_po_url, POST_LEN, "POST /update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
+            snprintf(build_po_url, POST_URL_LEN, "POST /update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length:%d\r\n\r\n",
                      ApiKey,
                      FIRMWARE,
                      mqtt_json_s.mqtt_command_id,
@@ -313,7 +313,7 @@ int32_t http_post_init(uint32_t Content_Length)
         // ESP_LOGI(TAG, "EC20 POST INIT");
         if (post_status == POST_NOCOMMAND) //无commID
         {
-            snprintf(build_po_url, POST_LEN, "http://%s/update.json?api_key=%s&metadata=true&execute=true&firmware=%s\r\n",
+            snprintf(build_po_url, POST_URL_LEN, "http://%s/update.json?api_key=%s&metadata=true&execute=true&firmware=%s",
                      WEB_SERVER,
                      ApiKey,
                      FIRMWARE);
@@ -321,44 +321,71 @@ int32_t http_post_init(uint32_t Content_Length)
         else
         {
             post_status = POST_NOCOMMAND;
-            snprintf(build_po_url, POST_LEN, "http://%s/update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s\r\n",
+            snprintf(build_po_url, POST_URL_LEN, "http://%s/update.json?api_key=%s&metadata=true&firmware=%s&command_id=%s",
                      WEB_SERVER,
                      ApiKey,
                      FIRMWARE,
                      mqtt_json_s.mqtt_command_id);
         }
 
-        if (EC20_Net_Check() == 0)
+        if (model_id == SIM7600)
         {
-            ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-            ret = -1;
-            goto end;
-        }
+            //conect URL
+            snprintf(cmd_buf, CMD_LEN, "AT+HTTPPARA=\"URL\",\"%s\"\r\n", build_po_url);
+            if (AT_Cmd_Send(cmd_buf, "OK", 1000, 1) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                ret = -1;
+                goto end;
+            }
 
-        snprintf(cmd_buf, CMD_LEN, "AT+QHTTPURL=%d,60\r\n", (strlen(build_po_url) - 2));
-        if (AT_Cmd_Send(cmd_buf, "CONNECT", 2000, 1) == NULL)
-        {
-            ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-            ret = -1;
-            goto end;
+            //send data to post ,INPUT LEN
+            bzero(cmd_buf, CMD_LEN);
+            snprintf(cmd_buf, CMD_LEN, "AT+HTTPDATA=%d,5000\r\n", Content_Length);
+            if (AT_Cmd_Send(cmd_buf, "DOWNLOAD", 1000, 1) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                ret = -1;
+                goto end;
+            }
+            ret = 1;
         }
+        else
+        {
+            if (EC20_Net_Check() == 0)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                ret = -1;
+                goto end;
+            }
 
-        if (AT_Cmd_Send(build_po_url, "OK", 60000, 1) == NULL)
-        {
-            ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-            ret = -1;
-            goto end;
-        }
+            snprintf(cmd_buf, CMD_LEN, "AT+QHTTPURL=%d,60\r\n", (strlen(build_po_url)));
+            if (AT_Cmd_Send(cmd_buf, "CONNECT", 2000, 1) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                ret = -1;
+                goto end;
+            }
 
-        bzero(cmd_buf, 30);
-        snprintf(cmd_buf, CMD_LEN, "AT+QHTTPPOST=%d,%d,%d\r\n", Content_Length, 60, 60);
-        if (AT_Cmd_Send(cmd_buf, "CONNECT", 6000, 1) == NULL)
-        {
-            ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-            ret = -1;
-            goto end;
+            bzero(cmd_buf, CMD_LEN);
+            snprintf(cmd_buf, CMD_LEN, "%s\r\n", build_po_url);
+            if (AT_Cmd_Send(cmd_buf, "OK", 60000, 1) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                ret = -1;
+                goto end;
+            }
+
+            bzero(cmd_buf, CMD_LEN);
+            snprintf(cmd_buf, CMD_LEN, "AT+QHTTPPOST=%d,%d,%d\r\n", Content_Length, 60, 60);
+            if (AT_Cmd_Send(cmd_buf, "CONNECT", 6000, 1) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                ret = -1;
+                goto end;
+            }
+            ret = 1;
         }
-        ret = 1;
     }
 
 end:
@@ -460,11 +487,11 @@ Net_Err Send_herat(void)
     xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
 
     xSemaphoreTake(xMutex_Http_Send, -1);
-    build_heart_url = (char *)malloc(POST_LEN);
+    build_heart_url = (char *)malloc(POST_URL_LEN);
     recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
     if (net_mode == NET_WIFI)
     {
-        snprintf(build_heart_url, POST_LEN, "GET /heartbeat?api_key=%s HTTP/1.1\r\nHost: %s\r\n\r\n",
+        snprintf(build_heart_url, POST_URL_LEN, "GET /heartbeat?api_key=%s HTTP/1.1\r\nHost: %s\r\n\r\n",
                  ApiKey,
                  WEB_SERVER);
 
@@ -492,7 +519,7 @@ Net_Err Send_herat(void)
     }
     else
     {
-        snprintf(build_heart_url, POST_LEN, "http://%s/heartbeat?api_key=%s\r\n", WEB_SERVER, ApiKey);
+        snprintf(build_heart_url, POST_URL_LEN, "http://%s/heartbeat?api_key=%s", WEB_SERVER, ApiKey);
         if (EC20_Active(build_heart_url, recv_buf) == 0)
         {
             ret = NET_DIS;
@@ -550,12 +577,13 @@ uint16_t http_activate(void)
     char *build_http = (char *)malloc(256);
     char *recv_buf = (char *)malloc(HTTP_RECV_BUFF_LEN);
     uint16_t ret;
-
     xEventGroupWaitBits(Net_sta_group, CONNECTED_BIT, false, true, -1); //等网络连接
+    // ESP_LOGI(TAG, "%d", __LINE__);
     xSemaphoreTake(xMutex_Http_Send, -1);
+    // ESP_LOGI(TAG, "%d", __LINE__);
     if (net_mode == NET_WIFI)
     {
-        snprintf(build_http, POST_LEN, "GET /products/%s/devices/%s/activate HTTP/1.1\r\nHost: %s\r\n\r\n", ProductId, SerialNum, WEB_SERVER);
+        snprintf(build_http, POST_URL_LEN, "GET /products/%s/devices/%s/activate HTTP/1.1\r\nHost: %s\r\n\r\n", ProductId, SerialNum, WEB_SERVER);
         ESP_LOGI(TAG, "%s", build_http);
         if (wifi_http_send(build_http, 256, recv_buf, HTTP_RECV_BUFF_LEN) < 0)
         {
@@ -579,7 +607,7 @@ uint16_t http_activate(void)
     }
     else
     {
-        snprintf(build_http, POST_LEN, "http://%s/products/%s/devices/%s/activate\r\n", WEB_SERVER, ProductId, SerialNum);
+        snprintf(build_http, POST_URL_LEN, "http://%s/products/%s/devices/%s/activate", WEB_SERVER, ProductId, SerialNum);
         if (EC20_Active(build_http, recv_buf) == 0)
         {
             ESP_LOGE(TAG, "active ERR");
@@ -634,11 +662,6 @@ void Active_Task(void *arg)
         }
 
         xEventGroupSetBits(Net_sta_group, ACTIVED_BIT);
-        // vTaskDelay(10000 / portTICK_PERIOD_MS);
-        // if (Binary_dp != NULL)
-        // {
-        //     xTaskNotifyGive(Binary_dp);
-        // }
         break;
     }
     xEventGroupClearBits(Net_sta_group, ACTIVE_S_BIT);
@@ -650,6 +673,10 @@ void Start_Active(void)
     if ((xEventGroupGetBits(Net_sta_group) & ACTIVE_S_BIT) != ACTIVE_S_BIT)
     {
         xTaskCreate(Active_Task, "Active_Task", 3072, NULL, 4, &Active_Task_Handle);
+    }
+    else
+    {
+        // ESP_LOGI(TAG, "%d", __LINE__);
     }
 }
 

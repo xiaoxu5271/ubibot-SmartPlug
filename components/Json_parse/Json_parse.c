@@ -40,7 +40,7 @@ uint32_t fn_485_sth = 0;  //485 土壤探头
 uint32_t fn_485_ws = 0;   //485 风速
 uint32_t fn_485_lt = 0;   //485 光照
 uint32_t fn_485_co2 = 0;  //485二氧化碳
-uint32_t fn_ext = 0;      //18b20
+uint32_t fn_ext_t = 0;    //18b20
 uint32_t fn_sw_e = 60;    //电能信息：电压/电流/功率
 uint32_t fn_sw_pc = 3600; //用电量统计
 uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
@@ -267,14 +267,14 @@ static short Parse_metadata(char *ptrptr)
             printf("fn_485_co2 = %d\n", fn_485_co2);
         }
     }
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ext"); //"fn_ext"
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ext_t"); //"fn_ext_t"
     if (NULL != pSubSubSub)
     {
-        if ((uint32_t)pSubSubSub->valueint != fn_ext)
+        if ((uint32_t)pSubSubSub->valueint != fn_ext_t)
         {
-            fn_ext = (uint32_t)pSubSubSub->valueint;
-            E2P_WriteLenByte(FN_EXT_ADD, fn_ext, 4);
-            printf("fn_ext = %d\n", fn_ext);
+            fn_ext_t = (uint32_t)pSubSubSub->valueint;
+            E2P_WriteLenByte(FN_EXT_ADD, fn_ext_t, 4);
+            printf("fn_ext_t = %d\n", fn_ext_t);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_e"); //"fn_sw_e"
@@ -640,26 +640,26 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
                         strcpy(mqtt_json_s.mqtt_ota_url, pSubSubSub->valuestring);
                         ESP_LOGI(TAG, "OTA_URL=%s", mqtt_json_s.mqtt_ota_url);
 
-                        pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "size"); //
+                        // pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "size"); //
+                        // if (pSubSubSub != NULL)
+                        // {
+                        // mqtt_json_s.mqtt_file_size = (uint32_t)pSubSubSub->valuedouble;
+                        // ESP_LOGI(TAG, "OTA_SIZE=%d", mqtt_json_s.mqtt_file_size);
+
+                        pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "version"); //
                         if (pSubSubSub != NULL)
                         {
-                            mqtt_json_s.mqtt_file_size = (uint32_t)pSubSubSub->valuedouble;
-                            ESP_LOGI(TAG, "OTA_SIZE=%d", mqtt_json_s.mqtt_file_size);
-
-                            pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "version"); //
-                            if (pSubSubSub != NULL)
+                            if (strcmp(pSubSubSub->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
                             {
-                                if (strcmp(pSubSubSub->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
+                                ESP_LOGI(TAG, "OTA_VERSION=%s", pSubSubSub->valuestring);
+                                if (Binary_dp != NULL)
                                 {
-                                    ESP_LOGI(TAG, "OTA_VERSION=%s", pSubSubSub->valuestring);
-                                    if (Binary_dp != NULL)
-                                    {
-                                        xTaskNotifyGive(Binary_dp);
-                                    }
-                                    ota_start(); //启动OTA
+                                    xTaskNotifyGive(Binary_dp);
                                 }
+                                ota_start(); //启动OTA
                             }
                         }
+                        // }
                     }
                 }
                 else if (strcmp(pSubSubSub->valuestring, "command") == 0 && sw_flag == true)
@@ -1303,6 +1303,7 @@ static short Parse_fields_num(char *ptrptr)
     {
         return ESP_FAIL;
     }
+    ESP_LOGI(TAG, "Parse_fields_num:%s", ptrptr);
     cJSON *pJsonJson = cJSON_Parse(ptrptr);
     if (NULL == pJsonJson)
     {
@@ -1599,6 +1600,44 @@ char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szK
 }
 
 // return: NULL Not Found
+//反向逐字节查找字符串 _MaxLen: 内存大小，_ReadLen:查找的长度
+char *s_rstrstr_2(const char *_pBegin, int _MaxLen, const char *_szKey)
+{
+    if (NULL == _pBegin || NULL == _szKey || _MaxLen <= 0)
+    {
+        return NULL;
+    }
+    int i;
+    int j = strlen(_szKey) - 1;
+    int k = 0;
+    int s32CmpLen = strlen(_szKey);
+    char *temp = 0;
+
+    for (i = 0; i <= _MaxLen; i++)
+    {
+        temp = _pBegin - i;
+
+        if (*temp == _szKey[j])
+        {
+            for (j = strlen(_szKey) - 1, k = i; j >= 0; j--, k++)
+            {
+                temp = _pBegin - k;
+                if (*temp != _szKey[j])
+                {
+                    j = strlen(_szKey) - 1;
+                    break;
+                }
+                if (j == 0)
+                {
+                    return temp;
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+// return: NULL Not Found
 //buff中正向查找字符串 _ReadLen:查找的长度
 //返回 要查找的字符串之后的地址
 char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_szKey)
@@ -1671,7 +1710,7 @@ void Read_Metadate_E2p(void)
     fn_485_ws = E2P_ReadLenByte(FN_485_WS_ADD, 4);   //
     fn_485_lt = E2P_ReadLenByte(FN_485_LT_ADD, 4);   //
     fn_485_co2 = E2P_ReadLenByte(FN_485_CO2_ADD, 4); //
-    fn_ext = E2P_ReadLenByte(FN_EXT_ADD, 4);         //18b20
+    fn_ext_t = E2P_ReadLenByte(FN_EXT_ADD, 4);       //18b20
     fn_sw_e = E2P_ReadLenByte(FN_ENERGY_ADD, 4);     //电能信息：电压/电流/功率
     fn_sw_pc = E2P_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
     cg_data_led = E2P_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
@@ -1687,7 +1726,7 @@ void Read_Metadate_E2p(void)
     printf("fn_485_ws:%d\n", fn_485_ws);
     printf("fn_485_lt:%d\n", fn_485_lt);
     printf("fn_485_co2:%d\n", fn_485_co2);
-    printf("fn_ext:%d\n", fn_ext);
+    printf("fn_ext_t:%d\n", fn_ext_t);
     printf("fn_sw_e:%d\n", fn_sw_e);
     printf("cg_data_led:%d\n", cg_data_led);
     printf("net_mode:%d\n", net_mode);
