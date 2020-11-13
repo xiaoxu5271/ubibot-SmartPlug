@@ -704,11 +704,11 @@ void Energy_Read_Task(void *pvParameters)
                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                 // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
                 snprintf(filed_buff, 9, "field%d", sw_v_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_v_val));
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_v_f_num, sw_v_val)));
                 snprintf(filed_buff, 9, "field%d", sw_c_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_c_val));
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_c_f_num, sw_c_val)));
                 snprintf(filed_buff, 9, "field%d", sw_p_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_p_val));
+                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_p_f_num, sw_p_val)));
 
                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                 cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -755,7 +755,7 @@ void Ele_quan_Task(void *pvParameters)
             pJsonRoot = cJSON_CreateObject();
             cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
             snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
-            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(sw_pc_val));
+            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_pc_f_num, sw_pc_val)));
             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
             cJSON_Delete(pJsonRoot);                       //delete cjson root
             len = strlen(OutBuffer);

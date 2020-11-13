@@ -110,9 +110,9 @@ void read_485_th_task(void *pvParameters)
                         pJsonRoot = cJSON_CreateObject();
                         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ext_tem));
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_th_t_f_num, ext_tem)));
                         snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ext_hum));
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_th_h_f_num, ext_hum)));
 
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -191,7 +191,7 @@ void read_485_t_task(void *pvParameters)
                         pJsonRoot = cJSON_CreateObject();
                         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_t_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_t_val));
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_t_f_num, Rs485_t_val)));
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
@@ -263,7 +263,7 @@ void read_485_ws_task(void *pvParameters)
                         pJsonRoot = cJSON_CreateObject();
                         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_ws_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Rs485_ws_val));
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_ws_f_num, Rs485_ws_val)));
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
@@ -344,9 +344,9 @@ void read_485_sth_task(void *pvParameters)
                         pJsonRoot = cJSON_CreateObject();
                         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_sth_t_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(rs485_st_val));
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_sth_t_f_num, rs485_st_val)));
                         snprintf(filed_buff, 9, "field%d", r1_sth_h_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(rs485_sh_val));
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_sth_h_f_num, rs485_sh_val)));
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
@@ -419,7 +419,7 @@ void read_485_lt_task(void *pvParameters)
                         pJsonRoot = cJSON_CreateObject();
                         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                         snprintf(filed_buff, 9, "field%d", r1_light_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(light_val));
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_light_f_num, light_val)));
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
@@ -544,11 +544,11 @@ void read_485_co2_task(void *pvParameters)
                                 pJsonRoot = cJSON_CreateObject();
                                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                                 snprintf(filed_buff, 9, "field%d", r1_co2_f_num);
-                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(co2_val));
+                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_f_num, co2_val)));
                                 snprintf(filed_buff, 9, "field%d", r1_co2_t_f_num);
-                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(t_val));
+                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_t_f_num, t_val)));
                                 snprintf(filed_buff, 9, "field%d", r1_co2_h_f_num);
-                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(h_val));
+                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_h_f_num, h_val)));
                                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                                 cJSON_Delete(pJsonRoot);                       //delete cjson root
                                 len = strlen(OutBuffer);

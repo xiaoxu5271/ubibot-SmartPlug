@@ -28,6 +28,7 @@
 #define BLE_TIMEOUT 70 * 1000000
 
 char ble_dev_pwd[16];
+bool BLE_CON_FLAG;
 
 void ble_app_init(void);
 void ble_app_start(void);

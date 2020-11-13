@@ -40,12 +40,13 @@ uint32_t fn_485_sth = 0;  //485 土壤探头
 uint32_t fn_485_ws = 0;   //485 风速
 uint32_t fn_485_lt = 0;   //485 光照
 uint32_t fn_485_co2 = 0;  //485二氧化碳
-uint32_t fn_ext = 0;      //18b20
+uint32_t fn_ext_t = 0;    //18b20
 uint32_t fn_sw_e = 60;    //电能信息：电压/电流/功率
 uint32_t fn_sw_pc = 3600; //用电量统计
 uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
 uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 uint8_t de_sw_s = 0;      //开关默认上电状态
+uint32_t fn_sw_on = 3600; //开启时长统计
 
 // field num 相关参数
 uint8_t sw_s_f_num = 1;      //开关状态
@@ -55,18 +56,19 @@ uint8_t sw_p_f_num = 4;      //插座功率
 uint8_t sw_pc_f_num = 5;     //累计用电量
 uint8_t rssi_w_f_num = 6;    //wifi信号
 uint8_t rssi_g_f_num = 7;    //4G信号
-uint8_t r1_light_f_num = 8;  //485光照
-uint8_t r1_th_t_f_num = 9;   //485空气温度
-uint8_t r1_th_h_f_num = 10;  //485空气湿度
-uint8_t r1_sth_t_f_num = 11; //485土壤温度
-uint8_t r1_sth_h_f_num = 12; //485土壤湿度
-uint8_t e1_t_f_num = 13;     //DS18B20温度
-uint8_t r1_t_f_num = 14;     //485温度探头温度
-uint8_t r1_ws_f_num = 15;    //485风速
-uint8_t r1_co2_f_num = 16;   //485 CO2
-uint8_t r1_ph_f_num = 17;    //485 PH
-uint8_t r1_co2_t_f_num = 18; // CO2 温度
-uint8_t r1_co2_h_f_num = 19; //CO2 湿度
+uint8_t sw_on_f_num = 8;     //累积开启时长
+uint8_t r1_light_f_num = 9;  //485光照
+uint8_t r1_th_t_f_num = 10;  //485空气温度
+uint8_t r1_th_h_f_num = 11;  //485空气湿度
+uint8_t r1_sth_t_f_num = 12; //485土壤温度
+uint8_t r1_sth_h_f_num = 13; //485土壤湿度
+uint8_t e1_t_f_num = 14;     //DS18B20温度
+uint8_t r1_t_f_num = 15;     //485温度探头温度
+uint8_t r1_ws_f_num = 16;    //485风速
+uint8_t r1_co2_f_num = 17;   //485 CO2
+uint8_t r1_ph_f_num = 18;    //485 PH
+uint8_t r1_co2_t_f_num = 19; // CO2 温度
+uint8_t r1_co2_h_f_num = 20; //CO2 湿度
 
 //
 char SerialNum[SERISE_NUM_LEN] = {0};
@@ -83,7 +85,99 @@ char SIM_APN[32] = {0};
 char SIM_USER[32] = {0};
 char SIM_PWD[32] = {0};
 
+//c-type
+char C_TYPE[10] = "initial";
+
+//cali 相关 f1_a,f1_b,f1_a,f2_b,,,,,
+f_cali f_cali_u[40] = {
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+    {1},
+    {0},
+};
+
+const char f_cali_str[40][6] =
+    {
+        "f1_a", //
+        "f1_b", //
+        "f2_a",
+        "f2_b",
+        "f3_a",
+        "f3_b",
+        "f4_a",
+        "f4_b",
+        "f5_a",
+        "f5_b",
+        "f6_a",
+        "f6_b",
+        "f7_a",
+        "f7_b",
+        "f8_a",
+        "f8_b",
+        "f9_a",
+        "f9_b",
+        "f10_a",
+        "f10_b",
+        "f11_a",
+        "f11_b",
+        "f12_a",
+        "f12_b",
+        "f13_a",
+        "f13_b",
+        "f14_a",
+        "f14_b",
+        "f15_a",
+        "f15_b",
+        "f16_a",
+        "f16_b",
+        "f17_a",
+        "f17_b",
+        "f18_a",
+        "f18_b",
+        "f19_a",
+        "f19_b",
+        "f20_a",
+        "f20_b"};
+
 static short Parse_fields_num(char *ptrptr);
+static short Parse_cali_dat(char *ptrptr);
+
 void Create_fields_num(char *read_buf);
 
 static short Parse_metadata(char *ptrptr)
@@ -173,14 +267,14 @@ static short Parse_metadata(char *ptrptr)
             printf("fn_485_co2 = %d\n", fn_485_co2);
         }
     }
-    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ext"); //"fn_ext"
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ext_t"); //"fn_ext_t"
     if (NULL != pSubSubSub)
     {
-        if ((uint32_t)pSubSubSub->valueint != fn_ext)
+        if ((uint32_t)pSubSubSub->valueint != fn_ext_t)
         {
-            fn_ext = (uint32_t)pSubSubSub->valueint;
-            E2P_WriteLenByte(FN_EXT_ADD, fn_ext, 4);
-            printf("fn_ext = %d\n", fn_ext);
+            fn_ext_t = (uint32_t)pSubSubSub->valueint;
+            E2P_WriteLenByte(FN_EXT_ADD, fn_ext_t, 4);
+            printf("fn_ext_t = %d\n", fn_ext_t);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_e"); //"fn_sw_e"
@@ -201,6 +295,16 @@ static short Parse_metadata(char *ptrptr)
             fn_sw_pc = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_ELE_QUAN_ADD, fn_sw_pc, 4);
             printf("fn_sw_pc = %d\n", fn_sw_pc);
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_on"); //"fn_sw_pc"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_sw_on)
+        {
+            fn_sw_on = (uint32_t)pSubSubSub->valueint;
+            E2P_WriteLenByte(FN_SW_ON_ADD, fn_sw_on, 4);
+            printf("fn_sw_on = %d\n", fn_sw_on);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "cg_data_led"); //"cg_data_led"
@@ -356,7 +460,6 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             {
                 strcpy(ApiKey, json_data_parse_channel_channel_write_key->valuestring);
                 printf("api_key:%s\n", ApiKey);
-                // sprintf(ApiKey, "%s%c", json_data_parse_channel_channel_write_key->valuestring, '\0');
                 E2P_Write(API_KEY_ADD, (uint8_t *)ApiKey, API_KEY_LEN);
             }
 
@@ -365,7 +468,6 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             {
                 strcpy(ChannelId, json_data_parse_channel_channel_id_value->valuestring);
                 printf("ChannelId:%s\n", ChannelId);
-                // sprintf(ApiKey, "%s%c", json_data_parse_channel_channel_write_key->valuestring, '\0');
                 E2P_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
             }
 
@@ -374,7 +476,6 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             {
                 strcpy(USER_ID, json_data_parse_channel_user_id->valuestring);
                 printf("USER_ID:%s\n", USER_ID);
-                // sprintf(ApiKey, "%s%c", json_data_parse_channel_channel_write_key->valuestring, '\0');
                 E2P_Write(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
             }
         }
@@ -430,6 +531,13 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
             ESP_LOGI(TAG, "%s", mqtt_json);
             parse_objects_mqtt(mqtt_json, false); //parse mqtt
             free(mqtt_json);
+        }
+
+        json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "cali"); //cali
+        if (NULL != json_data_parse_value)
+        {
+            // printf("cali: %s\n", json_data_parse_value->valuestring);
+            Parse_cali_dat(json_data_parse_value->valuestring); //parse cali
         }
     }
 
@@ -506,10 +614,10 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
         memset(mqtt_json_s.mqtt_command_id, 0, sizeof(mqtt_json_s.mqtt_command_id));
         strncpy(mqtt_json_s.mqtt_command_id, pSubSubSub->valuestring, strlen(pSubSubSub->valuestring));
         post_status = POST_NORMAL;
-        if (Binary_dp != NULL)
-        {
-            xTaskNotifyGive(Binary_dp);
-        }
+        // if (Binary_dp != NULL)
+        // {
+        //     xTaskNotifyGive(Binary_dp);
+        // }
     }
 
     pSubSubSub = cJSON_GetObjectItem(json_data_parse, "command_string"); //
@@ -532,26 +640,37 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
                         strcpy(mqtt_json_s.mqtt_ota_url, pSubSubSub->valuestring);
                         ESP_LOGI(TAG, "OTA_URL=%s", mqtt_json_s.mqtt_ota_url);
 
-                        pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "size"); //
+                        // pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "size"); //
+                        // if (pSubSubSub != NULL)
+                        // {
+                        // mqtt_json_s.mqtt_file_size = (uint32_t)pSubSubSub->valuedouble;
+                        // ESP_LOGI(TAG, "OTA_SIZE=%d", mqtt_json_s.mqtt_file_size);
+
+                        pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "version"); //
                         if (pSubSubSub != NULL)
                         {
-                            mqtt_json_s.mqtt_file_size = (uint32_t)pSubSubSub->valuedouble;
-                            ESP_LOGI(TAG, "OTA_SIZE=%d", mqtt_json_s.mqtt_file_size);
-
-                            pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "version"); //
-                            if (pSubSubSub != NULL)
+                            if (strcmp(pSubSubSub->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
                             {
-                                if (strcmp(pSubSubSub->valuestring, FIRMWARE) != 0) //与当前 版本号 对比
+                                ESP_LOGI(TAG, "OTA_VERSION=%s", pSubSubSub->valuestring);
+                                if (Binary_dp != NULL)
                                 {
-                                    ESP_LOGI(TAG, "OTA_VERSION=%s", pSubSubSub->valuestring);
-                                    ota_start(); //启动OTA
+                                    xTaskNotifyGive(Binary_dp);
                                 }
+                                ota_start(); //启动OTA
                             }
                         }
+                        // }
                     }
                 }
                 else if (strcmp(pSubSubSub->valuestring, "command") == 0 && sw_flag == true)
                 {
+                    pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "c_type");
+                    if (pSubSubSub != NULL)
+                    {
+
+                        memcpy(C_TYPE, pSubSubSub->valuestring, 10);
+                        // ESP_LOGI(TAG, "C_TYPE=%s", pSubSubSub->valuestring);
+                    }
                     pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "set_state");
                     if (pSubSubSub != NULL)
                     {
@@ -567,7 +686,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
     return 1;
 }
 
-uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
+uint16_t Create_Status_Json(char *status_buff, uint16_t buff_len, bool filed_flag)
 {
     uint8_t mac_sys[6] = {0};
     char *ssid64_buff;
@@ -575,10 +694,13 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
 
     if (filed_flag == true)
     {
-        char *field_buff;
+        char *field_buff, *cali_buff;
         field_buff = (char *)malloc(FILED_BUFF_SIZE);
+        cali_buff = (char *)malloc(CALI_BUFF_SIZE);
         memset(field_buff, 0, FILED_BUFF_SIZE);
+        memset(cali_buff, 0, CALI_BUFF_SIZE);
         Create_fields_num(field_buff);
+        Create_cali_buf(cali_buff);
 
         if (net_mode == NET_WIFI)
         {
@@ -586,30 +708,35 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
             memset(ssid64_buff, 0, 64);
             base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\",\"sensors\":[%s]}",
-                    mac_sys[0],
-                    mac_sys[1],
-                    mac_sys[2],
-                    mac_sys[3],
-                    mac_sys[4],
-                    mac_sys[5],
-                    ssid64_buff,
-                    field_buff);
+            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
+                     mac_sys[0],
+                     mac_sys[1],
+                     mac_sys[2],
+                     mac_sys[3],
+                     mac_sys[4],
+                     mac_sys[5],
+                     C_TYPE,
+                     ssid64_buff,
+                     field_buff,
+                     cali_buff);
             free(ssid64_buff);
         }
         else
         {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\",\"sensors\":[%s]}",
-                    mac_sys[0],
-                    mac_sys[1],
-                    mac_sys[2],
-                    mac_sys[3],
-                    mac_sys[4],
-                    mac_sys[5],
-                    ICCID,
-                    field_buff);
+            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\",\"sensors\":[%s],\"cali\":[%s]}",
+                     mac_sys[0],
+                     mac_sys[1],
+                     mac_sys[2],
+                     mac_sys[3],
+                     mac_sys[4],
+                     mac_sys[5],
+                     ICCID,
+                     C_TYPE,
+                     field_buff,
+                     cali_buff);
         }
         free(field_buff);
+        free(cali_buff);
     }
     else
     {
@@ -619,26 +746,28 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
             memset(ssid64_buff, 0, 64);
             base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
 
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x\",\"ssid_base64\":\"%s\"}",
-                    mac_sys[0],
-                    mac_sys[1],
-                    mac_sys[2],
-                    mac_sys[3],
-                    mac_sys[4],
-                    mac_sys[5],
-                    ssid64_buff);
+            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\"}",
+                     mac_sys[0],
+                     mac_sys[1],
+                     mac_sys[2],
+                     mac_sys[3],
+                     mac_sys[4],
+                     mac_sys[5],
+                     C_TYPE,
+                     ssid64_buff);
             free(ssid64_buff);
         }
         else
         {
-            sprintf(status_buff, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s\"}",
-                    mac_sys[0],
-                    mac_sys[1],
-                    mac_sys[2],
-                    mac_sys[3],
-                    mac_sys[4],
-                    mac_sys[5],
-                    ICCID);
+            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\"}",
+                     mac_sys[0],
+                     mac_sys[1],
+                     mac_sys[2],
+                     mac_sys[3],
+                     mac_sys[4],
+                     mac_sys[5],
+                     ICCID,
+                     C_TYPE);
         }
     }
 
@@ -647,7 +776,6 @@ uint16_t Create_Status_Json(char *status_buff, bool filed_flag)
 
 void Create_NET_Json(void)
 {
-
     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
     {
         char *filed_buff;
@@ -658,7 +786,7 @@ void Create_NET_Json(void)
         uint16_t len = 0;
         cJSON *pJsonRoot;
         wifi_ap_record_t wifidata_t;
-
+        char *status_buf = (char *)malloc(50);
         filed_buff = (char *)malloc(9);
         time_buff = (char *)malloc(24);
         Server_Timer_SEND(time_buff);
@@ -681,6 +809,8 @@ void Create_NET_Json(void)
             }
         }
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+        snprintf(status_buf, 50, "c_type=%s", C_TYPE);
+        cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -690,6 +820,7 @@ void Create_NET_Json(void)
         xSemaphoreTake(Cache_muxtex, -1);
         DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
+        free(status_buf);
         free(OutBuffer);
         free(filed_buff);
         free(time_buff);
@@ -704,6 +835,7 @@ void Create_Switch_Json(void)
         char *time_buff;
         uint16_t len = 0;
         cJSON *pJsonRoot;
+        char *status_buf = (char *)malloc(50);
         time_buff = (char *)malloc(24);
         Server_Timer_SEND(time_buff);
 
@@ -711,6 +843,8 @@ void Create_Switch_Json(void)
         cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
 
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
+        snprintf(status_buf, 50, "c_type=%s", C_TYPE);
+        cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
         cJSON_Delete(pJsonRoot);                       //delete cjson root
@@ -720,6 +854,7 @@ void Create_Switch_Json(void)
         xSemaphoreTake(Cache_muxtex, -1);
         DataSave((uint8_t *)OutBuffer, len);
         xSemaphoreGive(Cache_muxtex);
+        free(status_buf);
         free(OutBuffer);
         free(time_buff);
     }
@@ -731,7 +866,7 @@ void Create_Switch_Json(void)
 void Create_fields_num(char *read_buf)
 {
     char *out_buf;
-    uint8_t data_len;
+    uint16_t data_len;
     cJSON *pJsonRoot;
 
     pJsonRoot = cJSON_CreateObject();
@@ -755,11 +890,33 @@ void Create_fields_num(char *read_buf)
     cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);       //r1_ph_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_co2_t", r1_co2_t_f_num); //r1_co2_t_f_num
     cJSON_AddNumberToObject(pJsonRoot, "r1_co2_h", r1_co2_h_f_num); //r1_co2_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_on", sw_on_f_num);       //sw_on_f_num
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
     data_len = strlen(out_buf);
     cJSON_Delete(pJsonRoot); //delete cjson root
     memcpy(read_buf, out_buf, data_len);
+    free(out_buf);
+}
+
+/*******************************************************************************
+// create cali num 
+*******************************************************************************/
+void Create_cali_buf(char *read_buf)
+{
+    char *out_buf;
+    cJSON *pJsonRoot;
+
+    pJsonRoot = cJSON_CreateObject();
+
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        cJSON_AddNumberToObject(pJsonRoot, f_cali_str[i], f_cali_u[i].val); //sw_s_f_num
+    }
+
+    out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+    cJSON_Delete(pJsonRoot);                     //delete cjson root
+    strcpy(read_buf, out_buf);
     free(out_buf);
 }
 
@@ -796,7 +953,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                     if (NULL != pSub)
                     {
                         printf("ProductID= %s, len= %d\n", pSub->valuestring, strlen(pSub->valuestring));
-                        E2P_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save ProductID
+                        E2P_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save Prfield1uctID
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "SeriesNumber"); //"SeriesNumber"
@@ -966,14 +1123,15 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             // E2P_Read(MQTT_PORT_ADD, (uint8_t *)MQTT_PORT, 5);
 
             esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC，
-            sprintf(mac_buff,
-                    "%02x:%02x:%02x:%02x:%02x:%02x",
-                    mac_sys[0],
-                    mac_sys[1],
-                    mac_sys[2],
-                    mac_sys[3],
-                    mac_sys[4],
-                    mac_sys[5]);
+            snprintf(mac_buff,
+                     sizeof(mac_buff),
+                     "%02x:%02x:%02x:%02x:%02x:%02x",
+                     mac_sys[0],
+                     mac_sys[1],
+                     mac_sys[2],
+                     mac_sys[3],
+                     mac_sys[4],
+                     mac_sys[5]);
 
             cJSON_AddItemToObject(root, "ProductID", cJSON_CreateString(ProductId));
             cJSON_AddItemToObject(root, "SeriesNumber", cJSON_CreateString(SerialNum));
@@ -1145,6 +1303,7 @@ static short Parse_fields_num(char *ptrptr)
     {
         return ESP_FAIL;
     }
+    ESP_LOGI(TAG, "Parse_fields_num:%s", ptrptr);
     cJSON *pJsonJson = cJSON_Parse(ptrptr);
     if (NULL == pJsonJson)
     {
@@ -1155,7 +1314,7 @@ static short Parse_fields_num(char *ptrptr)
     cJSON *pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_s"); //"sw_s"
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_s_f_num)
         {
             sw_s_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_S_F_NUM_ADDR, sw_s_f_num);
@@ -1164,7 +1323,7 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_v"); //"sw_v"
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_v_f_num)
         {
             sw_v_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_V_F_NUM_ADDR, sw_v_f_num); //
@@ -1173,7 +1332,7 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_c"); //""
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_c_f_num)
         {
             sw_c_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_C_F_NUM_ADDR, sw_c_f_num); //
@@ -1182,7 +1341,7 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_p"); //""
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_p_f_num)
         {
             sw_p_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_P_F_NUM_ADDR, sw_p_f_num); //
@@ -1191,10 +1350,19 @@ static short Parse_fields_num(char *ptrptr)
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_pc"); //""
     if (NULL != pSubSubSub)
     {
-        if ((uint8_t)pSubSubSub->valueint != rssi_w_f_num)
+        if ((uint8_t)pSubSubSub->valueint != sw_pc_f_num)
         {
             sw_pc_f_num = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(SW_PC_F_NUM_ADDR, sw_pc_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "sw_on"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != sw_on_f_num)
+        {
+            sw_on_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(SW_ON_F_NUM_ADDR, sw_on_f_num); //
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "rssi_w"); //"rssi_w"
@@ -1332,6 +1500,50 @@ static short Parse_fields_num(char *ptrptr)
     return ESP_OK;
 }
 
+/*******************************************************************************
+// parse sensors fields num
+*******************************************************************************/
+static short Parse_cali_dat(char *ptrptr)
+{
+    cJSON *pSubSubSub;
+
+    if (NULL == ptrptr)
+    {
+        return ESP_FAIL;
+    }
+    cJSON *pJsonJson = cJSON_Parse(ptrptr);
+    if (NULL == pJsonJson)
+    {
+        cJSON_Delete(pJsonJson); //delete pJson
+        return ESP_FAIL;
+    }
+
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        pSubSubSub = cJSON_GetObjectItem(pJsonJson, f_cali_str[i]); //
+        if (NULL != pSubSubSub)
+        {
+            if ((float)pSubSubSub->valuedouble != f_cali_u[i].val)
+            {
+                f_cali_u[i].val = (float)pSubSubSub->valuedouble;
+                E2P_WriteLenByte(5 * i + F1_A_ADDR, f_cali_u[i].dat, 4);
+            }
+        }
+    }
+
+    cJSON_Delete(pJsonJson);
+    return ESP_OK;
+}
+
+//计算 filed 校准值
+double Cali_filed(uint8_t filed_num, double filed_val)
+{
+    double filed_val_c;
+    filed_val_c = (double)f_cali_u[(filed_num - 1) * 2].val * filed_val + f_cali_u[(filed_num - 1) * 2 + 1].val; //a*X+b
+
+    return filed_val_c;
+}
+
 // get mid str 把src中 s1 到 s2之间的数据拷贝（包括s1不包括S2）到 sub中 ,返回 s2地址
 char *mid(char *src, char *s1, char *s2, char *sub)
 {
@@ -1384,6 +1596,44 @@ char *s_rstrstr(const char *_pBegin, int _MaxLen, int _ReadLen, const char *_szK
         }
     }
 
+    return NULL;
+}
+
+// return: NULL Not Found
+//反向逐字节查找字符串 _MaxLen: 内存大小，_ReadLen:查找的长度
+char *s_rstrstr_2(const char *_pBegin, int _MaxLen, const char *_szKey)
+{
+    if (NULL == _pBegin || NULL == _szKey || _MaxLen <= 0)
+    {
+        return NULL;
+    }
+    int i;
+    int j = strlen(_szKey) - 1;
+    int k = 0;
+    int s32CmpLen = strlen(_szKey);
+    char *temp = 0;
+
+    for (i = 0; i <= _MaxLen; i++)
+    {
+        temp = _pBegin - i;
+
+        if (*temp == _szKey[j])
+        {
+            for (j = strlen(_szKey) - 1, k = i; j >= 0; j--, k++)
+            {
+                temp = _pBegin - k;
+                if (*temp != _szKey[j])
+                {
+                    j = strlen(_szKey) - 1;
+                    break;
+                }
+                if (j == 0)
+                {
+                    return temp;
+                }
+            }
+        }
+    }
     return NULL;
 }
 
@@ -1460,11 +1710,12 @@ void Read_Metadate_E2p(void)
     fn_485_ws = E2P_ReadLenByte(FN_485_WS_ADD, 4);   //
     fn_485_lt = E2P_ReadLenByte(FN_485_LT_ADD, 4);   //
     fn_485_co2 = E2P_ReadLenByte(FN_485_CO2_ADD, 4); //
-    fn_ext = E2P_ReadLenByte(FN_EXT_ADD, 4);         //18b20
+    fn_ext_t = E2P_ReadLenByte(FN_EXT_ADD, 4);       //18b20
     fn_sw_e = E2P_ReadLenByte(FN_ENERGY_ADD, 4);     //电能信息：电压/电流/功率
     fn_sw_pc = E2P_ReadLenByte(FN_ELE_QUAN_ADD, 4);  //用电量统计
     cg_data_led = E2P_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
     net_mode = E2P_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
+    fn_sw_on = E2P_ReadLenByte(FN_SW_ON_ADD, 4);     //累积开启时长统计周期
 
     printf("E2P USAGE:%d\n", E2P_USAGED);
 
@@ -1475,11 +1726,12 @@ void Read_Metadate_E2p(void)
     printf("fn_485_ws:%d\n", fn_485_ws);
     printf("fn_485_lt:%d\n", fn_485_lt);
     printf("fn_485_co2:%d\n", fn_485_co2);
-    printf("fn_ext:%d\n", fn_ext);
+    printf("fn_ext_t:%d\n", fn_ext_t);
     printf("fn_sw_e:%d\n", fn_sw_e);
     printf("cg_data_led:%d\n", cg_data_led);
     printf("net_mode:%d\n", net_mode);
     printf("de_sw_s:%d\n", de_sw_s);
+    printf("fn_sw_on:%d\n", fn_sw_on);
 }
 
 void Read_Product_E2p(void)
@@ -1511,29 +1763,120 @@ void Read_Product_E2p(void)
     E2P_Read(BEARER_USER_ADDR, (uint8_t *)SIM_USER, sizeof(SIM_USER));
     E2P_Read(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
     printf("APN=%s,USER=%s,PWD=%s\n", SIM_APN, SIM_USER, SIM_PWD);
+
+    if (strlen(WEB_SERVER) == 0)
+    {
+        snprintf(WEB_SERVER, sizeof(WEB_SERVER), "api.ubibot.cn");
+    }
+    if (strlen(WEB_PORT) == 0)
+    {
+        snprintf(WEB_PORT, sizeof(WEB_PORT), "80");
+    }
+    if (strlen(MQTT_SERVER) == 0)
+    {
+        snprintf(MQTT_SERVER, sizeof(MQTT_SERVER), "mqtt.ubibot.cn");
+    }
+    if (strlen(MQTT_PORT) == 0)
+    {
+        snprintf(MQTT_PORT, sizeof(MQTT_PORT), "1883");
+    }
 }
 
 void Read_Fields_E2p(void)
 {
-    sw_s_f_num = E2P_ReadOneByte(SW_S_F_NUM_ADDR);
-    sw_v_f_num = E2P_ReadOneByte(SW_V_F_NUM_ADDR);
-    sw_c_f_num = E2P_ReadOneByte(SW_C_F_NUM_ADDR);
-    sw_p_f_num = E2P_ReadOneByte(SW_P_F_NUM_ADDR);
-    sw_pc_f_num = E2P_ReadOneByte(SW_PC_F_NUM_ADDR);
-    rssi_w_f_num = E2P_ReadOneByte(RSSI_NUM_ADDR);          //rssi_w
-    rssi_g_f_num = E2P_ReadOneByte(GPRS_RSSI_NUM_ADDR);     //rssi_g
-    r1_light_f_num = E2P_ReadOneByte(RS485_LIGHT_NUM_ADDR); //r1_light
-    r1_th_t_f_num = E2P_ReadOneByte(RS485_TEMP_NUM_ADDR);   //r1_th_t_f_num
-    r1_th_h_f_num = E2P_ReadOneByte(RS485_HUMI_NUM_ADDR);   //r1_th_h_f_num
-    r1_sth_t_f_num = E2P_ReadOneByte(RS485_STEMP_NUM_ADDR); //r1_sth_t_f_num
-    r1_sth_h_f_num = E2P_ReadOneByte(RS485_SHUMI_NUM_ADDR); //r1_sth_h_f_num
-    e1_t_f_num = E2P_ReadOneByte(EXT_TEMP_NUM_ADDR);        //e1_t_f_num
-    r1_t_f_num = E2P_ReadOneByte(RS485_T_NUM_ADDR);         //r1_t_f_num
-    r1_ws_f_num = E2P_ReadOneByte(RS485_WS_NUM_ADDR);       //r1_ws_f_num
-    r1_co2_f_num = E2P_ReadOneByte(RS485_CO2_NUM_ADDR);     //r1_co2_f_num
-    r1_ph_f_num = E2P_ReadOneByte(RS485_PH_NUM_ADDR);       //r1_ph_f_num
-    r1_co2_t_f_num = E2P_ReadOneByte(RS485_CO2_T_NUM_ADDR);
-    r1_co2_h_f_num = E2P_ReadOneByte(RS485_CO2_H_NUM_ADDR);
+    uint8_t sensors_temp;
+
+    if ((sensors_temp = E2P_ReadOneByte(SW_S_F_NUM_ADDR)) != 0)
+    {
+        sw_s_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_V_F_NUM_ADDR)) != 0)
+    {
+        sw_v_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_C_F_NUM_ADDR)) != 0)
+    {
+        sw_c_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_P_F_NUM_ADDR)) != 0)
+    {
+        sw_p_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_PC_F_NUM_ADDR)) != 0)
+    {
+        sw_pc_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RSSI_NUM_ADDR)) != 0)
+    {
+        rssi_w_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(GPRS_RSSI_NUM_ADDR)) != 0)
+    {
+        rssi_g_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_LIGHT_NUM_ADDR)) != 0)
+    {
+        r1_light_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_TEMP_NUM_ADDR)) != 0)
+    {
+        r1_th_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_HUMI_NUM_ADDR)) != 0)
+    {
+        r1_th_h_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_STEMP_NUM_ADDR)) != 0)
+    {
+        r1_sth_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_SHUMI_NUM_ADDR)) != 0)
+    {
+        r1_sth_h_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(EXT_TEMP_NUM_ADDR)) != 0)
+    {
+        e1_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_T_NUM_ADDR)) != 0)
+    {
+        r1_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_WS_NUM_ADDR)) != 0)
+    {
+        r1_ws_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_CO2_NUM_ADDR)) != 0)
+    {
+        r1_co2_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_PH_NUM_ADDR)) != 0)
+    {
+        r1_ph_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_CO2_T_NUM_ADDR)) != 0)
+    {
+        r1_co2_t_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(RS485_CO2_H_NUM_ADDR)) != 0)
+    {
+        r1_co2_h_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(SW_ON_F_NUM_ADDR)) != 0)
+    {
+        sw_on_f_num = sensors_temp;
+    }
+
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        f_cali_u[i].dat = E2P_ReadLenByte(5 * i + F1_A_ADDR, 4);
+        if (i % 2 == 0 && f_cali_u[i].val == 0)
+        {
+            f_cali_u[i].val = 1;
+        }
+
+        printf("%s:%f\n", f_cali_str[i], f_cali_u[i].val);
+    }
 
     printf("sw_s_f_num:%d\n", sw_s_f_num);
     printf("sw_v_f_num:%d\n", sw_v_f_num);
@@ -1542,6 +1885,7 @@ void Read_Fields_E2p(void)
     printf("sw_pc_f_num:%d\n", sw_pc_f_num);
     printf("rssi_w_f_num:%d\n", rssi_w_f_num);
     printf("rssi_g_f_num:%d\n", rssi_g_f_num);
+    printf("sw_on_f_num:%d\n", sw_on_f_num);
     printf("r1_light_f_num:%d\n", r1_light_f_num);
     printf("r1_th_t_f_num:%d\n", r1_th_t_f_num);
     printf("r1_th_h_f_num:%d\n", r1_th_h_f_num);

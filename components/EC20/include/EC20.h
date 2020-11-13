@@ -14,6 +14,14 @@ enum recv_mode
     EC_INPORT
 };
 
+//4G模块型号
+enum
+{
+    EC20 = 0,
+    SIM7600,
+    A7600C1
+} model_id;
+
 enum ec_err_code
 {
     NO_ARK = 401,

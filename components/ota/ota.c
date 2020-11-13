@@ -43,6 +43,65 @@ static void http_cleanup(esp_http_client_handle_t client)
     esp_http_client_cleanup(client);
 }
 
+/*read buffer by byte still delim ,return read bytes counts*/
+static int read_until(char *buffer, char delim, int len)
+{
+    int i = 0;
+    while (buffer[i] != delim && i < len)
+    {
+        ++i;
+    }
+    return i + 1;
+}
+/* resolve a packet from http socket
+ * return true if packet including \r\n\r\n that means http packet header finished,start to receive packet body
+ * otherwise return false
+ * */
+static bool read_past_http_header(char text[], int total_len, uint32_t *content_len, uint32_t *binary_file_length, esp_ota_handle_t update_handle)
+{
+    printf("\r\n%s\r\n", text);
+    /* 获取镜像大小*/
+    char sub[20];
+    if (mid((char *)text, "Content-Length: ", "\r\n", sub) == NULL)
+    {
+        ESP_LOGE(TAG, "URL or SERVER ERROR!!!");
+        return false;
+    }
+
+    *content_len = atol(sub);
+    ESP_LOGI(TAG, "Content-Length:%d\n", *content_len);
+
+    /* i means current position */
+    int i = 0, i_read_len = 0;
+    while (text[i] != 0 && i < total_len)
+    {
+        i_read_len = read_until(&text[i], '\n', total_len);
+        // if we resolve \r\n line,we think packet header is finished
+        if (i_read_len == 2)
+        {
+            int i_write_len = total_len - (i + 2);
+            memset(ota_write_data, 0, BUFFSIZE);
+            /*copy first http packet body to write buffer*/
+            memcpy(ota_write_data, &(text[i + 2]), i_write_len);
+
+            esp_err_t err = esp_ota_write(update_handle, (const void *)ota_write_data, i_write_len);
+            if (err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Error: esp_ota_write failed! err=0x%x", err);
+                return false;
+            }
+            else
+            {
+                ESP_LOGI(TAG, "esp_ota_write header OK");
+                *binary_file_length += i_write_len;
+            }
+            return true;
+        }
+        i += i_read_len;
+    }
+    return false;
+}
+
 //wifi ota
 void WIFI_OTA(void)
 {
@@ -230,7 +289,27 @@ bool EC20_OTA(void)
         ret = false;
         goto end;
     }
-    content_len = mqtt_json_s.mqtt_file_size;
+
+    memset(ota_write_data, 0, 1000);
+    //接收http包
+    buff_len = Read_TCP_OTA_File(ota_write_data);
+    if (buff_len > 0)
+    {
+        if (read_past_http_header(ota_write_data, buff_len, &content_len, &binary_file_length, update_handle) != true)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            ret = false;
+            goto end;
+        }
+    }
+    else
+    {
+        ESP_LOGE(TAG, "%d", __LINE__);
+        ret = false;
+        goto end;
+    }
+
+    // content_len = mqtt_json_s.mqtt_file_size;
     ESP_LOGI(TAG, "content_len:%d", content_len);
 
     while (binary_file_length < content_len)

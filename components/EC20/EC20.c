@@ -29,6 +29,7 @@ char *EC20_RECV;
 
 #define EC20_SW 25
 #define BUF_SIZE 1024
+#define CMD_LEN 1024
 
 #define EX_UART_NUM UART_NUM_1
 
@@ -56,8 +57,8 @@ uint8_t EC20_Moudle_Init(void);
 //重启EC20网络初始化任务
 void Res_EC20_Task(void)
 {
-    xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
-    xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
+    // xEventGroupClearBits(Net_sta_group, CONNECTED_BIT);
+    // xEventGroupClearBits(Net_sta_group, ACTIVED_BIT);
     if ((xEventGroupGetBits(Net_sta_group) & EC20_Task_BIT) != EC20_Task_BIT)
     {
         xTaskCreate(EC20_Task, "EC20_Task", 3072, NULL, 9, &EC20_Task_Handle);
@@ -119,14 +120,30 @@ void EC20_Power_On(void)
 
 void EC20_Rest(void)
 {
-    EC20_Power_On();
-    if (AT_Cmd_Send("AT\r\n", "OK", 200, 5) == NULL)
+    if (model_id == SIM7600)
     {
-        EC20_Power_On();
+        if (AT_Cmd_Send("AT+CRESET\r\n", "OK", 1000, 1) == NULL)
+        {
+            Net_ErrCode = NO_ARK;
+            ESP_LOGE(TAG, "%d", __LINE__);
+            // return;
+        }
     }
     else
     {
+        if (AT_Cmd_Send("AT+QPOWD\r\n", "OK", 1000, 1))
+        {
+            Net_ErrCode = NO_ARK;
+            ESP_LOGE(TAG, "%d", __LINE__);
+            // return;
+        }
+    }
+    vTaskDelay(15000 / portTICK_PERIOD_MS);
+    if (AT_Cmd_Send("AT\r\n", "OK", 1000, 20) == NULL)
+    {
         Net_ErrCode = NO_ARK;
+        ESP_LOGE(TAG, "%d", __LINE__);
+        return;
     }
 }
 
@@ -137,6 +154,8 @@ void uart_event_task(void *pvParameters)
     uint16_t all_read_len = 0;
     int header_len = 0;
     EC20_RECV = (char *)malloc(BUF_SIZE);
+    memset(EC20_RECV, 0, BUF_SIZE);
+    uart_flush(EX_UART_NUM);
     char *ret_chr;
 
     for (;;)
@@ -169,33 +188,52 @@ void uart_event_task(void *pvParameters)
                         if (s_rstrstr(EC20_RECV, all_read_len, 3, "\r\n") != NULL)
                         {
                             xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
-                            if (strstr(EC20_RECV, "+QMTRECV:") != NULL)
+                            if (model_id == SIM7600)
                             {
-                                // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
-                                if (net_mode == NET_4G)
+                                if (strstr(EC20_RECV, "+CMQTTRXPAYLOAD: 0") != NULL)
                                 {
-                                    xQueueOverwrite(EC_mqtt_queue, (void *)EC20_RECV);
+                                    // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
+                                    if (net_mode == NET_4G)
+                                    {
+                                        xQueueOverwrite(EC_mqtt_queue, (void *)EC20_RECV);
+                                    }
+                                }
+                                else if (strstr(EC20_RECV, "+CMQTTCONNLOST:") != NULL)
+                                {
+                                    Res_EC20_Task();
                                 }
                             }
-                            else if (strstr(EC20_RECV, "+QMTSTAT:") != NULL)
+                            else
                             {
-                                ESP_LOGE("MQTT", "%s\n", EC20_RECV);
-                                Res_EC20_Task();
+                                if (strstr(EC20_RECV, "+QMTRECV:") != NULL)
+                                {
+                                    // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
+                                    if (net_mode == NET_4G)
+                                    {
+                                        xQueueOverwrite(EC_mqtt_queue, (void *)EC20_RECV);
+                                    }
+                                }
+                                else if (strstr(EC20_RECV, "+QMTSTAT:") != NULL)
+                                {
+                                    ESP_LOGE("MQTT", "%s\n", EC20_RECV);
+                                    Res_EC20_Task();
+                                }
+                                else if (strstr(EC20_RECV, "+QMTPING:") != NULL)
+                                {
+                                    ESP_LOGE("MQTT", "%s\n", EC20_RECV);
+                                    Res_EC20_Task();
+                                }
+                                // else if (strstr(EC20_RECV, "+CME ERROR:") != NULL)
+                                // {
+                                //     ESP_LOGE("MQTT", "%s\n", EC20_RECV);
+                                //     Res_EC20_Task();
+                                // }
+                                // else
+                                // {
+                                //     xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
+                                // }
                             }
-                            else if (strstr(EC20_RECV, "+QMTPING:") != NULL)
-                            {
-                                ESP_LOGE("MQTT", "%s\n", EC20_RECV);
-                                Res_EC20_Task();
-                            }
-                            // else if (strstr(EC20_RECV, "+CME ERROR:") != NULL)
-                            // {
-                            //     ESP_LOGE("MQTT", "%s\n", EC20_RECV);
-                            //     Res_EC20_Task();
-                            // }
-                            // else
-                            // {
-                            //     xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
-                            // }
+
                             all_read_len = 0;
                             memset(EC20_RECV, 0, BUF_SIZE);
                             uart_flush(EX_UART_NUM);
@@ -256,7 +294,7 @@ void uart_event_task(void *pvParameters)
 
             //Others
             default:
-                ESP_LOGI(TAG, "uart type: %d", event.type);
+                // ESP_LOGI(TAG, "uart type: %d", event.type);
                 break;
             }
         }
@@ -287,6 +325,8 @@ void EC20_Init(void)
     io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
 
+    gpio_set_level(EC20_SW, 0); //
+
     // EC20_at_Binary = xSemaphoreCreateBinary();
     EC_at_queue = xQueueCreate(1, BUF_SIZE);
     EC_mqtt_queue = xQueueCreate(1, BUF_SIZE);
@@ -316,10 +356,10 @@ void EC20_Task(void *arg)
             continue;
         }
         ret = EC20_Http_CFG();
-        if (ret == 0)
-        {
-            continue;
-        }
+        // if (ret == 0)
+        // {
+        //     continue;
+        // }
 
         xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
         Res_EC20_Mqtt_Task();
@@ -360,8 +400,14 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
     xSemaphoreTake(EC20_muxtex, -1);
     char *rst_val = NULL;
     uint8_t i, j;
-
-    uint8_t *recv_buf = (uint8_t *)malloc(1024);
+    bool exit_flag = false;
+    uint8_t *recv_buf;
+    while ((recv_buf = (uint8_t *)malloc(1024)) == NULL)
+    {
+        free(recv_buf);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+    memset(recv_buf, 0, 1024);
 
     for (i = 0; i < try_num; i++)
     {
@@ -374,16 +420,18 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
         {
             if (xQueueReceive(EC_at_queue, (void *)recv_buf, time_out / portTICK_RATE_MS) == pdPASS)
             {
+                if (strstr((char *)recv_buf, "EXIT") != NULL)
+                {
+                    //ESP_LOGI(TAG, "%d", __LINE__);
+                    exit_flag = true;
+                    break;
+                }
+
                 rst_val = strstr((char *)recv_buf, check_buff); //
                 if (rst_val != NULL)
                 {
                     break;
                 }
-            }
-            else //未等到数据
-            {
-
-                break;
             }
         }
 
@@ -391,8 +439,15 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
         {
             break;
         }
+        else if (exit_flag) //未等到数据
+        {
+            break;
+        }
+        else
+        {
+            ESP_LOGE(TAG, "%d,%s", __LINE__, recv_buf);
+        }
     }
-
     // vTaskDelay(100 / portTICK_PERIOD_MS);
     free(recv_buf);
     xSemaphoreGive(EC20_muxtex);
@@ -430,23 +485,65 @@ uint8_t EC20_Net_Check(void)
 uint8_t EC20_Moudle_Init(void)
 {
     char *ret;
-    char *cmd_buf = (char *)malloc(120);
+    char *cmd_buf = (char *)malloc(CMD_LEN);
+    uint8_t fail_num = 0;
+    uart_flush(EX_UART_NUM);
 
-    EC20_Rest();
+    //退出AT 发送
+    if (xSemaphoreTake(EC20_muxtex, 0) == pdFAIL)
+    {
+        xQueueOverwrite(EC_at_queue, (void *)"EXIT");
+    }
+    else
+    {
+        xSemaphoreGive(EC20_muxtex);
+    }
 
-    ret = AT_Cmd_Send("AT\r\n", "OK", 1000, 5);
+    //重启
+    while (AT_Cmd_Send("AT+CFUN=1,1\r\n", "OK", 1000, 20) == NULL)
+    {
+
+        //模块可能关机，尝试开机
+        gpio_set_level(EC20_SW, 1); //
+        vTaskDelay(800 / portTICK_PERIOD_MS);
+        gpio_set_level(EC20_SW, 0); //
+        vTaskDelay(15000 / portTICK_PERIOD_MS);
+        ESP_LOGE(TAG, "%d", __LINE__);
+        fail_num++;
+        if (fail_num > 5)
+        {
+            ret = NULL;
+            goto end;
+        }
+    }
+    vTaskDelay(15000 / portTICK_PERIOD_MS);
+
+    //查询模块型号
+    ret = AT_Cmd_Send("AT+CGMM\r\n", "OK", 1000, 10);
     if (ret == NULL)
     {
-        Net_ErrCode = NO_ARK;
         ESP_LOGE(TAG, "%d", __LINE__);
-        return 0;
+        goto end;
+    }
+    else
+    {
+        if (s_rstrstr_2(ret, 50, "7600") != NULL)
+        {
+            model_id = SIM7600;
+            ESP_LOGI(TAG, "model_id = SIM7600");
+        }
+        else
+        {
+            model_id = EC20;
+            ESP_LOGI(TAG, "model_id = EC20");
+        }
     }
 
     ret = AT_Cmd_Send("ATE0\r\n", "OK", 1000, 5); //回显
     if (ret == NULL)
     {
-        ESP_LOGE(TAG, "ATE0  ");
-        return 0;
+        ESP_LOGE(TAG, "ATE0");
+        goto end;
     }
 
     ret = AT_Cmd_Send("AT+IPR=115200\r\n", "OK", 1000, 5);
@@ -464,36 +561,85 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QCCID\r\n", "+QCCID:", 1000, 5);
-    if (ret == NULL)
+    //AT+CICCID +ICCID: 89860439101880927899
+    if (model_id == SIM7600)
     {
-        ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        Net_ErrCode = CPIN_ERR;
-        goto end;
+        ret = AT_Cmd_Send("AT+CICCID\r\n", "+ICCID:", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+            Net_ErrCode = CPIN_ERR;
+            goto end;
+        }
+        else
+        {
+            memcpy(ICCID, ret + 8, 20);
+            ESP_LOGI(TAG, "ICCID=%s", ICCID);
+        }
     }
     else
     {
-        memcpy(ICCID, ret + 8, 20);
-        ESP_LOGI(TAG, "ICCID=%s", ICCID);
+        ret = AT_Cmd_Send("AT+QCCID\r\n", "+QCCID:", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+            Net_ErrCode = CPIN_ERR;
+            goto end;
+        }
+        else
+        {
+            memcpy(ICCID, ret + 8, 20);
+            ESP_LOGI(TAG, "ICCID=%s", ICCID);
+        }
     }
 
-    sprintf(cmd_buf, "AT+QICSGP=1,1,\"%s\",\"%s\",\"%s\",1\r\n", SIM_APN, SIM_USER, SIM_PWD);
-    ret = AT_Cmd_Send(cmd_buf, "OK", 1000, 5);
-    if (ret == NULL)
+    // ？
+
+    if (model_id == SIM7600)
     {
-        ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        Net_ErrCode = QICSGP_ERR;
-        goto end;
+        snprintf(cmd_buf, CMD_LEN, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n", SIM_APN);
+        ret = AT_Cmd_Send(cmd_buf, "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+            Net_ErrCode = QICSGP_ERR;
+            goto end;
+        }
+        //设置user
+        if (strlen(SIM_USER) > 0)
+        {
+            snprintf(cmd_buf, CMD_LEN, "AT+CGAUTH=1,1,\"%s\",\"%s\"\r\n", SIM_PWD, SIM_USER);
+            ret = AT_Cmd_Send(cmd_buf, "OK", 1000, 5);
+            if (ret == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Init %d,%s", __LINE__, cmd_buf);
+                Net_ErrCode = QICSGP_ERR;
+                goto end;
+            }
+        }
     }
-
-    ret = AT_Cmd_Send("AT+CGATT=1\r\n", "OK", 1000, 5);
-    if (ret == NULL)
+    else
     {
-        ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        Net_ErrCode = CGATT_ERR;
-        goto end;
+        snprintf(cmd_buf, CMD_LEN, "AT+QICSGP=1,1,\"%s\",\"%s\",\"%s\",1\r\n", SIM_APN, SIM_USER, SIM_PWD);
+        ret = AT_Cmd_Send(cmd_buf, "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+            Net_ErrCode = QICSGP_ERR;
+            goto end;
+        }
+
+        //OK
+        ret = AT_Cmd_Send("AT+CGATT=1\r\n", "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+            Net_ErrCode = CGATT_ERR;
+            goto end;
+        }
     }
 
+    //OK
     ret = AT_Cmd_Send("AT+CGATT?\r\n", "+CGATT: 1", 1000, 10);
     if (ret == NULL)
     {
@@ -502,26 +648,60 @@ uint8_t EC20_Moudle_Init(void)
         goto end;
     }
 
-    ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5);
-    if (ret != NULL)
+    if (model_id == SIM7600)
     {
-        // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        goto end;
-    }
+        ret = AT_Cmd_Send("AT+CGACT?\r\n", "+CGACT: 1,1", 1000, 5);
+        if (ret != NULL)
+        {
+            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+            goto end;
+        }
 
-    ret = AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 1000, 10);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-        Net_ErrCode = QIACT_ERR;
-        goto end;
-    }
+        //AT+CGACT=1,1
+        //OK
+        ret = AT_Cmd_Send("AT+CGACT=1,1\r\n", "OK", 1000, 10);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+            Net_ErrCode = QIACT_ERR;
+            goto end;
+        }
 
-    ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5);
-    if (ret != NULL)
+        //AT+CGACT?
+        //+CGACT: 1,1
+        ret = AT_Cmd_Send("AT+CGACT?\r\n", "+CGACT: 1,1", 1000, 5);
+        if (ret != NULL)
+        {
+            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+            goto end;
+        }
+    }
+    else
     {
-        // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        goto end;
+        ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5);
+        if (ret != NULL)
+        {
+            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+            goto end;
+        }
+        //AT+CGACT=1,1
+        //OK
+        ret = AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 1000, 10);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+            Net_ErrCode = QIACT_ERR;
+            goto end;
+        }
+
+        //AT+CGACT?
+        //+CGACT: 1,1
+        ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 5);
+        if (ret != NULL)
+        {
+            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+            goto end;
+        }
     }
 
 end:
@@ -572,49 +752,31 @@ uint8_t EC20_Http_CFG(void)
 {
     char *ret;
 
-    ret = AT_Cmd_Send("AT+QHTTPCFG=\"contextid\",1\r\n", "OK", 1000, 5);
-    if (ret == NULL)
+    if (model_id == SIM7600)
     {
-        ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-        goto end;
+        ret = AT_Cmd_Send("AT+HTTPINIT\r\n", "OK", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "HTTPINIT %d", __LINE__);
+            goto end;
+        }
     }
-
-    ret = AT_Cmd_Send("AT+QHTTPCFG=\"responseheader\",0\r\n", "OK", 1000, 5);
-    if (ret == NULL)
+    else
     {
-        ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-        goto end;
+        ret = AT_Cmd_Send("AT+QHTTPCFG=\"contextid\",1\r\n", "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+            goto end;
+        }
+
+        ret = AT_Cmd_Send("AT+QHTTPCFG=\"responseheader\",0\r\n", "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+            goto end;
+        }
     }
-
-    // ret = AT_Cmd_Send("AT+QHTTPCFG=\"closewaittime\",0\r\n", "OK", 100, 1);
-    // if (ret == NULL)
-    // {
-    //     ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-    //     // goto end; //兼容EC200T
-    // }
-
-    // ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
-    // if (ret != NULL)
-    // {
-    //     // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-    //     goto end;
-    // }
-
-    // ret = AT_Cmd_Send("AT+QIACT=1\r\n", "OK", 100, 5);
-    // if (ret == NULL)
-    // {
-    //     ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-    //     Net_ErrCode = QIACT_ERR;
-    //     goto end;
-    // }
-
-    // ret = AT_Cmd_Send("AT+QIACT?\r\n", "+QIACT: 1,1", 100, 5);
-    // if (ret != NULL)
-    // {
-    //     // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-    //     Net_ErrCode = QIACT_ERR;
-    //     goto end;
-    // }
 
 end:
     // free(active_url);
@@ -634,44 +796,79 @@ uint8_t EC20_Active(char *active_url, char *recv_buf)
     char *ret;
     char *cmd_buf;
     uint8_t active_len;
-    cmd_buf = (char *)malloc(24);
-    memset(cmd_buf, 0, 24);
-    active_len = strlen(active_url) - 2; //不包含换行符
-    sprintf(cmd_buf, "AT+QHTTPURL=%d,60\r\n", active_len);
-    ret = AT_Cmd_Send(cmd_buf, "CONNECT", 1000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
-        goto end;
-    }
-    ret = AT_Cmd_Send(active_url, "OK", 60000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
-        goto end;
-    }
+    cmd_buf = (char *)malloc(CMD_LEN);
+    memset(cmd_buf, 0, CMD_LEN);
 
-    ret = AT_Cmd_Send("AT+QHTTPGET=60\r\n", "+QHTTPGET: 0,200", 6000, 1);
-    if (ret == NULL)
+    if (model_id == SIM7600)
     {
-        // Res_EC20_Task();
-        ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
-        goto end;
-    }
+        snprintf(cmd_buf, CMD_LEN, "AT+HTTPPARA=\"URL\",\"%s\"\r\n", active_url);
+        // ESP_LOGI(TAG, "%s", cmd_buf);
+        ret = AT_Cmd_Send(cmd_buf, "OK", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+            goto end;
+        }
 
-    ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "CONNECT", 6000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
-        goto end;
+        ret = AT_Cmd_Send("AT+HTTPACTION=0\r\n", "+HTTPACTION: 0,200", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+            goto end;
+        }
+        // ESP_LOGI(TAG, "%d\n,%s", __LINE__, ret);
+
+        ret = AT_Cmd_Send("AT+HTTPREAD=0,2048\r\n", "+HTTPREAD", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+            goto end;
+        }
+        // ESP_LOGI(TAG, "%d\n,%s", __LINE__, ret);
+        memcpy(recv_buf, ret, BUF_SIZE);
     }
-    memcpy(recv_buf, ret, BUF_SIZE);
+    else
+    {
+        active_len = strlen(active_url); //不包含换行符
+        snprintf(cmd_buf, CMD_LEN, "AT+QHTTPURL=%d,60\r\n", active_len);
+        ret = AT_Cmd_Send(cmd_buf, "CONNECT", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+            goto end;
+        }
+
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "%s\r\n", active_url);
+        ret = AT_Cmd_Send(cmd_buf, "OK", 60000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+            goto end;
+        }
+
+        ret = AT_Cmd_Send("AT+QHTTPGET=60\r\n", "+QHTTPGET: 0,200", 6000, 1);
+        if (ret == NULL)
+        {
+            // Res_EC20_Task();
+            ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+            goto end;
+        }
+
+        ret = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "CONNECT", 6000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_Active %d", __LINE__);
+            goto end;
+        }
+        memcpy(recv_buf, ret, BUF_SIZE);
+    }
 
 end:
     free(cmd_buf);
     if (ret == NULL)
     {
-        // Res_EC20_Task();
+        Res_EC20_Task();
         return 0;
     }
     else
@@ -682,14 +879,36 @@ end:
 
 uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
 {
+    char *ret;
     uart_write_bytes(EX_UART_NUM, post_buf, strlen(post_buf));
     if (end_flag == true)
     {
-        if (AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 6000, 1) == NULL)
+        if (model_id == SIM7600)
         {
-            ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
-            // Res_EC20_Task();
-            return 0;
+            //输入完成，自动返回 OK
+            if (AT_Cmd_Send(NULL, "OK", 1000, 1) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                // Res_EC20_Task();
+                return 0;
+            }
+            //发送
+            if ((ret = AT_Cmd_Send("AT+HTTPACTION=1\r\n", "+HTTPACTION: 1,200", 6000, 1)) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                // Res_EC20_Task();
+                return 0;
+            }
+            // ESP_LOGI(TAG, "LINE:%d,%s", __LINE__, ret);
+        }
+        else
+        {
+            if (AT_Cmd_Send("\r\n", "+QHTTPPOST: 0,200", 6000, 1) == NULL)
+            {
+                ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
+                // Res_EC20_Task();
+                return 0;
+            }
         }
     }
     return 1;
@@ -698,77 +917,142 @@ uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag)
 uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size)
 {
     char *rst_val;
-    rst_val = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "CONNECT", 1000, 1);
-    if (rst_val == NULL)
+
+    if (model_id == SIM7600)
     {
-        ESP_LOGE(TAG, "EC20_read %d", __LINE__);
-        // Res_EC20_Task();
-        return 0;
+        char *cmd_buf;
+        cmd_buf = (char *)malloc(CMD_LEN);
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+HTTPREAD=0,%d\r\n", buff_size);
+        rst_val = AT_Cmd_Send(cmd_buf, "+HTTPREAD", 1000, 1);
+        // rst_val = AT_Cmd_Send("AT+HTTPREAD=0,2048\r\n", "OK", 1000, 1);
+        if (rst_val == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_read %d", __LINE__);
+            // Res_EC20_Task();
+            return 0;
+        }
+        // ESP_LOGI(TAG, "%s", rst_val);
+        memcpy(recv_buff, rst_val, buff_size);
     }
-    memcpy(recv_buff, rst_val, buff_size);
+    else
+    {
+        rst_val = AT_Cmd_Send("AT+QHTTPREAD=60\r\n", "CONNECT", 1000, 1);
+        if (rst_val == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_read %d", __LINE__);
+            // Res_EC20_Task();
+            return 0;
+        }
+        memcpy(recv_buff, rst_val, buff_size);
+    }
+
     return 1;
 }
 
-#define CMD_LEN 150
 uint8_t EC20_MQTT_INIT(void)
 {
     char *ret;
     char *cmd_buf;
     cmd_buf = (char *)malloc(CMD_LEN);
 
-    ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 1000, 5);
-    if (ret != NULL)
+    if (model_id == SIM7600)
     {
-        ESP_LOGI(TAG, "EC20_MQTT already open");
-        goto end;
-    }
+        //开启mqtt
+        ret = AT_Cmd_Send("AT+CMQTTSTART\r\n", "OK", 1000, 1);
+        ret = AT_Cmd_Send("AT+CMQTTACCQ=0,\"client1\"\r\n", "OK", 1000, 1);
 
-    ret = AT_Cmd_Send("AT+QMTCFG=\"version\",0,3\r\n", "OK", 1000, 5);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
-    }
+        //连接
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+CMQTTCONNECT=0,\"tcp://%s:%s\",60,1,\"c_id=%s\",\"api_key=%s\"\r\n",
+                 MQTT_SERVER,
+                 MQTT_PORT,
+                 ChannelId,
+                 ApiKey);
+        // ESP_LOGI(TAG, "%d,%s", __LINE__, cmd_buf);
+        ret = AT_Cmd_Send(cmd_buf, "+CMQTTCONNECT: 0,0", 10000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
 
-    ret = AT_Cmd_Send("AT+QMTCFG=\"recv/mode\",0,0,0\r\n", "OK", 1000, 5);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
+        //订阅
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+CMQTTSUB=0,%d,1\r\n", strlen(topic_s));
+        // ESP_LOGI(TAG, "%d,%s", __LINE__, cmd_buf);
+        ret = AT_Cmd_Send(cmd_buf, ">", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
+        ret = AT_Cmd_Send(topic_s, "+CMQTTSUB: 0,0", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
     }
-
-    ret = AT_Cmd_Send("AT+QMTCFG=\"keepalive\",0,120\r\n", "OK", 1000, 1);
-    if (ret == NULL)
+    else
     {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
-    }
+        ret = AT_Cmd_Send("AT+QMTOPEN?\r\n", "+QMTOPEN: 0,", 1000, 5);
+        if (ret != NULL)
+        {
+            ESP_LOGI(TAG, "EC20_MQTT already open");
+            goto end;
+        }
 
-    memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTOPEN=0,\"%s\",%s\r\n", MQTT_SERVER, MQTT_PORT);
-    ret = AT_Cmd_Send(cmd_buf, "+QMTOPEN: 0,0", 6000, 10);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
-    }
+        ret = AT_Cmd_Send("AT+QMTCFG=\"version\",0,3\r\n", "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
 
-    memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, ChannelId, ApiKey);
-    ret = AT_Cmd_Send(cmd_buf, "+QMTCONN: 0,0,0", 6000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
-    }
+        ret = AT_Cmd_Send("AT+QMTCFG=\"recv/mode\",0,0,0\r\n", "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
 
-    memset(cmd_buf, 0, CMD_LEN);
-    sprintf(cmd_buf, "AT+QMTSUB=0,1,\"%s\",0\r\n", topic_s);
-    ret = AT_Cmd_Send(cmd_buf, "+QMTSUB: ", 6000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
+        ret = AT_Cmd_Send("AT+QMTCFG=\"keepalive\",0,120\r\n", "OK", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
+
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+QMTOPEN=0,\"%s\",%s\r\n", MQTT_SERVER, MQTT_PORT);
+        ret = AT_Cmd_Send(cmd_buf, "+QMTOPEN: 0,0", 6000, 10);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
+
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+QMTCONN=0,\"%s\",\"c_id=%s\",\"api_key=%s\"\r\n", USER_ID, ChannelId, ApiKey);
+        ret = AT_Cmd_Send(cmd_buf, "+QMTCONN: 0,0,0", 6000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
+
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+QMTSUB=0,1,\"%s\",0\r\n", topic_s);
+        ret = AT_Cmd_Send(cmd_buf, "+QMTSUB: ", 6000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
     }
 
 end:
@@ -792,19 +1076,70 @@ uint8_t EC20_MQTT_PUB(char *data_buff)
     cmd_buf = (char *)malloc(CMD_LEN);
     memset(cmd_buf, 0, CMD_LEN);
     // ESP_LOGI(TAG, "MQTT LEN:%d,\n%s", strlen(data_buff), data_buff);
-    sprintf(cmd_buf, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic_p, strlen(data_buff) - 2);
-    ret = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
-    if (ret == NULL)
-    {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
-    }
 
-    ret = AT_Cmd_Send(data_buff, "+QMTPUBEX: 0,0,0", 1000, 1);
-    if (ret == NULL)
+    if (model_id == SIM7600)
     {
-        ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
-        goto end;
+        //设置发布主题
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+CMQTTTOPIC=0,%d\r\n", strlen(topic_p));
+        ret = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
+
+        ret = AT_Cmd_Send(topic_p, "OK", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
+
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+CMQTTPAYLOAD=0,%d\r\n", strlen(data_buff) - 2);
+        ret = AT_Cmd_Send(cmd_buf, ">", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
+
+        ret = AT_Cmd_Send(data_buff, "OK", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
+
+        ret = AT_Cmd_Send("AT+CMQTTPUB=0,1,60\r\n", "+CMQTTPUB: 0,0", 1000, 5);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            goto end;
+        }
+        //ESP_LOGI(TAG, "%d", __LINE__);
+    }
+    else
+    {
+        snprintf(cmd_buf, CMD_LEN, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic_p, strlen(data_buff) - 2);
+        ret = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
+
+        ret = AT_Cmd_Send(data_buff, "+QMTPUBEX: 0,0,0", 1000, 1);
+        if (ret == NULL)
+        {
+            ESP_LOGE(TAG, "EC20_MQTT %d", __LINE__);
+            goto end;
+        }
     }
 
 end:
@@ -864,15 +1199,16 @@ bool End_EC_TCP_OTA(void)
 //tcp 模式OTA
 bool Start_EC20_TCP_OTA(void)
 {
-    char *cmd_buf = (char *)malloc(256);
+    char *cmd_buf = (char *)malloc(CMD_LEN);
     // char *get_buf = (char *)malloc(256);
     char *host_buf = (char *)malloc(128);
     char *rst_val = NULL;
+    char *get_data = NULL;
     // uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
 
     //获取HOST
     memset(host_buf, 0, 128);
-    if (mid(mqtt_json_s.mqtt_ota_url, "://", "/", host_buf) == NULL)
+    if ((get_data = mid(mqtt_json_s.mqtt_ota_url, "://", "/", host_buf)) == NULL)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
         goto end;
@@ -888,7 +1224,7 @@ bool Start_EC20_TCP_OTA(void)
     }
 
     //建立TCP连接
-    sprintf(cmd_buf, "AT+QIOPEN=1,0,\"TCP\",\"%s\",80,0,0\r\n", host_buf);
+    snprintf(cmd_buf, CMD_LEN, "AT+QIOPEN=1,0,\"TCP\",\"%s\",80,0,0\r\n", host_buf);
     rst_val = AT_Cmd_Send(cmd_buf, "+QIOPEN: 0,0", 5000, 1);
     if (rst_val == NULL)
     {
@@ -896,7 +1232,7 @@ bool Start_EC20_TCP_OTA(void)
         goto end;
     }
 
-    sprintf(cmd_buf, "AT+QISEND=0,%d\r\n", (strlen(mqtt_json_s.mqtt_ota_url) + strlen(host_buf) + 14));
+    snprintf(cmd_buf, CMD_LEN, "AT+QISEND=0,%d\r\n", (24 + strlen(get_data) + strlen(host_buf)));
     rst_val = AT_Cmd_Send(cmd_buf, ">", 1000, 1);
     if (rst_val == NULL)
     {
@@ -904,8 +1240,9 @@ bool Start_EC20_TCP_OTA(void)
         goto end;
     }
 
-    sprintf(cmd_buf, "GET %s\r\nHost:%s\r\n\r\n", mqtt_json_s.mqtt_ota_url, host_buf);
-    rst_val = AT_Cmd_Send(cmd_buf, "+QIURC: \"recv\",0", 5000, 1);
+    snprintf(cmd_buf, CMD_LEN, "GET %s HTTP/1.1\r\nHost:%s\r\n\r\n", get_data, host_buf);
+    ESP_LOGI(TAG, "cmd_buf:\n%s", cmd_buf);
+    rst_val = AT_Cmd_Send(cmd_buf, "+QIURC: \"recv\"", 6000, 1);
     if (rst_val == NULL)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
@@ -928,7 +1265,7 @@ end:
 //读取升级文件 tcp
 uint16_t Read_TCP_OTA_File(char *file_buff)
 {
-    char *cmd_buf = (char *)malloc(120);
+    char *cmd_buf = (char *)malloc(CMD_LEN);
     uint8_t *recv_buf = (uint8_t *)malloc(BUF_SIZE);
     // char *rst_val = NULL;
     // char num_buff[5] = {0};
@@ -936,7 +1273,7 @@ uint16_t Read_TCP_OTA_File(char *file_buff)
 
     xSemaphoreTake(EC20_muxtex, -1);
     EC_RECV_MODE = EC_OTA;
-    sprintf(cmd_buf, "AT+QIRD=0,%d\r\n", BUF_SIZE - 25);
+    snprintf(cmd_buf, CMD_LEN, "AT+QIRD=0,%d\r\n", BUF_SIZE - 25);
 
     uart_flush(EX_UART_NUM);
     uart_write_bytes(EX_UART_NUM, cmd_buf, strlen(cmd_buf));
@@ -1061,3 +1398,17 @@ end:
     cJSON_Delete(root); //delete pJson
     free(json_temp);
 }
+
+// int helperParseCommand(char buffer[],
+//                        char stringArray[MAX_COMMAND_ARGUMENTS][MAX_COMMAND_ARGUMENT_LENGTH])
+// {
+//     char delimiters[] = " ,:/+\"\r\n";
+//     char *token = strtok(buffer, delimiters);
+//     int count = 0;
+//     while (token != NULL && count < MAX_COMMAND_ARGUMENTS)
+//     {
+//         strncpy(stringArray[count++], token, MAX_COMMAND_ARGUMENT_LENGTH);
+//         token = strtok(NULL, delimiters);
+//     }
+//     return count;
+// }

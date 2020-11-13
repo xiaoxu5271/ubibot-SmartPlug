@@ -102,7 +102,51 @@
 #define MQTT_HOST_ADD WEB_PORT_ADD + 5 + 1             //MQTT HOST
 #define MQTT_PORT_ADD MQTT_HOST_ADD + WEB_HOST_LEN + 1 //MQTT PORT
 
-#define E2P_USAGED MQTT_PORT_ADD
+#define FN_SW_ON_ADD MQTT_PORT_ADD + 5 + 1    //4 B
+#define SW_ON_F_NUM_ADDR FN_SW_ON_ADD + 4 + 1 //1 B
+
+#define F1_A_ADDR SW_ON_F_NUM_ADDR + 4 + 1
+#define F1_B_ADDR F1_A_ADDR + 4 + 1
+#define F2_A_ADDR F1_B_ADDR + 4 + 1
+#define F2_B_ADDR F2_A_ADDR + 4 + 1
+#define F3_A_ADDR F2_B_ADDR + 4 + 1
+#define F3_B_ADDR F3_A_ADDR + 4 + 1
+#define F4_A_ADDR F3_B_ADDR + 4 + 1
+#define F4_B_ADDR F4_A_ADDR + 4 + 1
+#define F5_A_ADDR F4_B_ADDR + 4 + 1
+#define F5_B_ADDR F5_A_ADDR + 4 + 1
+#define F6_A_ADDR F5_B_ADDR + 4 + 1
+#define F6_B_ADDR F6_A_ADDR + 4 + 1
+#define F7_A_ADDR F6_B_ADDR + 4 + 1
+#define F7_B_ADDR F7_A_ADDR + 4 + 1
+#define F8_A_ADDR F7_B_ADDR + 4 + 1
+#define F8_B_ADDR F8_A_ADDR + 4 + 1
+#define F9_A_ADDR F8_B_ADDR + 4 + 1
+#define F9_B_ADDR F9_A_ADDR + 4 + 1
+#define F10_A_ADDR F9_B_ADDR + 4 + 1
+#define F10_B_ADDR F10_A_ADDR + 4 + 1
+#define F11_A_ADDR F10_B_ADDR + 4 + 1
+#define F11_B_ADDR F11_A_ADDR + 4 + 1
+#define F12_A_ADDR F11_B_ADDR + 4 + 1
+#define F12_B_ADDR F12_A_ADDR + 4 + 1
+#define F13_A_ADDR F12_B_ADDR + 4 + 1
+#define F13_B_ADDR F13_A_ADDR + 4 + 1
+#define F14_A_ADDR F13_B_ADDR + 4 + 1
+#define F14_B_ADDR F14_A_ADDR + 4 + 1
+#define F15_A_ADDR F14_B_ADDR + 4 + 1
+#define F15_B_ADDR F15_A_ADDR + 4 + 1
+#define F16_A_ADDR F15_B_ADDR + 4 + 1
+#define F16_B_ADDR F16_A_ADDR + 4 + 1
+#define F17_A_ADDR F16_B_ADDR + 4 + 1
+#define F17_B_ADDR F17_A_ADDR + 4 + 1
+#define F18_A_ADDR F17_B_ADDR + 4 + 1
+#define F18_B_ADDR F18_A_ADDR + 4 + 1
+#define F19_A_ADDR F18_B_ADDR + 4 + 1
+#define F19_B_ADDR F19_A_ADDR + 4 + 1
+#define F20_A_ADDR F19_B_ADDR + 4 + 1
+#define F20_B_ADDR F20_A_ADDR + 4 + 1
+
+#define E2P_USAGED F20_B_ADDR
 
 void E2prom_Init(void);
 esp_err_t E2P_WriteOneByte(uint16_t reg_addr, uint8_t dat);
@@ -111,7 +155,7 @@ void E2P_WriteLenByte(uint16_t WriteAddr, uint32_t DataToWrite, uint8_t Len);
 uint32_t E2P_ReadLenByte(uint16_t ReadAddr, uint8_t Len);
 void E2P_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead);
 void E2P_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite);
-void E2prom_empty_all(void);
+void E2prom_empty_all(bool flag);
 void E2prom_set_defaul(bool flag);
 
 #endif

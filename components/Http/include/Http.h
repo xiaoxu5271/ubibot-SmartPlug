@@ -6,7 +6,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-#define FIRMWARE "SP1-V0.1.40"
+#define FIRMWARE "SP1-V0.1.52-t"
 
 #define POST_NORMAL 0X00
 #define POST_HEIGHT_ADD 0X01
@@ -28,6 +28,15 @@
 
 #define HTTP_RECV_BUFF_LEN 2048
 
+typedef enum
+{
+    NET_OK = 0,
+    NET_DIS,
+    NET_410,
+    NET_400,
+    NET_402,
+} Net_Err;
+
 SemaphoreHandle_t xMutex_Http_Send;
 
 //需要发送的二值信号量
@@ -43,6 +52,7 @@ extern TaskHandle_t Binary_ext;
 extern TaskHandle_t Binary_energy;
 extern TaskHandle_t Binary_ele_quan;
 extern TaskHandle_t Active_Task_Handle;
+extern TaskHandle_t Sw_on_Task_Handle;
 esp_timer_handle_t http_timer_suspend_p;
 
 extern uint8_t post_status;

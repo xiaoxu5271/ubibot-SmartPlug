@@ -264,7 +264,7 @@ void get_ds18b20_task(void *org)
                 snprintf(Field_e1_t, 9, "field%d", e1_t_f_num);
                 pJsonRoot = cJSON_CreateObject();
                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
-                cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(DS18B20_TEM));
+                cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(Cali_filed(e1_t_f_num, DS18B20_TEM)));
                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                 cJSON_Delete(pJsonRoot);                       //delete cjson root
                 len = strlen(OutBuffer);
