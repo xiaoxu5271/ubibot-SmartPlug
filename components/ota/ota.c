@@ -21,7 +21,7 @@
 #include "ota.h"
 
 //数据包长度
-#define BUFFSIZE 2048
+#define BUFFSIZE 1024
 
 static const char *TAG = "ota";
 bool OTA_FLAG = false;
@@ -59,7 +59,7 @@ static int read_until(char *buffer, char delim, int len)
  * */
 static bool read_past_http_header(char text[], int total_len, uint32_t *content_len, uint32_t *binary_file_length, esp_ota_handle_t update_handle)
 {
-    printf("\r\n%s\r\n", text);
+    // printf("\r\n%s\r\n", text);
     /* 获取镜像大小*/
     char sub[20];
     if (mid((char *)text, "Content-Length: ", "\r\n", sub) == NULL)
@@ -69,7 +69,7 @@ static bool read_past_http_header(char text[], int total_len, uint32_t *content_
     }
 
     *content_len = atol(sub);
-    ESP_LOGI(TAG, "Content-Length:%d\n", *content_len);
+    // ESP_LOGI(TAG, "Content-Length:%d\n", *content_len);
 
     /* i means current position */
     int i = 0, i_read_len = 0;
@@ -79,8 +79,9 @@ static bool read_past_http_header(char text[], int total_len, uint32_t *content_
         // if we resolve \r\n line,we think packet header is finished
         if (i_read_len == 2)
         {
+
             int i_write_len = total_len - (i + 2);
-            memset(ota_write_data, 0, BUFFSIZE);
+            memset(ota_write_data, 0, sizeof(ota_write_data));
             /*copy first http packet body to write buffer*/
             memcpy(ota_write_data, &(text[i + 2]), i_write_len);
 
@@ -107,6 +108,8 @@ void WIFI_OTA(void)
 {
     OTA_FLAG = true;
     esp_err_t err;
+    //进度 百分比
+    uint8_t percentage = 0;
     /* update handle : set by esp_ota_begin(), must be freed via esp_ota_end() */
     esp_ota_handle_t update_handle = 0;
     const esp_partition_t *update_partition = NULL;
@@ -152,7 +155,7 @@ void WIFI_OTA(void)
         esp_http_client_cleanup(client);
         task_fatal_error();
     }
-    esp_http_client_fetch_headers(client);
+    uint32_t content_len = esp_http_client_fetch_headers(client);
 
     update_partition = esp_ota_get_next_update_partition(NULL);
     ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x",
@@ -164,7 +167,7 @@ void WIFI_OTA(void)
     bool image_header_was_checked = false;
     while (1)
     {
-        int data_read = esp_http_client_read(client, ota_write_data, BUFFSIZE);
+        int data_read = esp_http_client_read(client, ota_write_data, sizeof(ota_write_data));
         // printf("\n ota_write_data=%2x \n", (unsigned int)ota_write_data);
         if (data_read < 0)
         {
@@ -205,7 +208,12 @@ void WIFI_OTA(void)
                 task_fatal_error();
             }
             binary_file_length += data_read;
-            ESP_LOGI(TAG, "Written image length %d", binary_file_length);
+            if (percentage != (int)(binary_file_length * 100 / content_len))
+            {
+                percentage = (int)(binary_file_length * 100 / content_len);
+                printf("WIFI OTA:%d%%\n", percentage);
+            }
+            // ESP_LOGI(TAG, "Written image length %d", binary_file_length);
         }
         else if (data_read == 0)
         {
@@ -239,8 +247,9 @@ bool EC20_OTA(void)
 {
     ESP_LOGI(TAG, "EC20 OTA");
     bool ret = false;
-    int32_t buff_len;
+    uint32_t buff_len;
     esp_err_t err;
+    char *recv_buff = (char *)malloc(BUFFSIZE);
 
     //已写入镜像大小
     uint32_t binary_file_length = 0;
@@ -279,45 +288,57 @@ bool EC20_OTA(void)
         goto end;
     }
     ESP_LOGI(TAG, "esp_ota_begin succeeded");
-
-    //获取升级文件
     xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等网络连接
     xSemaphoreTake(xMutex_Http_Send, -1);
-    if (Start_EC20_TCP_OTA() == false)
-    {
-        ESP_LOGE(TAG, "%d", __LINE__);
-        ret = false;
-        goto end;
-    }
 
-    memset(ota_write_data, 0, 1000);
-    //接收http包
-    buff_len = Read_TCP_OTA_File(ota_write_data);
-    if (buff_len > 0)
+    if (model_id == SIM7600)
     {
-        if (read_past_http_header(ota_write_data, buff_len, &content_len, &binary_file_length, update_handle) != true)
+        content_len = Start_SIM_OTA();
+    }
+    else
+    {
+        //获取升级文件
+        if (Start_EC20_TCP_OTA() == false)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            ret = false;
+            goto end;
+        }
+
+        //接收http包
+        memset(recv_buff, 0, BUFFSIZE);
+        buff_len = Read_OTA_File(recv_buff);
+        if (buff_len > 0)
+        {
+            if (read_past_http_header(recv_buff, buff_len, &content_len, &binary_file_length, update_handle) != true)
+            {
+                ESP_LOGE(TAG, "%d", __LINE__);
+                ret = false;
+                goto end;
+            }
+        }
+        else
         {
             ESP_LOGE(TAG, "%d", __LINE__);
             ret = false;
             goto end;
         }
     }
-    else
-    {
-        ESP_LOGE(TAG, "%d", __LINE__);
-        ret = false;
-        goto end;
-    }
-
-    // content_len = mqtt_json_s.mqtt_file_size;
     ESP_LOGI(TAG, "content_len:%d", content_len);
 
     while (binary_file_length < content_len)
     {
         //写入之前清0
-        memset(ota_write_data, 0, 1000);
+        memset(ota_write_data, 0, sizeof(ota_write_data));
         //接收http包
-        buff_len = Read_TCP_OTA_File(ota_write_data);
+        // if (model_id == SIM7600)
+        // {
+        //     buff_len = Read_HTTP_OTA_File(ota_write_data);
+        // }
+        // else
+
+        buff_len = Read_OTA_File(ota_write_data);
+
         if (buff_len <= 0)
         {
             //包异常
@@ -340,7 +361,7 @@ bool EC20_OTA(void)
             if (percentage != (int)(binary_file_length * 100 / content_len))
             {
                 percentage = (int)(binary_file_length * 100 / content_len);
-                ESP_LOGI(TAG, "%d%%\n", percentage);
+                printf("4G OTA:%d%%\n", percentage);
             }
         }
     }
@@ -364,6 +385,7 @@ bool EC20_OTA(void)
 
 end:
     // End_EC_OTA(file_handle);
+    free(recv_buff);
     End_EC_TCP_OTA();
     xSemaphoreGive(xMutex_Http_Send);
     return ret;

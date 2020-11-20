@@ -79,7 +79,7 @@ void DataSave(uint8_t *sava_buff, uint16_t Buff_len)
     flash_used_num = E2P_ReadLenByte(FLASH_USED_NUM_ADD, 4);
     start_read_num = E2P_ReadLenByte(START_READ_NUM_ADD, 4);
     Exhausted_flag = E2P_ReadOneByte(EXHAUSTED_FLAG_ADD);
-    ESP_LOGI(TAG, "flash_used_num=%d,start_read_num=%d,Exhausted_flag=%d", flash_used_num, start_read_num, Exhausted_flag);
+    // ESP_LOGI(TAG, "flash_used_num=%d,start_read_num=%d,Exhausted_flag=%d", flash_used_num, start_read_num, Exhausted_flag);
     // data_save_num = E2P_ReadLenByte(DATA_SAVE_NUM_ADD, 4);
 
     //(1)读写地址完整
@@ -247,6 +247,7 @@ static Net_Err Http_post_fun(void)
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
+    // ESP_LOGI(TAG, "ERR LINE%d", __LINE__);
 
     // if (write(socket_num, post_header, strlen((const char *)post_header)) < 0) //step4：发送http Header
     if (http_send_post(socket_num, (char *)post_header, false) != 1)
@@ -255,6 +256,7 @@ static Net_Err Http_post_fun(void)
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
+    // ESP_LOGI(TAG, "ERR LINE%d", __LINE__);
 
     //如果跨区，则分两次读
     if (start_read_num > end_read_num)
@@ -306,6 +308,7 @@ static Net_Err Http_post_fun(void)
                 ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
                 goto end;
             }
+            // ESP_LOGI(TAG, "ERR LINE%d", __LINE__);
         }
         else //当前读取的缓存中没有正确数组
         {
@@ -329,6 +332,7 @@ static Net_Err Http_post_fun(void)
             }
         }
     }
+    // ESP_LOGI(TAG, "ERR LINE%d", __LINE__);
 
     if (http_send_post(socket_num, status_buff, true) != 1)
     {
@@ -338,6 +342,7 @@ static Net_Err Http_post_fun(void)
         ESP_LOGE(TAG, "ERR LINE%d", __LINE__);
         goto end;
     }
+    // ESP_LOGI(TAG, "ERR LINE%d", __LINE__);
 
     memset(recv_buff, 0, HTTP_RECV_BUFF_LEN);
     if (http_post_read(socket_num, recv_buff, HTTP_RECV_BUFF_LEN) == false)
@@ -347,6 +352,7 @@ static Net_Err Http_post_fun(void)
         Net_sta_flag = false;
         goto end;
     }
+    // ESP_LOGI(TAG, "ERR LINE%d", __LINE__);
     // printf("解析返回数据！\n");
     // ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
     if (parse_objects_http_respond(recv_buff))

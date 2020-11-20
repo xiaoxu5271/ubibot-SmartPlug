@@ -152,7 +152,7 @@ void Net_Switch(void)
     case NET_WIFI:
         start_user_wifi();
         Start_W_Mqtt();
-        EC20_Stop();
+        // EC20_Stop();
         break;
 
     case NET_4G:

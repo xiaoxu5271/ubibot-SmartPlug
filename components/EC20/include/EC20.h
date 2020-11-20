@@ -42,7 +42,7 @@ char *AT_Cmd_Send(char *cmd_buf, char *check_buff, uint32_t time_out, uint8_t tr
 uint8_t EC20_Net_Check(void);
 void EC20_Init(void);
 void EC20_Start(void);
-void EC20_Stop(void);
+
 uint8_t EC20_Http_CFG(void);
 uint8_t EC20_Active(char *active_url, char *recv_buf);
 uint8_t EC20_Send_Post_Data(char *post_buf, bool end_flag);
@@ -50,9 +50,11 @@ uint8_t EC20_Read_Post_Data(char *recv_buff, uint16_t buff_size);
 uint8_t EC20_MQTT_INIT(void);
 uint8_t EC20_MQTT_PUB(char *data_buff);
 uint8_t EC20_Get_Rssi(float *Rssi_val);
-uint16_t Read_TCP_OTA_File(char *file_buff);
+uint32_t Read_OTA_File(char *file_buff);
 bool Start_EC20_TCP_OTA(void);
 bool End_EC_TCP_OTA(void);
+uint32_t Start_SIM_OTA(void);
+uint32_t Read_HTTP_OTA_File(char *file_buff);
 void Check_Module(void);
 
 #endif
