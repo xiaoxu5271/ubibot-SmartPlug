@@ -47,28 +47,31 @@ uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
 uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 uint8_t de_sw_s = 0;      //开关默认上电状态
 uint32_t fn_sw_on = 3600; //开启时长统计
+uint32_t fn_485_is = 0;   //乙烯探头
 
 // field num 相关参数
-uint8_t sw_s_f_num = 1;      //开关状态
-uint8_t sw_v_f_num = 2;      //插座电压
-uint8_t sw_c_f_num = 3;      //插座电流
-uint8_t sw_p_f_num = 4;      //插座功率
-uint8_t sw_pc_f_num = 5;     //累计用电量
-uint8_t rssi_w_f_num = 6;    //wifi信号
-uint8_t rssi_g_f_num = 7;    //4G信号
-uint8_t sw_on_f_num = 8;     //累积开启时长
-uint8_t r1_light_f_num = 9;  //485光照
-uint8_t r1_th_t_f_num = 10;  //485空气温度
-uint8_t r1_th_h_f_num = 11;  //485空气湿度
-uint8_t r1_sth_t_f_num = 12; //485土壤温度
-uint8_t r1_sth_h_f_num = 13; //485土壤湿度
-uint8_t e1_t_f_num = 14;     //DS18B20温度
-uint8_t r1_t_f_num = 15;     //485温度探头温度
-uint8_t r1_ws_f_num = 16;    //485风速
-uint8_t r1_co2_f_num = 17;   //485 CO2
-uint8_t r1_ph_f_num = 18;    //485 PH
-uint8_t r1_co2_t_f_num = 19; // CO2 温度
-uint8_t r1_co2_h_f_num = 20; //CO2 湿度
+uint8_t sw_s_f_num = 1;        //开关状态
+uint8_t sw_v_f_num = 2;        //插座电压
+uint8_t sw_c_f_num = 3;        //插座电流
+uint8_t sw_p_f_num = 4;        //插座功率
+uint8_t sw_pc_f_num = 5;       //累计用电量
+uint8_t rssi_w_f_num = 6;      //wifi信号
+uint8_t rssi_g_f_num = 7;      //4G信号
+uint8_t sw_on_f_num = 8;       //累积开启时长
+uint8_t r1_light_f_num = 9;    //485光照
+uint8_t r1_th_t_f_num = 10;    //485空气温度
+uint8_t r1_th_h_f_num = 11;    //485空气湿度
+uint8_t r1_sth_t_f_num = 12;   //485土壤温度
+uint8_t r1_sth_h_f_num = 13;   //485土壤湿度
+uint8_t e1_t_f_num = 14;       //DS18B20温度
+uint8_t r1_t_f_num = 15;       //485温度探头温度
+uint8_t r1_ws_f_num = 16;      //485风速
+uint8_t r1_co2_f_num = 17;     //485 CO2
+uint8_t r1_ph_f_num = 18;      //485 PH
+uint8_t r1_co2_t_f_num = 19;   // CO2 温度
+uint8_t r1_co2_h_f_num = 20;   //CO2 湿度
+uint8_t r1_is_c2h4_f_num = 21; //485乙烯值
+uint8_t r1_is_o2_f_num = 22;   //485氧气值
 
 //
 char SerialNum[SERISE_NUM_LEN] = {0};
@@ -324,6 +327,16 @@ static short Parse_metadata(char *ptrptr)
             // {
             //     Turn_ON_LED();
             // }
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_is"); //"fn_sw_pc"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_485_is)
+        {
+            fn_485_is = (uint32_t)pSubSubSub->valueint;
+            E2P_WriteLenByte(FN_485_IS_ADDR, fn_485_is, 4);
+            printf("fn_485_is = %d\n", fn_485_is);
         }
     }
 
@@ -871,26 +884,28 @@ void Create_fields_num(char *read_buf)
 
     pJsonRoot = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(pJsonRoot, "sw_s", sw_s_f_num);         //sw_s_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_v", sw_v_f_num);         //sw_v_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_c", sw_c_f_num);         //sw_c_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_p", sw_p_f_num);         //sw_p_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_pc", sw_pc_f_num);       //sw_pc_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "rssi_w", rssi_w_f_num);     //rssi_w_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "rssi_g", rssi_g_f_num);     //rssi_g_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_light", r1_light_f_num); //r1_light_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_th_t", r1_th_t_f_num);   //r1_th_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_th_h", r1_th_h_f_num);   //r1_th_h_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_t", r1_sth_t_f_num); //r1_sth_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_h", r1_sth_h_f_num); //r1_sth_h_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "e1_t", e1_t_f_num);         //e1_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_t", r1_t_f_num);         //r1_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_ws", r1_ws_f_num);       //r1_ws_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_co2", r1_co2_f_num);     //r1_co2_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);       //r1_ph_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_t", r1_co2_t_f_num); //r1_co2_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_h", r1_co2_h_f_num); //r1_co2_h_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_on", sw_on_f_num);       //sw_on_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_s", sw_s_f_num);             //sw_s_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_v", sw_v_f_num);             //sw_v_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_c", sw_c_f_num);             //sw_c_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_p", sw_p_f_num);             //sw_p_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_pc", sw_pc_f_num);           //sw_pc_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "rssi_w", rssi_w_f_num);         //rssi_w_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "rssi_g", rssi_g_f_num);         //rssi_g_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_light", r1_light_f_num);     //r1_light_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_th_t", r1_th_t_f_num);       //r1_th_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_th_h", r1_th_h_f_num);       //r1_th_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_t", r1_sth_t_f_num);     //r1_sth_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_h", r1_sth_h_f_num);     //r1_sth_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "e1_t", e1_t_f_num);             //e1_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_t", r1_t_f_num);             //r1_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_ws", r1_ws_f_num);           //r1_ws_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2", r1_co2_f_num);         //r1_co2_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);           //r1_ph_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_t", r1_co2_t_f_num);     //r1_co2_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_h", r1_co2_h_f_num);     //r1_co2_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_on", sw_on_f_num);           //sw_on_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_is_c2h4", r1_is_c2h4_f_num); //r1_is_c2h4_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_is_o2", r1_is_o2_f_num);     //r1_is_c2h4_f_num
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
     data_len = strlen(out_buf);
@@ -1494,6 +1509,24 @@ static short Parse_fields_num(char *ptrptr)
             E2P_WriteOneByte(RS485_CO2_H_NUM_ADDR, r1_co2_h_f_num); //
         }
     }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_is_c2h4"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != r1_is_c2h4_f_num)
+        {
+            r1_is_c2h4_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(R1_IS_C2H4_F_NUM_ADDR, r1_is_c2h4_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_is_o2"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != r1_is_o2_f_num)
+        {
+            r1_is_o2_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(R1_IS_O2_F_NUM_ADDR, r1_is_o2_f_num); //
+        }
+    }
 
     cJSON_Delete(pJsonJson);
 
@@ -1518,7 +1551,7 @@ static short Parse_cali_dat(char *ptrptr)
         return ESP_FAIL;
     }
 
-    for (uint8_t i = 0; i < 40; i++)
+    for (uint8_t i = 0; i < 20; i++)
     {
         pSubSubSub = cJSON_GetObjectItem(pJsonJson, f_cali_str[i]); //
         if (NULL != pSubSubSub)
@@ -1716,6 +1749,7 @@ void Read_Metadate_E2p(void)
     cg_data_led = E2P_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
     net_mode = E2P_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
     fn_sw_on = E2P_ReadLenByte(FN_SW_ON_ADD, 4);     //累积开启时长统计周期
+    fn_485_is = E2P_ReadLenByte(FN_485_IS_ADDR, 4);
 
     printf("E2P USAGE:%d\n", E2P_USAGED);
 
@@ -1732,6 +1766,7 @@ void Read_Metadate_E2p(void)
     printf("net_mode:%d\n", net_mode);
     printf("de_sw_s:%d\n", de_sw_s);
     printf("fn_sw_on:%d\n", fn_sw_on);
+    printf("fn_485_is:%d\n", fn_485_is);
 }
 
 void Read_Product_E2p(void)
@@ -1866,6 +1901,14 @@ void Read_Fields_E2p(void)
     {
         sw_on_f_num = sensors_temp;
     }
+    if ((sensors_temp = E2P_ReadOneByte(R1_IS_C2H4_F_NUM_ADDR)) != 0)
+    {
+        r1_is_c2h4_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(R1_IS_O2_F_NUM_ADDR)) != 0)
+    {
+        r1_is_o2_f_num = sensors_temp;
+    }
 
     for (uint8_t i = 0; i < 40; i++)
     {
@@ -1898,4 +1941,6 @@ void Read_Fields_E2p(void)
     printf("r1_ph_f_num:%d\n", r1_ph_f_num);
     printf("r1_co2_t_f_num:%d\n", r1_co2_t_f_num);
     printf("r1_co2_h_f_num:%d\n", r1_co2_h_f_num);
+    printf("r1_is_c2h4_f_num:%d\n", r1_is_c2h4_f_num);
+    printf("r1_is_o2_f_num:%d\n", r1_is_o2_f_num);
 }

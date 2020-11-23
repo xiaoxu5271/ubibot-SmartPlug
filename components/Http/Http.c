@@ -33,6 +33,7 @@ TaskHandle_t Binary_485_sth = NULL;
 TaskHandle_t Binary_485_ws = NULL;
 TaskHandle_t Binary_485_lt = NULL;
 TaskHandle_t Binary_485_co2 = NULL;
+TaskHandle_t Binary_485_IS = NULL;
 TaskHandle_t Binary_ext = NULL;
 TaskHandle_t Binary_energy = NULL;
 TaskHandle_t Binary_ele_quan = NULL;
@@ -138,6 +139,12 @@ void timer_heart_cb(void *arg)
         if (min_num % fn_sw_on == 0)
         {
             vTaskNotifyGiveFromISR(Sw_on_Task_Handle, NULL);
+        }
+
+    if (fn_485_is)
+        if (min_num % fn_485_is == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_IS, NULL);
         }
 }
 

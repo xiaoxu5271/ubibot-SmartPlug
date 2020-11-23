@@ -38,6 +38,7 @@ char Rs485_co2_tcmd[] = {0x61, 0x06, 0x00, 0x36, 0x00, 0x00, 0x60, 0x64}; //CO2
 char Rs485_co2_scmd[] = {0x61, 0x06, 0x00, 0x25, 0x00, 0x02, 0x10, 0x60}; //
 char Rs485_co2_gcmd[] = {0x61, 0x03, 0x00, 0x27, 0x00, 0x01, 0x3D, 0xA1}; //
 char Rs485_co2_rcmd[] = {0x61, 0x03, 0x00, 0x28, 0x00, 0x06, 0x4C, 0x60}; //
+char Rs485_is_cmd[] = {0x03, 0x03, 0x00, 0x02, 0x00, 0x02, 0x64, 0x29};   //乙烯氧气探头
 
 /*******************************************************************************
 //CO2 and temp/huimi value change
@@ -590,6 +591,83 @@ void read_485_co2_task(void *pvParameters)
     }
 }
 
+//读取485 乙烯氧气
+void read_485_IS_task(void *pvParameters)
+{
+    float IS_c2h4, IS_o2;
+    char *OutBuffer;
+    // uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+    uint8_t *recv_data;
+    char *filed_buff;
+    char *time_buff;
+    int racv_len = 0;
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, -1);
+        xSemaphoreTake(RS485_Mutex, -1);
+        recv_data = (uint8_t *)malloc(BUF_SIZE);
+        racv_len = RS485_Read(Rs485_is_cmd, recv_data, uart2_485);
+        if (racv_len > 0)
+        {
+            esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+            if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
+            {
+                if ((recv_data[0] == Rs485_is_cmd[0]) && (recv_data[1] == Rs485_is_cmd[1]))
+                {
+                    IS_c2h4 = ((recv_data[3] * 256 + recv_data[4]) * 0.1);
+                    IS_o2 = ((recv_data[5] * 256 + recv_data[6]) * 0.1);
+                    ESP_LOGI(TAG, "IS_c2h4=%f,IS_o2=%f\n", IS_c2h4, IS_o2);
+                    RS485_status = true;
+                    // 读取成功
+                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    {
+                        filed_buff = (char *)malloc(9);
+                        time_buff = (char *)malloc(24);
+                        Server_Timer_SEND(time_buff);
+                        pJsonRoot = cJSON_CreateObject();
+                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                        snprintf(filed_buff, 9, "field%d", r1_is_c2h4_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_is_c2h4_f_num, IS_c2h4)));
+                        snprintf(filed_buff, 9, "field%d", r1_is_o2_f_num);
+                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_is_o2_f_num, IS_o2)));
+
+                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                        cJSON_Delete(pJsonRoot);                       //delete cjson root
+                        len = strlen(OutBuffer);
+                        printf("len:%d\n%s\n", len, OutBuffer);
+                        xSemaphoreTake(Cache_muxtex, -1);
+                        DataSave((uint8_t *)OutBuffer, len);
+                        xSemaphoreGive(Cache_muxtex);
+                        free(OutBuffer);
+                        free(filed_buff);
+                    }
+                }
+                else
+                {
+                    RS485_status = false;
+                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                    // return 1;
+                }
+            }
+            else
+            {
+                RS485_status = false;
+                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
+                // return 1;
+            }
+        }
+        else
+        {
+            ESP_LOGE(TAG, "RS485 NO ARK !!!  line:%d\n", __LINE__);
+        }
+        free(recv_data);
+        xSemaphoreGive(RS485_Mutex);
+    }
+}
+
 void RS485_Init(void)
 {
     RS485_Mutex = xSemaphoreCreateMutex();
@@ -599,6 +677,7 @@ void RS485_Init(void)
     xTaskCreate(read_485_sth_task, "485_sth", 3072, NULL, 3, &Binary_485_sth);
     xTaskCreate(read_485_lt_task, "485_lt", 3072, NULL, 3, &Binary_485_lt);
     xTaskCreate(read_485_co2_task, "485_co2", 4096, NULL, 3, &Binary_485_co2);
+    xTaskCreate(read_485_IS_task, "485_IS", 4096, NULL, 3, &Binary_485_IS);
 }
 // /*******************************************************************************
 //                                       END

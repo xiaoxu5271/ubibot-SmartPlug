@@ -17,7 +17,7 @@ static const char *TAG = "EEPROM";
 SemaphoreHandle_t At24_Mutex = NULL;
 
 static bool AT24CXX_Check(void);
-static void E2prom_read_defaul(void);
+// static void E2prom_read_defaul(void);
 
 void E2prom_Init(void)
 {

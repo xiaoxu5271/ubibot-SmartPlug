@@ -6,7 +6,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-#define FIRMWARE "SP1-V0.1.54-t"
+#define FIRMWARE "SP1-V0.1.55-t"
 
 #define POST_NORMAL 0X00
 #define POST_HEIGHT_ADD 0X01
@@ -48,6 +48,7 @@ extern TaskHandle_t Binary_485_sth;
 extern TaskHandle_t Binary_485_ws;
 extern TaskHandle_t Binary_485_lt;
 extern TaskHandle_t Binary_485_co2;
+extern TaskHandle_t Binary_485_IS;
 extern TaskHandle_t Binary_ext;
 extern TaskHandle_t Binary_energy;
 extern TaskHandle_t Binary_ele_quan;

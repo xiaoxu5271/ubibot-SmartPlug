@@ -90,28 +90,31 @@ extern uint8_t cg_data_led; //发送数据 LED状态 0关闭，1打开
 extern uint8_t net_mode;    //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 extern uint8_t de_sw_s;     //开关默认上电状态
 extern uint32_t fn_sw_on;   //开启时长 统计周期
+extern uint32_t fn_485_is;  //
 
 /*********field num 相关参数************/
-extern uint8_t sw_s_f_num;     //开关状态
-extern uint8_t sw_v_f_num;     //插座电压
-extern uint8_t sw_c_f_num;     //插座电流
-extern uint8_t sw_p_f_num;     //插座功率
-extern uint8_t sw_pc_f_num;    //累计用电量
-extern uint8_t rssi_w_f_num;   //wifi信号
-extern uint8_t rssi_g_f_num;   //4G信号
-extern uint8_t r1_light_f_num; //485光照
-extern uint8_t r1_th_t_f_num;  //485空气温度
-extern uint8_t r1_th_h_f_num;  //485空气湿度
-extern uint8_t r1_sth_t_f_num; //485土壤温度
-extern uint8_t r1_sth_h_f_num; //485土壤湿度
-extern uint8_t e1_t_f_num;     //DS18B20温度
-extern uint8_t r1_t_f_num;     //485温度探头温度
-extern uint8_t r1_ws_f_num;    //485风速
-extern uint8_t r1_co2_f_num;   //485 CO2
-extern uint8_t r1_ph_f_num;    //485 PH
-extern uint8_t r1_co2_t_f_num; // CO2 温度
-extern uint8_t r1_co2_h_f_num; //CO2 湿度
-extern uint8_t sw_on_f_num;    //累积开启时长
+extern uint8_t sw_s_f_num;       //开关状态
+extern uint8_t sw_v_f_num;       //插座电压
+extern uint8_t sw_c_f_num;       //插座电流
+extern uint8_t sw_p_f_num;       //插座功率
+extern uint8_t sw_pc_f_num;      //累计用电量
+extern uint8_t rssi_w_f_num;     //wifi信号
+extern uint8_t rssi_g_f_num;     //4G信号
+extern uint8_t r1_light_f_num;   //485光照
+extern uint8_t r1_th_t_f_num;    //485空气温度
+extern uint8_t r1_th_h_f_num;    //485空气湿度
+extern uint8_t r1_sth_t_f_num;   //485土壤温度
+extern uint8_t r1_sth_h_f_num;   //485土壤湿度
+extern uint8_t e1_t_f_num;       //DS18B20温度
+extern uint8_t r1_t_f_num;       //485温度探头温度
+extern uint8_t r1_ws_f_num;      //485风速
+extern uint8_t r1_co2_f_num;     //485 CO2
+extern uint8_t r1_ph_f_num;      //485 PH
+extern uint8_t r1_co2_t_f_num;   // CO2 温度
+extern uint8_t r1_co2_h_f_num;   //CO2 湿度
+extern uint8_t sw_on_f_num;      //累积开启时长
+extern uint8_t r1_is_c2h4_f_num; //485乙烯值
+extern uint8_t r1_is_o2_f_num;   //485氧气值
 
 //cali 相关
 extern f_cali fn_val[40];

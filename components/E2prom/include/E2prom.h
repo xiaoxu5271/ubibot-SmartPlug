@@ -146,7 +146,11 @@
 #define F20_A_ADDR F19_B_ADDR + 4 + 1
 #define F20_B_ADDR F20_A_ADDR + 4 + 1
 
-#define E2P_USAGED F20_B_ADDR
+#define FN_485_IS_ADDR F20_B_ADDR + 4 + 1
+#define R1_IS_C2H4_F_NUM_ADDR FN_485_IS_ADDR + 4 + 1
+#define R1_IS_O2_F_NUM_ADDR R1_IS_C2H4_F_NUM_ADDR + 1 + 1
+
+#define E2P_USAGED R1_IS_O2_F_NUM_ADDR
 
 void E2prom_Init(void);
 esp_err_t E2P_WriteOneByte(uint16_t reg_addr, uint8_t dat);
