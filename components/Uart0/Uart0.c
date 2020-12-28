@@ -128,7 +128,7 @@ void Uart0_Task(void *arg)
                     all_read_len += event.size;
                     data_u0[all_read_len] = 0; //去掉字符串结束符，防止字符串拼接不成功
 
-                    if (strstr((const char *)data_u0, "\n") != NULL || strstr((const char *)data_u0, "\r") != NULL)
+                    if ((data_u0[all_read_len - 1] == '\r') || (data_u0[all_read_len - 1] == '\n'))
                     {
                         ESP_LOGI(TAG, "uart0 recv,  len:%d,%s", strlen((const char *)data_u0), data_u0);
                         ParseTcpUartCmd((char *)data_u0);

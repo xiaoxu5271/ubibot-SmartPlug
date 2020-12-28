@@ -118,7 +118,7 @@ void read_485_th_task(void *pvParameters)
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
+                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                         // SaveBuffer = (uint8_t *)malloc(len);
                         // memcpy(SaveBuffer, OutBuffer, len);
                         xSemaphoreTake(Cache_muxtex, -1);
@@ -196,7 +196,7 @@ void read_485_t_task(void *pvParameters)
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
+                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                         xSemaphoreTake(Cache_muxtex, -1);
                         DataSave((uint8_t *)OutBuffer, len);
                         xSemaphoreGive(Cache_muxtex);
@@ -268,7 +268,7 @@ void read_485_ws_task(void *pvParameters)
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
+                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                         xSemaphoreTake(Cache_muxtex, -1);
                         DataSave((uint8_t *)OutBuffer, len);
                         xSemaphoreGive(Cache_muxtex);
@@ -351,7 +351,7 @@ void read_485_sth_task(void *pvParameters)
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
+                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                         xSemaphoreTake(Cache_muxtex, -1);
                         DataSave((uint8_t *)OutBuffer, len);
                         xSemaphoreGive(Cache_muxtex);
@@ -424,7 +424,7 @@ void read_485_lt_task(void *pvParameters)
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
+                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                         xSemaphoreTake(Cache_muxtex, -1);
                         DataSave((uint8_t *)OutBuffer, len);
                         xSemaphoreGive(Cache_muxtex);
@@ -553,7 +553,7 @@ void read_485_co2_task(void *pvParameters)
                                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                                 cJSON_Delete(pJsonRoot);                       //delete cjson root
                                 len = strlen(OutBuffer);
-                                printf("len:%d\n%s\n", len, OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                                 // SaveBuffer = (uint8_t *)malloc(len);
                                 // memcpy(SaveBuffer, OutBuffer, len);
                                 xSemaphoreTake(Cache_muxtex, -1);
@@ -637,7 +637,7 @@ void read_485_IS_task(void *pvParameters)
                         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                         cJSON_Delete(pJsonRoot);                       //delete cjson root
                         len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
+                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
                         xSemaphoreTake(Cache_muxtex, -1);
                         DataSave((uint8_t *)OutBuffer, len);
                         xSemaphoreGive(Cache_muxtex);

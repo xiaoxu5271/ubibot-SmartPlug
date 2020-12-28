@@ -195,6 +195,7 @@ void Scan_Wifi(void)
         // ESP_LOGI(TAG, "SSID \t\t%s", ap_info[i].ssid);
         // ESP_LOGI(TAG, "RSSI \t\t%d", ap_info[i].rssi);
         // ESP_LOGI(TAG, "Channel \t\t%d\n", ap_info[i].primary);
+        //串口响应
         printf("{\"SSID\":\"%s\",\"rssi\":%d}\n\r", ap_info[i].ssid, ap_info[i].rssi);
     }
 

@@ -1522,7 +1522,7 @@ void Check_Module(void)
     cJSON *root = cJSON_CreateObject();
     char *json_temp;
 
-    while (AT_Cmd_Send("AT\r\n", "OK", 1000, 5) == NULL)
+    while (AT_Cmd_Send("AT\r\n", "OK", 100, 10) == NULL)
     {
         //模块可能关机，尝试开机
         gpio_set_level(EC20_SW, 1); //
@@ -1531,8 +1531,10 @@ void Check_Module(void)
         vTaskDelay(15000 / portTICK_PERIOD_MS);
         ESP_LOGE(TAG, "%d", __LINE__);
         fail_num++;
-        if (fail_num > 2)
+        if (fail_num > 1)
         {
+            module_flag = false;
+            result_flag = false;
             goto end;
         }
     }
@@ -1583,7 +1585,8 @@ end:
     }
 
     json_temp = cJSON_PrintUnformatted(root);
-    printf("%s\n", json_temp);
+    //串口响应
+    printf("%s\r\n", json_temp);
     cJSON_Delete(root); //delete pJson
     free(json_temp);
 }
