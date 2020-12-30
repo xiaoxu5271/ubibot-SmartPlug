@@ -1233,8 +1233,11 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
             if (RS484_flag == true)
             {
-                cJSON_AddNumberToObject(root, "temp_val", (int)ext_tem);
-                cJSON_AddNumberToObject(root, "humi_val", (int)ext_hum);
+                // cJSON_AddNumberToObject(root, "temp_val", (int)ext_tem);
+                // cJSON_AddNumberToObject(root, "humi_val", (int)ext_hum);
+                ESP_LOGI(TAG, "temp_val:%d\n", (int)ext_tem);
+                ESP_LOGI(TAG, "temp_val:%d\n", (int)ext_tem);
+                cJSON_AddStringToObject(root, "RS485", "OK");
             }
             else
             {
@@ -1252,7 +1255,9 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
 
             if (DS18B20_flag == true)
             {
-                cJSON_AddNumberToObject(root, "ext_temp_val", (int)DS18B20_TEM);
+                // cJSON_AddNumberToObject(root, "ext_temp_val", (int)DS18B20_TEM);
+                ESP_LOGI(TAG, "DS18B20:%d\n", (int)DS18B20_TEM);
+                cJSON_AddStringToObject(root, "DS18B20", "OK");
             }
             else
             {
