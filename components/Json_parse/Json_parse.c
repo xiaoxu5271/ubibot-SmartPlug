@@ -816,9 +816,11 @@ void Create_NET_Json(void)
             }
             else
             {
-                EC20_Get_Rssi(&ec_rssi_val);
-                snprintf(filed_buff, 9, "field%d", rssi_g_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
+                if (EC20_Get_Rssi(&ec_rssi_val))
+                {
+                    snprintf(filed_buff, 9, "field%d", rssi_g_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
+                }
             }
         }
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));

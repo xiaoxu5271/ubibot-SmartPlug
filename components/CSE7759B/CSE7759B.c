@@ -673,7 +673,7 @@ void CSE7759B_Read_Task(void *arg)
         {
             CSE_FLAG = false;
             xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
-            ESP_LOGE(TAG, "%d", __LINE__);
+            // ESP_LOGE(TAG, "%d", __LINE__);
         }
 
         vTaskDelay(500 / portTICK_PERIOD_MS);

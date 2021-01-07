@@ -339,7 +339,7 @@ int32_t http_post_init(uint32_t Content_Length)
         {
             //conect URL
             snprintf(cmd_buf, CMD_LEN, "AT+HTTPPARA=\"URL\",\"%s\"\r\n", build_po_url);
-            if (AT_Cmd_Send(cmd_buf, "OK", 1000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "OK", 1000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -349,7 +349,7 @@ int32_t http_post_init(uint32_t Content_Length)
             //send data to post ,INPUT LEN
             bzero(cmd_buf, CMD_LEN);
             snprintf(cmd_buf, CMD_LEN, "AT+HTTPDATA=%d,5000\r\n", Content_Length);
-            if (AT_Cmd_Send(cmd_buf, "DOWNLOAD", 2000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "DOWNLOAD", 2000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -367,7 +367,7 @@ int32_t http_post_init(uint32_t Content_Length)
             }
 
             snprintf(cmd_buf, CMD_LEN, "AT+QHTTPURL=%d,60\r\n", (strlen(build_po_url)));
-            if (AT_Cmd_Send(cmd_buf, "CONNECT", 2000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "CONNECT", 2000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -376,7 +376,7 @@ int32_t http_post_init(uint32_t Content_Length)
 
             bzero(cmd_buf, CMD_LEN);
             snprintf(cmd_buf, CMD_LEN, "%s\r\n", build_po_url);
-            if (AT_Cmd_Send(cmd_buf, "OK", 60000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "OK", 60000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -385,7 +385,7 @@ int32_t http_post_init(uint32_t Content_Length)
 
             bzero(cmd_buf, CMD_LEN);
             snprintf(cmd_buf, CMD_LEN, "AT+QHTTPPOST=%d,%d,%d\r\n", Content_Length, 60, 60);
-            if (AT_Cmd_Send(cmd_buf, "CONNECT", 6000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "CONNECT", 6000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;

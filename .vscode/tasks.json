@@ -12,11 +12,11 @@
             ]
         },
         {
-            "label": "flash",
+            "label": "clean",
             "type": "shell",
-            "command": "make j4",
+            "command": "make",
             "args": [
-                "flash"
+                "clean"
             ]
         },
         {
