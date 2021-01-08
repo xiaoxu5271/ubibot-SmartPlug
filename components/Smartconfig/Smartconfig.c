@@ -210,6 +210,54 @@ void Scan_Wifi(void)
     }
 }
 
+bool Check_Wifi(uint8_t *ssid, int8_t *rssi)
+{
+    wifi_scan_time_t scanTime = {
+
+        .passive = 5000};
+
+    wifi_scan_config_t scanConf = {
+        .ssid = NULL,
+        .bssid = NULL,
+        .channel = 0,
+        .show_hidden = false,
+        .scan_type = 1,
+        .scan_time = scanTime};
+
+    bool ret = true;
+    uint16_t number = 1;
+    wifi_ap_record_t ap_info[1];
+    uint16_t ap_count = 0;
+    memset(ap_info, 0, sizeof(ap_info));
+    scan_flag = true;
+    start_user_wifi();
+
+    if (esp_wifi_scan_start(NULL, true) != ESP_OK)
+    {
+        ret = false;
+        ESP_LOGE(TAG, "esp_wifi_scan_start FAIL");
+        scan_flag = false;
+        return ret;
+    }
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
+    ESP_LOGI(TAG, "Total APs scanned = %u", ap_count);
+
+    memcpy(ssid, ap_info[0].ssid, sizeof(ap_info[0].ssid));
+    *rssi = ap_info[0].rssi;
+
+    scan_flag = false;
+    if (net_mode == NET_WIFI)
+    {
+        start_user_wifi();
+    }
+    else
+    {
+        stop_user_wifi();
+    }
+    return ret;
+}
+
 // /*
 // * WIFI作为AP的初始化
 // * @param[in]   void  		       :无

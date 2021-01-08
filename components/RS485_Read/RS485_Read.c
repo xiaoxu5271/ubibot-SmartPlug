@@ -90,7 +90,7 @@ void read_485_th_task(void *pvParameters)
         for (uint8_t i = 0; i < 5; i++)
         {
             racv_len = RS485_Read(Rs485_th_cmd, recv_data, uart2_485);
-            if (racv_len > 0)
+            if (racv_len >= 9)
             {
                 esp_log_buffer_hex(TAG, recv_data, racv_len);
 
@@ -180,7 +180,7 @@ void read_485_t_task(void *pvParameters)
         for (uint8_t i = 0; i < 5; i++)
         {
             racv_len = RS485_Read(Rs485_t_cmd, recv_data, uart2_485);
-            if (racv_len > 0)
+            if (racv_len >= 7)
             {
                 esp_log_buffer_hex(TAG, recv_data, racv_len);
 
@@ -258,7 +258,7 @@ void read_485_ws_task(void *pvParameters)
         for (uint8_t i = 0; i < 5; i++)
         {
             racv_len = RS485_Read(Rs485_ws_cmd, recv_data, uart2_485);
-            if (racv_len > 0)
+            if (racv_len >= 7)
             {
                 esp_log_buffer_hex(TAG, recv_data, racv_len);
 
@@ -332,7 +332,7 @@ void read_485_sth_task(void *pvParameters)
         for (uint8_t i = 0; i < 5; i++)
         {
             racv_len = RS485_Read(Rs485_sth_cmd, recv_data, uart2_485);
-            if (racv_len > 0)
+            if (racv_len >= 9)
             {
                 esp_log_buffer_hex(TAG, recv_data, racv_len);
 
@@ -421,7 +421,7 @@ void read_485_lt_task(void *pvParameters)
         for (uint8_t i = 0; i < 5; i++)
         {
             racv_len = RS485_Read(Rs485_lt_cmd, recv_data, uart2_485);
-            if (racv_len > 0)
+            if (racv_len >= 9)
             {
                 esp_log_buffer_hex(TAG, recv_data, racv_len);
 
@@ -499,13 +499,13 @@ void read_485_co2_task(void *pvParameters)
         for (uint8_t i = 0; i < 5; i++)
         {
             racv_len = RS485_Read(Rs485_co2_tcmd, recv_data, uart2_co2);
-            if (racv_len > 0)
+            if (racv_len >= 8)
             {
                 // esp_log_buffer_hex("co2_t", recv_data, racv_len);
                 if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, (racv_len - 2)))
                 {
                     racv_len = RS485_Read(Rs485_co2_scmd, recv_data, uart2_co2);
-                    if (racv_len > 0)
+                    if (racv_len >= 8)
                     {
                         // esp_log_buffer_hex("co2_s", recv_data, racv_len);
                         if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, (racv_len - 2)))
@@ -513,14 +513,14 @@ void read_485_co2_task(void *pvParameters)
                             for (uint8_t j = 0; j < 10; j++)
                             {
                                 racv_len = RS485_Read(Rs485_co2_gcmd, recv_data, uart2_co2);
-                                if (racv_len > 0)
+                                if (racv_len >= 7)
                                 {
                                     // esp_log_buffer_hex("co2_g", recv_data, racv_len);
                                     if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, (racv_len - 2)))
                                     {
                                         racv_len = RS485_Read(Rs485_co2_rcmd, recv_data, uart2_co2);
                                         // esp_log_buffer_hex(TAG, recv_data, racv_len);
-                                        if (racv_len > 0)
+                                        if (racv_len >= 17)
                                         {
                                             // esp_log_buffer_hex("co2_r", recv_data, racv_len);
                                             if ((recv_data[15] * 256 + recv_data[16]) == Get_Crc16(recv_data, (racv_len - 2)))
@@ -638,7 +638,7 @@ void read_485_IS_task(void *pvParameters)
         for (uint8_t i = 0; i < 5; i++)
         {
             racv_len = RS485_Read(Rs485_is_cmd, recv_data, uart2_485);
-            if (racv_len > 0)
+            if (racv_len >= 9)
             {
                 esp_log_buffer_hex(TAG, recv_data, racv_len);
 

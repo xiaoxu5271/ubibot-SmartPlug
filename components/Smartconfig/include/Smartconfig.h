@@ -11,6 +11,7 @@ void start_user_wifi(void);
 void stop_user_wifi(void);
 void Net_Switch(void);
 void Scan_Wifi(void);
+bool Check_Wifi(uint8_t *ssid, int8_t *rssi);
 
 extern uint8_t wifi_connect_sta; //wifi连接状态
 // extern uint8_t wifi_work_sta;    //wifi开启状态

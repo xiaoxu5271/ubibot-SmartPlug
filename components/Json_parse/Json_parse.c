@@ -1172,15 +1172,28 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
         {
             cJSON *root = cJSON_CreateObject();
             char *json_temp;
+            char wifi_ssid[33] = {0};
+            int8_t wifi_rssi;
 
             bool result_flag = true;
             bool RS484_flag = false;
             bool ENERGY_flag = false;
             bool DS18B20_flag = false;
+            bool WIFI_flag = false;
 
             xTaskNotifyGive(Binary_485_th);
             xTaskNotifyGive(Binary_ext);
             xTaskNotifyGive(Binary_energy);
+
+            if (Check_Wifi((uint8_t *)wifi_ssid, &wifi_rssi))
+            {
+                WIFI_flag = true;
+            }
+            else
+            {
+                result_flag = false;
+                WIFI_flag = false;
+            }
 
             if ((xEventGroupWaitBits(Net_sta_group, RS485_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & RS485_CHECK_BIT) == RS485_CHECK_BIT)
             {
@@ -1231,6 +1244,17 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             else
             {
                 cJSON_AddStringToObject(root, "result", "ERROR");
+            }
+
+            if (WIFI_flag == true)
+            {
+                cJSON_AddStringToObject(root, "ssid", wifi_ssid);
+                cJSON_AddNumberToObject(root, "rssi", wifi_rssi);
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "ssid", "NULL");
+                cJSON_AddNumberToObject(root, "rssi", 0);
             }
 
             if (RS484_flag == true)
