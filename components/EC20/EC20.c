@@ -775,7 +775,7 @@ bool EC20_Moudle_Init(void)
     }
 
 end:
-    // free(active_url);
+    free(recv_buf);
     free(cmd_buf);
     return ret;
 }
@@ -1529,10 +1529,14 @@ end:
     }
 
     json_temp = cJSON_PrintUnformatted(root);
+    if (json_temp != NULL)
+    {
+        printf("%s\r\n", json_temp);
+        cJSON_free(json_temp);
+    }
     //串口响应
-    printf("%s\r\n", json_temp);
+
     cJSON_Delete(root); //delete pJson
-    free(json_temp);
 }
 
 // int helperParseCommand(char buffer[],

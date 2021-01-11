@@ -119,15 +119,17 @@ void read_485_th_task(void *pvParameters)
                             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_th_h_f_num, ext_hum)));
 
                             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                            cJSON_Delete(pJsonRoot);                       //delete cjson root
-                            len = strlen(OutBuffer);
-                            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                            // SaveBuffer = (uint8_t *)malloc(len);
-                            // memcpy(SaveBuffer, OutBuffer, len);
-                            xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave((uint8_t *)OutBuffer, len);
-                            xSemaphoreGive(Cache_muxtex);
-                            free(OutBuffer);
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
                             free(time_buff);
                             free(filed_buff);
                         }
@@ -202,13 +204,17 @@ void read_485_t_task(void *pvParameters)
                             snprintf(filed_buff, 9, "field%d", r1_t_f_num);
                             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_t_f_num, Rs485_t_val)));
                             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                            cJSON_Delete(pJsonRoot);                       //delete cjson root
-                            len = strlen(OutBuffer);
-                            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                            xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave((uint8_t *)OutBuffer, len);
-                            xSemaphoreGive(Cache_muxtex);
-                            free(OutBuffer);
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+                            free(time_buff);
                             free(filed_buff);
                         }
                         break;
@@ -279,13 +285,18 @@ void read_485_ws_task(void *pvParameters)
                             snprintf(filed_buff, 9, "field%d", r1_ws_f_num);
                             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_ws_f_num, Rs485_ws_val)));
                             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                            cJSON_Delete(pJsonRoot);                       //delete cjson root
-                            len = strlen(OutBuffer);
-                            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                            xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave((uint8_t *)OutBuffer, len);
-                            xSemaphoreGive(Cache_muxtex);
-                            free(OutBuffer);
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
                             free(filed_buff);
                         }
                         break;
@@ -366,13 +377,18 @@ void read_485_sth_task(void *pvParameters)
                             snprintf(filed_buff, 9, "field%d", r1_sth_h_f_num);
                             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_sth_h_f_num, rs485_sh_val)));
                             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                            cJSON_Delete(pJsonRoot);                       //delete cjson root
-                            len = strlen(OutBuffer);
-                            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                            xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave((uint8_t *)OutBuffer, len);
-                            xSemaphoreGive(Cache_muxtex);
-                            free(OutBuffer);
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
                             free(filed_buff);
                         }
                         break;
@@ -443,13 +459,18 @@ void read_485_lt_task(void *pvParameters)
                             snprintf(filed_buff, 9, "field%d", r1_light_f_num);
                             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_light_f_num, light_val)));
                             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                            cJSON_Delete(pJsonRoot);                       //delete cjson root
-                            len = strlen(OutBuffer);
-                            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                            xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave((uint8_t *)OutBuffer, len);
-                            xSemaphoreGive(Cache_muxtex);
-                            free(OutBuffer);
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
                             free(filed_buff);
                         }
                         break;
@@ -576,15 +597,17 @@ void read_485_co2_task(void *pvParameters)
                                     snprintf(filed_buff, 9, "field%d", r1_co2_h_f_num);
                                     cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_h_f_num, h_val)));
                                     OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                                    cJSON_Delete(pJsonRoot);                       //delete cjson root
-                                    len = strlen(OutBuffer);
-                                    ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                                    // SaveBuffer = (uint8_t *)malloc(len);
-                                    // memcpy(SaveBuffer, OutBuffer, len);
-                                    xSemaphoreTake(Cache_muxtex, -1);
-                                    DataSave((uint8_t *)OutBuffer, len);
-                                    xSemaphoreGive(Cache_muxtex);
-                                    free(OutBuffer);
+                                    if (OutBuffer != NULL)
+                                    {
+                                        len = strlen(OutBuffer);
+                                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                        xSemaphoreTake(Cache_muxtex, -1);
+                                        DataSave((uint8_t *)OutBuffer, len);
+                                        xSemaphoreGive(Cache_muxtex);
+                                        cJSON_free(OutBuffer);
+                                    }
+                                    cJSON_Delete(pJsonRoot); //delete cjson root
+
                                     free(time_buff);
                                     free(filed_buff);
                                 }
@@ -664,13 +687,18 @@ void read_485_IS_task(void *pvParameters)
                             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_is_o2_f_num, IS_o2)));
 
                             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                            cJSON_Delete(pJsonRoot);                       //delete cjson root
-                            len = strlen(OutBuffer);
-                            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                            xSemaphoreTake(Cache_muxtex, -1);
-                            DataSave((uint8_t *)OutBuffer, len);
-                            xSemaphoreGive(Cache_muxtex);
-                            free(OutBuffer);
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
                             free(filed_buff);
                         }
                         break;

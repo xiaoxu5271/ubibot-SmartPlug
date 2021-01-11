@@ -104,15 +104,19 @@ void Sw_on_quan_Task(void *pvParameters)
             cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
             snprintf(filed_buff, 9, "field%d", sw_on_f_num);
             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber((uint64_t)((SW_on_time + 500000) / 1000000))); //四舍五入
-            OutBuffer = cJSON_PrintUnformatted(pJsonRoot);                                                                 //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                                                                                       //delete cjson root
-            len = strlen(OutBuffer);
-            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
 
-            xSemaphoreTake(Cache_muxtex, -1);
-            DataSave((uint8_t *)OutBuffer, len);
-            xSemaphoreGive(Cache_muxtex);
-            free(OutBuffer);
+            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+            if (OutBuffer != NULL)
+            {
+                len = strlen(OutBuffer);
+                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                xSemaphoreTake(Cache_muxtex, -1);
+                DataSave((uint8_t *)OutBuffer, len);
+                xSemaphoreGive(Cache_muxtex);
+                cJSON_free(OutBuffer);
+            }
+            cJSON_Delete(pJsonRoot); //delete cjson root
+
             free(filed_buff);
             free(time_buff);
             //清空统计

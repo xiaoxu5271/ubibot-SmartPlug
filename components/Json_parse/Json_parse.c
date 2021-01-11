@@ -401,8 +401,11 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
         ESP_LOGI(TAG, "command=%s\r\n", cjson_blu_data_parse_command->valuestring);
         char *Json_temp;
         Json_temp = cJSON_PrintUnformatted(cjson_blu_data_parse);
-        ParseTcpUartCmd(Json_temp);
-        free(Json_temp);
+        if (Json_temp != NULL)
+        {
+            ParseTcpUartCmd(Json_temp);
+            cJSON_free(Json_temp);
+        }
     }
     cJSON_Delete(cjson_blu_data_parse);
     return 1;
@@ -541,9 +544,12 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
         {
             char *mqtt_json;
             mqtt_json = cJSON_PrintUnformatted(json_data_parse_value);
-            ESP_LOGI(TAG, "%s", mqtt_json);
-            parse_objects_mqtt(mqtt_json, false); //parse mqtt
-            free(mqtt_json);
+            if (mqtt_json != NULL)
+            {
+                ESP_LOGI(TAG, "%s", mqtt_json);
+                parse_objects_mqtt(mqtt_json, false); //parse mqtt
+                cJSON_free(mqtt_json);
+            }
         }
 
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "cali"); //cali
@@ -828,15 +834,18 @@ void Create_NET_Json(void)
         cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-        cJSON_Delete(pJsonRoot);                       //delete cjson root
-        len = strlen(OutBuffer);
-        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-        // Send_Mqtt((uint8_t *)OutBuffer, len);
-        xSemaphoreTake(Cache_muxtex, -1);
-        DataSave((uint8_t *)OutBuffer, len);
-        xSemaphoreGive(Cache_muxtex);
+        if (OutBuffer != NULL)
+        {
+            len = strlen(OutBuffer);
+            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave((uint8_t *)OutBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            cJSON_free(OutBuffer);
+        }
+        cJSON_Delete(pJsonRoot); //delete cjson root
+
         free(status_buf);
-        free(OutBuffer);
         free(filed_buff);
         free(time_buff);
     }
@@ -847,11 +856,10 @@ void Create_Switch_Json(void)
     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
     {
         char *OutBuffer;
-        char *time_buff;
         uint16_t len = 0;
         cJSON *pJsonRoot;
         char *status_buf = (char *)malloc(50);
-        time_buff = (char *)malloc(24);
+        char *time_buff = (char *)malloc(24);
         Server_Timer_SEND(time_buff);
 
         pJsonRoot = cJSON_CreateObject();
@@ -862,15 +870,18 @@ void Create_Switch_Json(void)
         cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-        cJSON_Delete(pJsonRoot);                       //delete cjson root
-        len = strlen(OutBuffer);
-        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-        // Send_Mqtt((uint8_t *)OutBuffer, len);
-        xSemaphoreTake(Cache_muxtex, -1);
-        DataSave((uint8_t *)OutBuffer, len);
-        xSemaphoreGive(Cache_muxtex);
+        if (OutBuffer != NULL)
+        {
+            len = strlen(OutBuffer);
+            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave((uint8_t *)OutBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            cJSON_free(OutBuffer);
+        }
+        cJSON_Delete(pJsonRoot); //delete cjson root
+
         free(status_buf);
-        free(OutBuffer);
         free(time_buff);
     }
 }
@@ -910,10 +921,13 @@ void Create_fields_num(char *read_buf)
     cJSON_AddNumberToObject(pJsonRoot, "r1_is_o2", r1_is_o2_f_num);     //r1_is_c2h4_f_num
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    data_len = strlen(out_buf);
+    if (out_buf != NULL)
+    {
+        data_len = strlen(out_buf); //error
+        memcpy(read_buf, out_buf, data_len);
+        cJSON_free(out_buf);
+    }
     cJSON_Delete(pJsonRoot); //delete cjson root
-    memcpy(read_buf, out_buf, data_len);
-    free(out_buf);
 }
 
 /*******************************************************************************
@@ -932,9 +946,12 @@ void Create_cali_buf(char *read_buf)
     }
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    cJSON_Delete(pJsonRoot);                     //delete cjson root
-    strcpy(read_buf, out_buf);
-    free(out_buf);
+    if (out_buf != NULL)
+    {
+        strcpy(read_buf, out_buf); //error
+        cJSON_free(out_buf);
+    }
+    cJSON_Delete(pJsonRoot); //delete cjson root
 }
 
 esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
@@ -1161,11 +1178,13 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             cJSON_AddItemToObject(root, "MAC", cJSON_CreateString(mac_buff));
             cJSON_AddItemToObject(root, "firmware", cJSON_CreateString(FIRMWARE));
 
-            // sprintf(json_temp, "%s", cJSON_PrintUnformatted(root));
             json_temp = cJSON_PrintUnformatted(root);
-            printf("%s\r\n", json_temp);
+            if (json_temp != NULL)
+            {
+                printf("%s\r\n", json_temp);
+                cJSON_free(json_temp);
+            }
             cJSON_Delete(root); //delete pJson
-            free(json_temp);
         }
         //{"command":"CheckSensors"}
         else if (!strcmp((char const *)pSub->valuestring, "CheckSensors"))
@@ -1309,9 +1328,12 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             }
 
             json_temp = cJSON_PrintUnformatted(root);
-            printf("%s\r\n", json_temp);
+            if (json_temp != NULL)
+            {
+                printf("%s\r\n", json_temp);
+                cJSON_free(json_temp);
+            }
             cJSON_Delete(root); //delete pJson
-            free(json_temp);
         }
         //{"command":"CheckModule"}
         else if (!strcmp((char const *)pSub->valuestring, "CheckModule"))

@@ -266,13 +266,17 @@ void get_ds18b20_task(void *org)
                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                 cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(Cali_filed(e1_t_f_num, DS18B20_TEM)));
                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                cJSON_Delete(pJsonRoot);                       //delete cjson root
-                len = strlen(OutBuffer);
-                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                xSemaphoreTake(Cache_muxtex, -1);
-                DataSave((uint8_t *)OutBuffer, len);
-                xSemaphoreGive(Cache_muxtex);
-                free(OutBuffer);
+                if (OutBuffer != NULL)
+                {
+                    len = strlen(OutBuffer);
+                    ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                    xSemaphoreTake(Cache_muxtex, -1);
+                    DataSave((uint8_t *)OutBuffer, len);
+                    xSemaphoreGive(Cache_muxtex);
+                    cJSON_free(OutBuffer);
+                }
+                cJSON_Delete(pJsonRoot); //delete cjson root
+
                 free(Field_e1_t);
                 free(time_buff);
             }
