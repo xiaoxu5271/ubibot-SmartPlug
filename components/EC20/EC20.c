@@ -572,6 +572,7 @@ bool EC20_Moudle_Init(void)
     char *cmd_buf = (char *)malloc(CMD_LEN);
     char *recv_buf = (char *)malloc(50);
     uint8_t fail_num = 0;
+    int CREG_n = 0, CREG_stat = 0;
 
     //退出当前正在进行的AT任务
     AT_CMD_FLAG = true;
@@ -619,7 +620,7 @@ bool EC20_Moudle_Init(void)
     }
 
     //查询模块型号
-    ret = AT_Cmd_Send(recv_buf, -10, 50, "AT+CGMM\r\n", "OK", 100, 10);
+    ret = AT_Cmd_Send(recv_buf, -20, 50, "AT+CGMM\r\n", "OK", 100, 10);
     if (ret != false)
     {
         ESP_LOGI(TAG, "%d,%s", __LINE__, recv_buf);
@@ -701,6 +702,32 @@ bool EC20_Moudle_Init(void)
             goto end;
         }
     }
+
+    //AT+CREG?
+    fail_num = 0;
+    while (1)
+    {
+        ret = AT_Cmd_Send(recv_buf, 0, 50, "AT+CREG?\r\n", "+CREG:", 100, 10);
+        if (ret != false)
+        {
+            sscanf(recv_buf, "%*[^: ]: %d,%d", &CREG_n, &CREG_stat);
+            ESP_LOGE(TAG, "%d,%s,CREG_n=%d,CREG_stat=%d", __LINE__, recv_buf, CREG_n, CREG_stat);
+            if (CREG_n == 0 && CREG_stat == 1)
+            {
+                break;
+            }
+        }
+        Net_ErrCode = 4000 + CREG_n * 10 + CREG_stat;
+        fail_num++;
+        if (fail_num > 10)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            ret = NULL;
+            goto end;
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
     //OK
     ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGATT=1\r\n", "OK", 1000, 5);
     if (ret == false)
@@ -737,14 +764,14 @@ bool EC20_Moudle_Init(void)
             goto end;
         }
 
-        //AT+CGACT?
-        //+CGACT: 1,1
-        // ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT?\r\n", "+CGACT: 1,1", 100, 100);
-        // if (ret != false)
-        // {
-        //     // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-        //     goto end;
-        // }
+        // AT+CGACT?
+        // +CGACT: 1,1
+        ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT?\r\n", "+CGACT: 1,1", 100, 100);
+        if (ret != false)
+        {
+            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+            goto end;
+        }
     }
     else
     {

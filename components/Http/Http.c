@@ -258,6 +258,7 @@ int32_t http_post_init(uint32_t Content_Length)
                      WEB_SERVER,
                      Content_Length);
         }
+        ESP_LOGI(TAG, "%d,%s", __LINE__, build_po_url);
 
         const struct addrinfo hints = {
             .ai_family = AF_INET,
@@ -266,7 +267,6 @@ int32_t http_post_init(uint32_t Content_Length)
         struct addrinfo *res;
         // struct in_addr *addr;
         int32_t s = 0;
-
         int err = getaddrinfo((const char *)WEB_SERVER, (const char *)WEB_PORT, &hints, &res); //step1：DNS域名解析
 
         if (err != 0 || res == NULL)
