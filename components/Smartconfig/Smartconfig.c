@@ -33,6 +33,18 @@ uint8_t start_AP = 0;
 uint16_t Net_ErrCode = 0;
 bool scan_flag = false;
 
+void timer_wifi_cb(void *arg);
+esp_timer_handle_t timer_wifi_handle = NULL; //定时器句柄
+esp_timer_create_args_t timer_wifi_arg = {
+    .callback = &timer_wifi_cb,
+    .arg = NULL,
+    .name = "Wifi_Timer"};
+
+void timer_wifi_cb(void *arg)
+{
+    start_user_wifi();
+}
+
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
 {
@@ -42,6 +54,10 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         {
             esp_wifi_connect();
         }
+    }
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
+    {
+        esp_timer_start_once(timer_wifi_handle, 15000 * 1000);
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
@@ -65,10 +81,15 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
+        esp_timer_stop(timer_wifi_handle);
         xEventGroupSetBits(Net_sta_group, CONNECTED_BIT);
         Start_Active();
         // ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         // ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+    }
+    else
+    {
+        ESP_LOGI(TAG, "event_base=%s,event_id=%d", event_base, event_id);
     }
 }
 
@@ -77,6 +98,8 @@ void init_wifi(void) //
     start_AP = 0;
     // tcpip_adapter_init();
     // Net_sta_group = xEventGroupCreate();
+    ESP_ERROR_CHECK(esp_timer_create(&timer_wifi_arg, &timer_wifi_handle));
+
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
@@ -136,6 +159,9 @@ void start_user_wifi(void)
     memset(&s_staconf.sta, 0, sizeof(s_staconf));
     strcpy((char *)s_staconf.sta.ssid, wifi_data.wifi_ssid);
     strcpy((char *)s_staconf.sta.password, wifi_data.wifi_pwd);
+    s_staconf.sta.scan_method = 1;
+    s_staconf.sta.sort_method = 0;
+
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &s_staconf));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_LOGI(TAG, "turn on WIFI! \n");
