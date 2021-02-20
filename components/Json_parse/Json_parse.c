@@ -1765,28 +1765,42 @@ char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_s
 //读取EEPROM中的metadata
 void Read_Metadate_E2p(void)
 {
-    uint8_t Last_Switch_Status;
+    uint8_t Last_Switch_Status, reset_reason;
     de_sw_s = E2P_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
-    switch (de_sw_s)
+    Last_Switch_Status = E2P_ReadOneByte(LAST_SWITCH_ADD);
+    reset_reason = esp_reset_reason();
+    ESP_LOGI(TAG, "reset_reason=%d", reset_reason);
+    //上电启动
+    if (reset_reason == ESP_RST_POWERON || reset_reason == ESP_RST_WDT)
     {
-    case 0:
-        Switch_Relay(0);
-        break;
-
-    case 1:
-        Switch_Relay(1);
-        break;
-
-    case 2:
-        Last_Switch_Status = E2P_ReadOneByte(LAST_SWITCH_ADD);
-        if (Last_Switch_Status <= 100)
+        ESP_LOGI(TAG, "de_sw_s=%d", de_sw_s);
+        switch (de_sw_s)
         {
-            Switch_Relay(E2P_ReadOneByte(LAST_SWITCH_ADD));
-        }
-        break;
+        case 0:
+            Switch_Relay(0);
+            break;
 
-    default:
-        break;
+        case 1:
+            Switch_Relay(1);
+            break;
+
+        case 2:
+            Last_Switch_Status = E2P_ReadOneByte(LAST_SWITCH_ADD);
+            if (Last_Switch_Status <= 100)
+            {
+                Switch_Relay(E2P_ReadOneByte(LAST_SWITCH_ADD));
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+    //意外复位
+    else
+    {
+        ESP_LOGI(TAG, "Last_Switch_Status=%d", Last_Switch_Status);
+        Switch_Relay(Last_Switch_Status);
     }
 
     fn_dp = E2P_ReadLenByte(FN_DP_ADD, 4);           //数据发送频率

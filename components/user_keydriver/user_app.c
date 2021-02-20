@@ -57,7 +57,7 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
             // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 2:
-
+            // printf("SD 2/0=%d", 2 / 0);
             // ble_app_start();
             // ESP_LOGI("short_pressed_cb", "double press!!!\n");
             // Task_key_num = 2;

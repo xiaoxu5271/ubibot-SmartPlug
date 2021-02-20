@@ -33,7 +33,7 @@ void Switch_Relay(int8_t set_value)
         memcpy(C_TYPE, "physical", 9);
     }
 
-    else if (set_value >= 1 && set_value < 100)
+    else if (set_value >= 1 && set_value <= 100)
     {
         if (mqtt_json_s.mqtt_switch_status != 1)
         {
@@ -47,8 +47,13 @@ void Switch_Relay(int8_t set_value)
             mqtt_json_s.mqtt_switch_status = 0;
         }
     }
+
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
     Create_Switch_Json(); //构建开关状态
+
+    //D触发器 上升沿
+    gpio_set_level(GPIO_CP, 1);
+
     // if (Binary_energy != NULL)
     // {
     //     xTaskNotifyGive(Binary_energy);
@@ -57,10 +62,10 @@ void Switch_Relay(int8_t set_value)
     {
         xTaskNotifyGive(Binary_dp);
     }
-    if (de_sw_s == 2)
-    {
-        E2P_WriteOneByte(LAST_SWITCH_ADD, mqtt_json_s.mqtt_switch_status); //写入开关状态
-    }
+    // if (de_sw_s == 2)
+    // {
+    E2P_WriteOneByte(LAST_SWITCH_ADD, mqtt_json_s.mqtt_switch_status); //写入开关状态
+    // }
 
     if (mqtt_json_s.mqtt_switch_status == 1)
     {
@@ -71,6 +76,9 @@ void Switch_Relay(int8_t set_value)
         //累加单次开启时长
         SW_on_time += (uint64_t)esp_timer_get_time() - SW_last_time;
     }
+
+    //D触发器 下降沿
+    gpio_set_level(GPIO_CP, 0);
 }
 
 //读取，构建累积开启时长
@@ -135,6 +143,13 @@ void Switch_Init(void)
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf);
 
-    gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = (1ULL << GPIO_CP);
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+    // gpio_set_level(GPIO_RLY, 0);
+    // gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
     xTaskCreate(Sw_on_quan_Task, "sw on quan", 4096, NULL, 5, &Sw_on_Task_Handle);
 }
