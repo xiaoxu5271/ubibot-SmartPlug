@@ -3,7 +3,7 @@
 
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "Bluetooth.h"
+// #include "Bluetooth.h"
 #include "esp_wifi.h"
 
 void init_wifi(void);
