@@ -349,7 +349,7 @@ void read_485_sth_task(void *pvParameters)
 
                 if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
                 {
-                    if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
+                    if ((recv_data[0] == Rs485_sth_cmd[0]) && (recv_data[1] == Rs485_sth_cmd[1]))
                     {
                         rs485_st_val = ((recv_data[5] << 8) + recv_data[6]);
                         if (rs485_st_val <= 0x7fff)

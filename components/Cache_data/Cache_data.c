@@ -354,7 +354,7 @@ static Net_Err Http_post_fun(void)
     }
     // ESP_LOGI(TAG, "ERR LINE%d", __LINE__);
     // printf("解析返回数据！\n");
-    // ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
+    ESP_LOGI(TAG, "mes recv %d,\n:%s", strlen(recv_buff), recv_buff);
     if (parse_objects_http_respond(recv_buff))
     {
         ret = NET_OK;
