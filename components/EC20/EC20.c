@@ -184,6 +184,7 @@ void uart_event_task(void *pvParameters)
                                 }
                                 else if (strstr(EC20_RECV, "+CMQTTCONNLOST:") != NULL)
                                 {
+                                    ESP_LOGE(TAG, "%d,%s", __LINE__, EC20_RECV);
                                     Res_EC20_Task();
                                 }
                             }

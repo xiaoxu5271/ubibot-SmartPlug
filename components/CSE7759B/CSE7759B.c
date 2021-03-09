@@ -191,7 +191,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(voltage_a, voltage_t);
                 }
             }
-            ESP_LOGD(TAG, "voltage:%ld,%ld,%ld\r\n", voltage_a[0], voltage_a[1], voltage_a[2]);
+            // ESP_LOGD(TAG, "voltage:%ld,%ld,%ld\r\n", voltage_a[0], voltage_a[1], voltage_a[2]);
             voltage_t = getVIPvalue(voltage_a);
 
             if (voltage_t == 0)
@@ -203,7 +203,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 voltage = voltage_k * 100 / voltage_t; //电压10mV值，避免溢出
                 voltage = voltage * 10;                //电压mV值
             }
-            ESP_LOGD(TAG, "11Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
+            // ESP_LOGD(TAG, "11Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
             // mqtt_json_s.mqtt_Voltage = voltage / 1000;
         }
         else
@@ -228,7 +228,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(electricity_a, electricity_t);
                 }
             }
-            ESP_LOGD(TAG, "electricity:%ld,%ld,%ld\r\n", electricity_a[0], electricity_a[1], electricity_a[2]);
+            // ESP_LOGD(TAG, "electricity:%ld,%ld,%ld\r\n", electricity_a[0], electricity_a[1], electricity_a[2]);
             electricity_t = getVIPvalue(electricity_a);
 
             if (electricity_t == 0)
@@ -246,7 +246,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 electricity >>= 1;
 #endif
             }
-            ESP_LOGD(TAG, "11Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
+            // ESP_LOGD(TAG, "11Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
             // mqtt_json_s.mqtt_Current = electricity / 1000.0;
         }
         else
@@ -276,7 +276,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(power_a, power_t);
                 }
             }
-            ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
+            // ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
             power_t = getVIPvalue(power_a);
 
             if (power_t == 0)
@@ -294,7 +294,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 power >>= 1;
 #endif
             }
-            ESP_LOGD(TAG, "11Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+            // ESP_LOGD(TAG, "11Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
             // mqtt_json_s.mqtt_Power = power / 1000.0;
         }
         else if (powerNewFlag == 0)
@@ -311,7 +311,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     }
                 }
             }
-            ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
+            // ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
             power_t = getVIPvalue(power_a);
 
             if (power_t == 0)
@@ -329,7 +329,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 power >>= 1;
 #endif
             }
-            ESP_LOGD(TAG, "22Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+            // ESP_LOGD(TAG, "22Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
             // mqtt_json_s.mqtt_Power = power / 1000.0;
         }
 
@@ -403,7 +403,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
             power = 0;
             runingInf.electricity = 0; //获取到的电流以0.01A为单位
             electricity = 0;
-            ESP_LOGD(TAG, "Power Error\r\n");
+            // ESP_LOGD(TAG, "Power Error\r\n");
         }
         else
         {
@@ -443,7 +443,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     power >>= 1;
 #endif
                 }
-                ESP_LOGD(TAG, "33Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+                // ESP_LOGD(TAG, "33Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
                 // mqtt_json_s.mqtt_Power = power / 1000.0;
             }
             else if (powerNewFlag == 0)
@@ -478,7 +478,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     power >>= 1;
 #endif
                 }
-                ESP_LOGD(TAG, "44Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+                // ESP_LOGD(TAG, "44Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
                 // mqtt_json_s.mqtt_Power = power / 1000.0;
             }
         }
@@ -525,12 +525,12 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     electricity >>= 1;
 #endif
                 }
-                ESP_LOGD(TAG, "22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
+                // ESP_LOGD(TAG, "22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
                 // mqtt_json_s.mqtt_Current = electricity / 1000.0;
             }
             else
             {
-                ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
+                // ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
                 return -1;
             }
         }
@@ -571,7 +571,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     voltage = voltage_k * 100 / voltage_t; //电压10mV值，避免溢出
                     voltage = voltage * 10;                //电压mV值
                 }
-                ESP_LOGD(TAG, "22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
+                // ESP_LOGD(TAG, "22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
                 // mqtt_json_s.mqtt_Voltage = voltage / 1000;
             }
             else

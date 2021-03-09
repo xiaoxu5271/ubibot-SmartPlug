@@ -290,6 +290,8 @@ void get_ds18b20_task(void *org)
 
 void start_ds18b20(void)
 {
+    ds18b20_io_out();
+    DATA_IO_ON();
     xTaskCreate(get_ds18b20_task, "get_ds18b20_task", 4096, NULL, 3, &Binary_ext);
 }
 
