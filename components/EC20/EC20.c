@@ -574,13 +574,14 @@ bool EC20_Moudle_Init(void)
     char *recv_buf = (char *)malloc(50);
     uint8_t fail_num = 0;
     int CREG_n = 0, CREG_stat = 0;
+    float ec_rssi_val;
 
     //退出当前正在进行的AT任务
     AT_CMD_FLAG = true;
 
     // vTaskDelay(20000 / portTICK_PERIOD_MS);
     //重启
-    while (AT_Cmd_Send(NULL, 0, 0, "AT\r\n", "OK", 100, 1) == false)
+    while (AT_Cmd_Send(NULL, 0, 0, "AT\r\n", "OK", 500, 1) == false)
     {
         fail_num++;
         if (fail_num > 40)
@@ -643,7 +644,7 @@ bool EC20_Moudle_Init(void)
         }
     }
 
-    ret = AT_Cmd_Send(NULL, 0, 0, "AT+CPIN?\r\n", "READY", 1000, 5);
+    ret = AT_Cmd_Send(NULL, 0, 0, "AT+CPIN?\r\n", "READY", 500, 20);
     if (ret == false)
     {
         ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
@@ -667,6 +668,51 @@ bool EC20_Moudle_Init(void)
         {
             ESP_LOGI(TAG, "ICCID=%s", ICCID);
         }
+    }
+
+    fail_num = 0;
+    while (1)
+    {
+        ret = EC20_Get_Rssi(&ec_rssi_val);
+        if (ret != false)
+        {
+            ESP_LOGI(TAG, "%d,ec_rssi_val=%f", __LINE__, ec_rssi_val);
+            break;
+        }
+        Net_ErrCode = 4100; //信号错误
+        fail_num++;
+        if (fail_num > 10)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            ret = false;
+            goto end;
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
+    //AT+CGREG?
+    fail_num = 0;
+    while (1)
+    {
+        ret = AT_Cmd_Send(recv_buf, 0, 50, "AT+CGREG?\r\n", "+CGREG:", 500, 10);
+        if (ret != false)
+        {
+            sscanf(recv_buf, "%*[^: ]: %d,%d", &CREG_n, &CREG_stat);
+            ESP_LOGI(TAG, "%d,%s,CREG_n=%d,CREG_stat=%d", __LINE__, recv_buf, CREG_n, CREG_stat);
+            if (CREG_n == 0 && (CREG_stat == 1 || CREG_stat == 5))
+            {
+                break;
+            }
+        }
+        Net_ErrCode = 4000 + CREG_n * 10 + CREG_stat;
+        fail_num++;
+        if (fail_num > 10)
+        {
+            ESP_LOGE(TAG, "%d", __LINE__);
+            ret = false;
+            goto end;
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
     if (model_id == SIM7600)
@@ -704,103 +750,78 @@ bool EC20_Moudle_Init(void)
         }
     }
 
-    //AT+CREG?
-    fail_num = 0;
-    while (1)
-    {
-        ret = AT_Cmd_Send(recv_buf, 0, 50, "AT+CREG?\r\n", "+CREG:", 100, 10);
-        if (ret != false)
-        {
-            sscanf(recv_buf, "%*[^: ]: %d,%d", &CREG_n, &CREG_stat);
-            ESP_LOGE(TAG, "%d,%s,CREG_n=%d,CREG_stat=%d", __LINE__, recv_buf, CREG_n, CREG_stat);
-            if (CREG_n == 0 && CREG_stat == 1)
-            {
-                break;
-            }
-        }
-        Net_ErrCode = 4000 + CREG_n * 10 + CREG_stat;
-        fail_num++;
-        if (fail_num > 10)
-        {
-            ESP_LOGE(TAG, "%d", __LINE__);
-            ret = NULL;
-            goto end;
-        }
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-
     //OK
-    ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGATT=1\r\n", "OK", 1000, 5);
-    if (ret == false)
-    {
-        ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        Net_ErrCode = CGATT_ERR;
-        goto end;
-    }
-    //OK
-    ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGATT?\r\n", "+CGATT: 1", 1000, 20);
-    if (ret == false)
-    {
-        ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
-        Net_ErrCode = CGATT_ERR;
-        goto end;
-    }
+    // ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGATT=1\r\n", "OK", 1000, 5);
+    // if (ret == false)
+    // {
+    //     ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+    //     Net_ErrCode = CGATT_ERR;
+    //     goto end;
+    // }
+    // //OK
+    // ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGATT?\r\n", "+CGATT: 1", 1000, 20);
+    // if (ret == false)
+    // {
+    //     ESP_LOGE(TAG, "EC20_Init %d", __LINE__);
+    //     Net_ErrCode = CGATT_ERR;
+    //     goto end;
+    // }
 
-    if (model_id == SIM7600)
-    {
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT?\r\n", "+CGACT: 1,1", 100, 10);
-        if (ret != false)
-        {
-            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-            goto end;
-        }
+    // if (model_id == SIM7600)
+    // {
+    //     ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT?\r\n", "+CGACT: 1,1", 100, 10);
+    //     if (ret != false)
+    //     {
+    //         // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+    //         goto end;
+    //     }
 
-        //AT+CGACT=1,1
-        //OK
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT=1,1\r\n", "OK", 100, 50);
-        if (ret == false)
-        {
-            ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-            Net_ErrCode = QIACT_ERR;
-            goto end;
-        }
+    //     //AT+CGACT=1,1
+    //     //OK
+    //     ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT=1,1\r\n", "OK", 100, 50);
+    //     if (ret == false)
+    //     {
+    //         ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+    //         Net_ErrCode = QIACT_ERR;
+    //         goto end;
+    //     }
 
-        // AT+CGACT?
-        // +CGACT: 1,1
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT?\r\n", "+CGACT: 1,1", 100, 100);
-        if (ret != false)
-        {
-            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-            goto end;
-        }
-    }
-    else
-    {
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 10);
-        if (ret != false)
-        {
-            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-            goto end;
-        }
-        //AT+CGACT=1,1
-        //OK
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+QIACT=1\r\n", "OK", 1000, 10);
-        if (ret == false)
-        {
-            ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
-            Net_ErrCode = QIACT_ERR;
-            goto end;
-        }
+    //     // AT+CGACT?
+    //     // +CGACT: 1,1
+    //     ret = AT_Cmd_Send(NULL, 0, 0, "AT+CGACT?\r\n", "+CGACT: 1,1", 100, 100);
+    //     if (ret != false)
+    //     {
+    //         // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+    //         goto end;
+    //     }
+    // }
+    // else
+    // {
+    //     ret = AT_Cmd_Send(NULL, 0, 0, "AT+QIACT?\r\n", "+QIACT: 1,1", 1000, 10);
+    //     if (ret != false)
+    //     {
+    //         // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+    //         goto end;
+    //     }
+    //     //AT+CGACT=1,1
+    //     //OK
+    //     ret = AT_Cmd_Send(NULL, 0, 0, "AT+QIACT=1\r\n", "OK", 1000, 10);
+    //     if (ret == false)
+    //     {
+    //         ESP_LOGE(TAG, "EC20_Http_CFG %d", __LINE__);
+    //         Net_ErrCode = QIACT_ERR;
+    //         goto end;
+    //     }
 
-        //AT+CGACT?
-        //+CGACT: 1,1
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+QIACT?\r\n", "+QIACT: 1,1", 100, 10);
-        if (ret != false)
-        {
-            // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
-            goto end;
-        }
-    }
+    //     //AT+CGACT?
+    //     //+CGACT: 1,1
+    //     ret = AT_Cmd_Send(NULL, 0, 0, "AT+QIACT?\r\n", "+QIACT: 1,1", 100, 10);
+    //     if (ret != false)
+    //     {
+    //         // ESP_LOGI(TAG, "EC20_Http_CFG %d", __LINE__);
+    //         goto end;
+    //     }
+    // }
 
 end:
     free(recv_buf);

@@ -1,4 +1,5 @@
 {
-        "C_Cpp.errorSquiggles": "Disabled"
-        "terminal.integrated.fontFamily": "Menlo for Powerline"
+        "C_Cpp.errorSquiggles": "Disabled",
+        "terminal.integrated.fontFamily": "Menlo for Powerline",
+        "idf.portWin": "COM14"
 }
