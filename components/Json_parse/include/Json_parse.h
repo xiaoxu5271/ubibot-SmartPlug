@@ -9,7 +9,7 @@ esp_err_t parse_objects_bluetooth(char *blu_json_data);
 esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag);
 esp_err_t parse_objects_heart(char *json_data);
 esp_err_t parse_objects_http_respond(char *http_json_data);
-esp_err_t ParseTcpUartCmd(char *pcCmdBuffer);
+esp_err_t ParseTcpUartCmd(char *pcCmdBuffer, ...);
 
 esp_err_t creat_object(void);
 

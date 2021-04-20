@@ -1,5 +1,29 @@
 {
         "C_Cpp.errorSquiggles": "Disabled",
         "terminal.integrated.fontFamily": "Menlo for Powerline",
-        "idf.portWin": "COM14"
+        "idf.portWin": "COM14",
+        "files.associations": {
+                "rs485_read.h": "c",
+                "ds18b20.h": "c",
+                "rtcusr.h": "c",
+                "switch.h": "c",
+                "my_mqtt.h": "c",
+                "ec20.h": "c",
+                "freertos.h": "c",
+                "json_parse.h": "c",
+                "bluetooth.h": "c",
+                "cse7759b.h": "c",
+                "my_spi_flash.h": "c",
+                "e2prom.h": "c",
+                "servertimer.h": "c",
+                "cache_data.h": "c",
+                "http.h": "c",
+                "led.h": "c",
+                "smartconfig.h": "c"
+        },
+        "idf.flashType": "JTAG",
+        "idf.openOcdConfigs": [
+                "interface/ftdi/esp32_devkitj_v1.cfg",
+                "target/esp32.cfg"
+        ]
 }

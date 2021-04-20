@@ -68,6 +68,7 @@ void timer_heart_cb(void *arg)
         if (ble_num >= 60 * 15)
         {
             ble_app_stop();
+            start_user_wifi();
             ble_num = 0;
         }
     }

@@ -180,3 +180,12 @@ void Send_Mqtt_Task(void *arg)
         }
     }
 }
+
+void Send_Mqtt_Buff(char *buff)
+{
+    // xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
+    if ((xEventGroupGetBits(Net_sta_group) & MQTT_W_S_BIT) == MQTT_W_S_BIT)
+    {
+        esp_mqtt_client_publish(client, topic_p, buff, 0, 1, 0);
+    }
+}

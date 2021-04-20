@@ -32,6 +32,10 @@ TaskHandle_t ota_handle = NULL;
 
 static void __attribute__((noreturn)) task_fatal_error()
 {
+    char Status_buff[100] = {0};
+    snprintf(Status_buff, sizeof(Status_buff), "{\"command_id\":\"%s\",\"status\":\"FAIL\"}\r\n", mqtt_json_s.mqtt_command_id);
+    Send_Mqtt_Buff(Status_buff);
+    vTaskDelay(1000 / portTICK_RATE_MS);
     ESP_LOGE(TAG, "Exiting task due to fatal error...");
     esp_restart();
     (void)vTaskDelete(NULL);
@@ -106,10 +110,11 @@ static bool read_past_http_header(char text[], int total_len, uint32_t *content_
 //wifi ota
 void WIFI_OTA(void)
 {
+    char Status_buff[100] = {0};
     OTA_FLAG = true;
     esp_err_t err;
     //进度 百分比
-    uint8_t percentage = 0;
+    uint8_t percentage = 0, last_percentage = 0;
     /* update handle : set by esp_ota_begin(), must be freed via esp_ota_end() */
     esp_ota_handle_t update_handle = 0;
     const esp_partition_t *update_partition = NULL;
@@ -208,12 +213,16 @@ void WIFI_OTA(void)
                 task_fatal_error();
             }
             binary_file_length += data_read;
-            if (percentage != (int)(binary_file_length * 100 / content_len))
+
+            percentage = (int)(binary_file_length * 100 / content_len);
+            if (percentage != last_percentage && percentage % 10 == 0)
             {
-                percentage = (int)(binary_file_length * 100 / content_len);
-                printf("WIFI OTA:%d%%\n", percentage);
+
+                snprintf(Status_buff, sizeof(Status_buff), "{\"command_id\":\"%s\",\"status\":\"upgrading\",\"progress\":%d}\r\n", mqtt_json_s.mqtt_command_id, percentage);
+                Send_Mqtt_Buff(Status_buff);
+                printf("%s", Status_buff);
             }
-            // ESP_LOGI(TAG, "Written image length %d", binary_file_length);
+            last_percentage = percentage;
         }
         else if (data_read == 0)
         {
@@ -237,7 +246,12 @@ void WIFI_OTA(void)
         http_cleanup(client);
         task_fatal_error();
     }
+    snprintf(Status_buff, sizeof(Status_buff), "{\"command_id\":\"%s\",\"status\":\"OK\"}\r\n", mqtt_json_s.mqtt_command_id);
+    Send_Mqtt_Buff(Status_buff);
+    printf("%s", Status_buff);
+
     ESP_LOGI(TAG, "Prepare to restart system!");
+    vTaskDelay(1000 / portTICK_RATE_MS);
     esp_restart();
     return;
 }

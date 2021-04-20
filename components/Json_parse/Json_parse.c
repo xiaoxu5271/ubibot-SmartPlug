@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include <cJSON.h>
 #include "esp_system.h"
@@ -954,10 +955,25 @@ void Create_cali_buf(char *read_buf)
     cJSON_Delete(pJsonRoot); //delete cjson root
 }
 
-esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
+esp_err_t ParseTcpUartCmd(char *pcCmdBuffer, ...)
 {
-    // char send_buf[128] = {0};
-    // sprintf(send_buf, "{\"status\":0,\"code\": 0}");
+    char *Ret_OK = "{\"status\":0,\"code\": 0}\r\n";
+    char *Ret_Fail = "{\"status\":1,\"code\":1}\r\n";
+
+    va_list argp;
+    /*argp指向传入的第一个可选参数，msg是最后一个确定的参数*/
+    va_start(argp, pcCmdBuffer);
+    int sock = 0;
+    int tcp_flag = va_arg(argp, int);
+    if (tcp_flag == 1)
+    {
+        sock = va_arg(argp, int);
+        ESP_LOGI(TAG, "sock: %d\n", sock);
+    }
+    va_end(argp);
+
+    esp_err_t ret = ESP_FAIL;
+
     if (NULL == pcCmdBuffer) //null
     {
         ESP_LOGE(TAG, "%d", __LINE__);
@@ -1025,19 +1041,27 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                         ESP_LOGI(TAG, "MqttPort= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                         E2P_Write(MQTT_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
                     }
-
-                    printf("{\"status\":0,\"code\": 0}\r\n");
+                    if (tcp_flag)
+                    {
+                        Tcp_Send(sock, Ret_OK);
+                    }
+                    printf("%s", Ret_OK);
 
                     vTaskDelay(3000 / portTICK_RATE_MS);
                     cJSON_Delete(pJson);
                     esp_restart(); //芯片复位 函数位于esp_system.h
 
-                    return ESP_OK;
+                    ret = ESP_OK;
                 }
                 else
                 {
+                    ret = ESP_FAIL;
                     //密码错误
-                    printf("{\"status\":1,\"code\": 101}\r\n");
+                    if (tcp_flag)
+                    {
+                        Tcp_Send(sock, Ret_Fail);
+                    }
+                    printf("%s", Ret_Fail);
                 }
             }
         }
@@ -1092,12 +1116,18 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 E2P_Write(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
                 ESP_LOGI(TAG, "pwd = %s\r\n", SIM_PWD);
             }
-            Net_Switch();
-            cJSON_Delete(pJson); //delete pJson
-            printf("{\"status\":0,\"code\": 0}\r\n");
-            //重置网络
 
-            return 1;
+            if (tcp_flag)
+            {
+                Tcp_Send(sock, Ret_OK);
+                //AP配置，先关闭蓝牙
+                ble_app_stop();
+            }
+            printf("%s", Ret_OK);
+            vTaskDelay(1000 / portTICK_RATE_MS);
+            Net_Switch();
+
+            ret = ESP_OK;
         }
         //{"command":"SetupHost","Host":"api.ubibot.io","Port":"80","MqttHost":"mqtt.ubibot.io","MqttPort":"1883"}
         else if (!strcmp((char const *)pSub->valuestring, "SetupHost")) //Command:SetupWifi
@@ -1130,13 +1160,17 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 E2P_Write(MQTT_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
             }
 
-            printf("{\"status\":0,\"code\": 0}\r\n");
+            if (tcp_flag)
+            {
+                Tcp_Send(sock, Ret_OK);
+            }
+            printf("%s", Ret_OK);
 
             vTaskDelay(3000 / portTICK_RATE_MS);
             cJSON_Delete(pJson);
             esp_restart(); //芯片复位 函数位于esp_system.h
 
-            return ESP_OK;
+            ret = ESP_OK;
         }
 
         //{"command":"ReadProduct"}
@@ -1330,36 +1364,45 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             json_temp = cJSON_PrintUnformatted(root);
             if (json_temp != NULL)
             {
+                if (tcp_flag)
+                {
+                    Tcp_Send(sock, json_temp);
+                }
                 printf("%s\r\n", json_temp);
                 cJSON_free(json_temp);
             }
             cJSON_Delete(root); //delete pJson
+            ret = ESP_OK;
         }
         //{"command":"CheckModule"}
         else if (!strcmp((char const *)pSub->valuestring, "CheckModule"))
         {
             Check_Module();
+            ret = ESP_OK;
         }
         //{"command":"ScanWifiList"}
         else if (!strcmp((char const *)pSub->valuestring, "ScanWifiList"))
         {
             Scan_Wifi();
+            ret = ESP_OK;
         }
         //{"command":"reboot"}
         else if (!strcmp((char const *)pSub->valuestring, "reboot"))
         {
             esp_restart();
+            ret = ESP_OK;
         }
         //{"command":"AllReset"}
         else if (!strcmp((char const *)pSub->valuestring, "AllReset"))
         {
             E2prom_set_defaul(false);
+            ret = ESP_OK;
         }
     }
 
     cJSON_Delete(pJson); //delete pJson
 
-    return ESP_FAIL;
+    return ret;
 }
 
 /*******************************************************************************
