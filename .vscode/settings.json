@@ -1,7 +1,7 @@
 {
         "C_Cpp.errorSquiggles": "Disabled",
         "terminal.integrated.fontFamily": "Menlo for Powerline",
-        "idf.portWin": "COM14",
+        "idf.portWin": "COM17",
         "files.associations": {
                 "rs485_read.h": "c",
                 "ds18b20.h": "c",
