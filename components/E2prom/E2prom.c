@@ -523,8 +523,11 @@ void E2prom_empty_all(bool flag)
 
     if (flag)
     {
-        E2P_Empty(FN_SET_FLAG_ADD, E2P_SIZE - 1);
+        // E2P_Empty(FN_SET_FLAG_ADD, E2P_SIZE - 1);
         // E2P_Empty(FN_SW_ON_ADD, E2P_USAGED);
+
+        E2P_Empty(FN_SET_FLAG_ADD, WEB_PORT_ADD);
+        E2P_Empty(FN_SW_ON_ADD, E2P_SIZE - 1);
     }
     else
     {
@@ -554,6 +557,7 @@ void E2prom_set_defaul(bool flag)
 
     E2P_WriteLenByte(FN_DP_ADD, 60, 4);
     E2P_WriteOneByte(CG_DATA_LED_ADD, 1);
+    esp_restart();
 }
 
 //检查AT24CXX是否正常,以及是否为新EEPROM
