@@ -74,7 +74,6 @@ esp_err_t AT24CXX_WriteOneByte(uint16_t reg_addr, uint8_t dat)
 
 esp_err_t AT24CXX_ReadOneByte(uint16_t reg_addr, uint8_t *data)
 {
-
     esp_err_t ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -132,28 +131,63 @@ esp_err_t AT24_Read(uint16_t reg_addr, uint8_t *dat, uint16_t len)
     return ret;
 }
 
-esp_err_t FM24C_Write(uint16_t reg_addr, uint8_t *dat, uint16_t len)
+esp_err_t FM24C_WriteOneByte(uint16_t reg_addr, uint8_t dat)
 {
-    xSemaphoreTake(At24_Mutex, -1);
-    int ret;
+    esp_err_t ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
 
     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr & 0xff00) >> 8, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, reg_addr & 0xff, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
 
-    while (len)
-    {
-        i2c_master_write_byte(cmd, *dat, ACK_CHECK_EN); //send data value
-        dat++;
-        len--;
-    }
+    i2c_master_write_byte(cmd, dat, ACK_CHECK_EN); //send data value
 
     i2c_master_stop(cmd);
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
+    vTaskDelay(10 / portTICK_RATE_MS);
 
+    return ret;
+}
+
+// esp_err_t FM24C_ReadOneByte(uint16_t reg_addr, uint8_t *data)
+// {
+
+//     esp_err_t ret;
+//     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+//     i2c_master_start(cmd);
+//     i2c_master_write_byte(cmd, (DEV_ADD + ((reg_addr / 256) << 1)), ACK_CHECK_EN);
+//     i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+
+//     i2c_master_start(cmd);
+//     i2c_master_write_byte(cmd, (DEV_ADD + ((reg_addr / 256) << 1)) + 1, ACK_CHECK_EN);
+
+//     i2c_master_read_byte(cmd, data, NACK_VAL); //只读1 byte 不需要应答
+
+//     i2c_master_stop(cmd);
+//     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+//     i2c_cmd_link_delete(cmd);
+
+//     vTaskDelay(20 / portTICK_RATE_MS);
+
+//     return ret;
+// }
+
+esp_err_t FM24C_Write(uint16_t reg_addr, uint8_t *dat, uint16_t len)
+{
+    esp_err_t ret;
+    xSemaphoreTake(At24_Mutex, -1);
+    uint8_t t;
+    for (t = 0; t < len; t++)
+    {
+        ret = FM24C_WriteOneByte(reg_addr + t, *dat);
+        dat++;
+        if (ret != ESP_OK)
+        {
+            break;
+        }
+    }
     xSemaphoreGive(At24_Mutex);
     return ret;
 }
@@ -166,8 +200,8 @@ esp_err_t FM24C_Read(uint16_t reg_addr, uint8_t *dat, uint16_t len)
     i2c_master_start(cmd);
 
     i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, (reg_addr & 0xff00) >> 8, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, reg_addr & 0xff, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
 
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, DEV_ADD + 1, ACK_CHECK_EN);
@@ -189,6 +223,7 @@ esp_err_t FM24C_Read(uint16_t reg_addr, uint8_t *dat, uint16_t len)
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
+    vTaskDelay(10 / portTICK_RATE_MS);
     xSemaphoreGive(At24_Mutex);
     return ret;
 }
@@ -417,12 +452,13 @@ void E2P_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead)
         {
             ret = false;
             ESP_LOGE(TAG, "E2P_Read err!!!");
+            esp_log_buffer_hex(TAG, check_buff, NumToRead + 1);
         }
     }
     if (ret == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
-        E2prom_empty_all(true);
+        E2prom_empty_all(false);
         ESP_LOGI(TAG, "%d", __LINE__);
         esp_restart();
     }
@@ -487,22 +523,11 @@ esp_err_t E2P_Empty(uint16_t start_add, uint16_t end_add)
 
     if (E2P_M)
     {
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-
-        i2c_master_write_byte(cmd, DEV_ADD, ACK_CHECK_EN);
-        i2c_master_write_byte(cmd, (start_add & 0xff00) >> 8, ACK_CHECK_EN);
-        i2c_master_write_byte(cmd, start_add & 0xff, ACK_CHECK_EN);
-
         while (len)
         {
-            i2c_master_write_byte(cmd, 0, ACK_CHECK_EN); //send data value
+            FM24C_WriteOneByte(start_add++, 0);
             len--;
         }
-
-        i2c_master_stop(cmd);
-        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-        i2c_cmd_link_delete(cmd);
     }
     else
     {
@@ -585,7 +610,7 @@ static bool E2P_Check(void)
         {
             ESP_LOGI(TAG, "Use AT rom");
             E2P_M = 0;
-            E2P_SIZE = 1024;
+            E2P_SIZE = AT_E2P_SIZE;
             DEV_ADD = AT_DEV_ADD;
             break;
         }
@@ -600,7 +625,7 @@ static bool E2P_Check(void)
         {
             ESP_LOGI(TAG, "Use FE rom");
             E2P_M = 1;
-            E2P_SIZE = 8 * 1024;
+            E2P_SIZE = FE_E2P_SIZE;
             DEV_ADD = FE_DEV_ADD;
             break;
         }
@@ -613,13 +638,15 @@ static bool E2P_Check(void)
         }
     }
 
-    AT24_Read((E2P_SIZE - 100), &temp, 1);
-    ESP_LOGI(TAG, "temp:%2x", temp);
+    // AT24_Read((E2P_SIZE - 100), &temp, 1);
+    // ESP_LOGI(TAG, "temp:%2x", temp);
 
     if (E2P_M)
         FM24C_Read((E2P_SIZE - 1), &temp, 1);
     else
         AT24_Read((E2P_SIZE - 1), &temp, 1);
+
+    ESP_LOGI(TAG, "temp:%2x", temp);
 
     if (temp == 0XFF)
     {
@@ -628,6 +655,7 @@ static bool E2P_Check(void)
         else
             AT24_Read((E2P_SIZE - 10), &temp, 1);
 
+        ESP_LOGI(TAG, "temp:%2x", temp);
         if (temp == 0XFF)
         {
             ESP_LOGI(TAG, "\nnew eeprom\n");
@@ -646,11 +674,13 @@ static bool E2P_Check(void)
         {
             FM24C_Write(E2P_SIZE - 1, &Check_dat, 1);
             FM24C_Read((E2P_SIZE - 1), &temp, 1);
+            ESP_LOGI(TAG, "temp:%2x", temp);
         }
         else
         {
             AT24_Write(E2P_SIZE - 1, &Check_dat, 1);
             AT24_Read((E2P_SIZE - 1), &temp, 1);
+            ESP_LOGI(TAG, "temp:%2x", temp);
         }
 
         if (temp == Check_dat)

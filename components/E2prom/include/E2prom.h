@@ -25,7 +25,7 @@
 #define ACK_VAL 0x0       /*!< I2C ack value */
 #define NACK_VAL 0x1      /*!< I2C nack value */
 
-#define FE_E2P_SIZE 8 * 1024
+#define FE_E2P_SIZE 4 * 1024
 #define FE_DEV_ADD 0XAE
 
 #define AT_E2P_SIZE 1024

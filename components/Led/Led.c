@@ -52,7 +52,7 @@ static void Led_Task(void *arg)
         //硬件错误
         if ((CSE_FLAG == false) || (E2P_FLAG == false) || (FLASH_FLAG == false))
         {
-            // ESP_LOGI(TAG, "CSE_FLAG=:%d,E2P_FLAG=:%d,FLASH_FLAG=:%d", CSE_FLAG, E2P_FLAG, FLASH_FLAG);
+            ESP_LOGE(TAG, "CSE_FLAG=:%d,E2P_FLAG=:%d,FLASH_FLAG=:%d", CSE_FLAG, E2P_FLAG, FLASH_FLAG);
             Led_Off();
             vTaskDelay(500 / portTICK_RATE_MS);
             Led_Y_On();

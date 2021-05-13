@@ -185,7 +185,8 @@ void uart_event_task(void *pvParameters)
                                 else if (strstr(EC20_RECV, "+CMQTTCONNLOST:") != NULL)
                                 {
                                     ESP_LOGE(TAG, "%d,%s", __LINE__, EC20_RECV);
-                                    Res_EC20_Task();
+                                    // Res_EC20_Task();
+                                    Res_EC20_Mqtt_Task();
                                 }
                             }
                             else
@@ -681,7 +682,7 @@ bool EC20_Moudle_Init(void)
         }
         Net_ErrCode = 4100; //信号错误
         fail_num++;
-        if (fail_num > 10)
+        if (fail_num > 60)
         {
             ESP_LOGE(TAG, "%d", __LINE__);
             ret = false;
@@ -706,7 +707,7 @@ bool EC20_Moudle_Init(void)
         }
         Net_ErrCode = 4000 + CREG_n * 10 + CREG_stat;
         fail_num++;
-        if (fail_num > 10)
+        if (fail_num > 60 || Net_ErrCode == 4003)
         {
             ESP_LOGE(TAG, "%d", __LINE__);
             ret = false;
@@ -866,7 +867,7 @@ uint8_t EC20_Http_CFG(void)
 
     if (model_id == SIM7600)
     {
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+HTTPINIT\r\n", "OK", 1000, 1);
+        ret = AT_Cmd_Send(NULL, 0, 0, "AT+HTTPINIT\r\n", "OK", 10000, 10);
         if (ret == false)
         {
             ESP_LOGE(TAG, "HTTPINIT %d", __LINE__);
@@ -1068,7 +1069,7 @@ uint8_t EC20_MQTT_INIT(void)
 
         //连接
         memset(cmd_buf, 0, CMD_LEN);
-        snprintf(cmd_buf, CMD_LEN, "AT+CMQTTCONNECT=0,\"tcp://%s:%s\",60,1,\"c_id=%s\",\"api_key=%s\"\r\n",
+        snprintf(cmd_buf, CMD_LEN, "AT+CMQTTCONNECT=0,\"tcp://%s:%s\",10,1,\"c_id=%s\",\"api_key=%s\"\r\n",
                  MQTT_SERVER,
                  MQTT_PORT,
                  ChannelId,

@@ -1,7 +1,7 @@
 {
         "C_Cpp.errorSquiggles": "Disabled",
         "terminal.integrated.fontFamily": "Menlo for Powerline",
-        "idf.portWin": "COM17",
+        "idf.portWin": "COM14",
         "files.associations": {
                 "rs485_read.h": "c",
                 "ds18b20.h": "c",
@@ -25,5 +25,7 @@
         "idf.openOcdConfigs": [
                 "interface/ftdi/esp32_devkitj_v1.cfg",
                 "target/esp32.cfg"
-        ]
+        ],
+        "terminal.explorerKind": "external",
+        // "idf.pythonBinPathWin": "C:\\Users\\cheng\\AppData\\Local\\Programs\\Python\\Python38\\python.exe"
 }
