@@ -19,7 +19,8 @@
                 "cache_data.h": "c",
                 "http.h": "c",
                 "led.h": "c",
-                "smartconfig.h": "c"
+                "smartconfig.h": "c",
+                "gpio.h": "c"
         },
         "idf.flashType": "JTAG",
         "idf.openOcdConfigs": [

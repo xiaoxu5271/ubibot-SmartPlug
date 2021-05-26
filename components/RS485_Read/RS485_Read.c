@@ -98,8 +98,25 @@ void read_485_th_task(void *pvParameters)
                 {
                     if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
                     {
-                        ext_tem = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
-                        ext_hum = ((recv_data[5] << 8) + recv_data[6]) * 0.1;
+                        ext_tem = ((recv_data[3] << 8) + recv_data[4]);
+                        if (ext_tem != 0x8000)
+                        {
+                            if (ext_tem <= 0x7fff) //"+"
+                            {
+                                ext_tem = ext_tem / 10;
+                            }
+                            else //"-"
+                            {
+                                ext_tem = 0xffff - ext_tem;
+                                ext_tem = -ext_tem / 10;
+                            }
+                        }
+
+                        ext_hum = ((recv_data[5] << 8) + recv_data[6]);
+                        if (ext_hum != 0x8000)
+                        {
+                            ext_hum = ext_hum / 10;
+                        }
                         ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
                         // RS485_status = true;
 
@@ -190,7 +207,20 @@ void read_485_t_task(void *pvParameters)
                 {
                     if ((recv_data[0] == Rs485_t_cmd[0]) && (recv_data[1] == Rs485_t_cmd[1]))
                     {
-                        Rs485_t_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
+                        Rs485_t_val = ((recv_data[3] << 8) + recv_data[4]);
+                        if (Rs485_t_val != 0x8000)
+                        {
+                            if (Rs485_t_val <= 0x7fff) //"+"
+                            {
+                                Rs485_t_val = Rs485_t_val / 10;
+                            }
+                            else //"-"
+                            {
+                                Rs485_t_val = 0xffff - Rs485_t_val;
+                                Rs485_t_val = -Rs485_t_val / 10;
+                            }
+                        }
+
                         ESP_LOGI(TAG, "Rs485_t_val=%f\n", Rs485_t_val);
 
                         if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
