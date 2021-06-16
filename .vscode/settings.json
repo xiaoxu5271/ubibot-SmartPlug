@@ -20,9 +20,10 @@
                 "http.h": "c",
                 "led.h": "c",
                 "smartconfig.h": "c",
-                "gpio.h": "c"
+                "gpio.h": "c",
+                "*.ipp": "cpp"
         },
-        "idf.flashType": "JTAG",
+        "idf.flashType": "UART",
         "idf.openOcdConfigs": [
                 "interface/ftdi/esp32_devkitj_v1.cfg",
                 "target/esp32.cfg"
