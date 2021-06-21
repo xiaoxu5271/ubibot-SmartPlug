@@ -195,6 +195,7 @@ int8_t ds18b20_get_temp(void)
 
     for (uint8_t i = 0; i < Cla_Num; i++)
     {
+        vTaskSuspendAll();
         DS18B20_TEM = 0.0;
         ds18b20_start(); //ds18b20 start convert
         if (ds18b20_reset() == 0)
@@ -203,6 +204,7 @@ int8_t ds18b20_get_temp(void)
             ds18b20_write_byte(0xbe);     //read data
             data_l = ds18b20_read_byte(); //LSB
             data_h = ds18b20_read_byte(); //MSB
+            xTaskResumeAll();
 
             if (data_h > 7) //temperature value<0
             {
@@ -227,11 +229,13 @@ int8_t ds18b20_get_temp(void)
         }
         else
         {
+            xTaskResumeAll();
             DS18b20_status = false;
             // free(temp_arr);
             // printf("18b20 err\n");
             return -1;
         }
+
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     //进行中间滤波处理
