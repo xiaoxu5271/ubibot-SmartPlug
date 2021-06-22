@@ -1395,7 +1395,8 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer, ...)
         //{"command":"AllReset"}
         else if (!strcmp((char const *)pSub->valuestring, "AllReset"))
         {
-            E2prom_set_defaul(false);
+            // E2prom_set_defaul(false);
+            E2prom_set_0XFF();
             ret = ESP_OK;
         }
     }

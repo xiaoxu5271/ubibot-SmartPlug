@@ -49,21 +49,21 @@ static void Led_Task(void *arg)
 {
     while (1)
     {
+        //恢复出厂
+        if (Set_defaul_flag == true)
+        {
+            Led_Off();
+            vTaskDelay(500 / portTICK_RATE_MS);
+            Led_B_On();
+            vTaskDelay(500 / portTICK_RATE_MS);
+        }
         //硬件错误
-        if ((CSE_FLAG == false) || (E2P_FLAG == false) || (FLASH_FLAG == false))
+        else if ((CSE_FLAG == false) || (E2P_FLAG == false) || (FLASH_FLAG == false))
         {
             ESP_LOGE(TAG, "CSE_FLAG=:%d,E2P_FLAG=:%d,FLASH_FLAG=:%d", CSE_FLAG, E2P_FLAG, FLASH_FLAG);
             Led_Off();
             vTaskDelay(500 / portTICK_RATE_MS);
             Led_Y_On();
-            vTaskDelay(500 / portTICK_RATE_MS);
-        }
-        //恢复出厂
-        else if (Set_defaul_flag == true)
-        {
-            Led_Off();
-            vTaskDelay(500 / portTICK_RATE_MS);
-            Led_B_On();
             vTaskDelay(500 / portTICK_RATE_MS);
         }
         //配网

@@ -458,7 +458,7 @@ void E2P_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead)
     if (ret == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
-        E2prom_empty_all(false);
+        E2prom_empty_all(true);
         ESP_LOGI(TAG, "%d", __LINE__);
         esp_restart();
     }
@@ -508,6 +508,78 @@ void E2P_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite)
     free(write_buff);
 }
 
+/******************************************************************************
+//at24c08 write page,addr:0-1023,Size:1-16
+******************************************************************************/
+esp_err_t at24c08_WritePage(uint16_t reg_addr, uint8_t buf_len, uint8_t data)
+{
+    // MulTry_I2C_WR_mulReg(at24c08_addr0 + reg_addr / 256, reg_addr % 256, buffer, buf_len); //iic multi write
+
+    uint8_t sla_addr = at24c08_addr0; //+ reg_addr / 256;
+
+    xSemaphoreTake(At24_Mutex, -1);
+    // IIC_Start(); //IIC start
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, 2 * sla_addr, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
+
+    while (buf_len)
+    {
+        i2c_master_write_byte(cmd, data, ACK_CHECK_EN);
+        buf_len--;
+    }
+
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+    i2c_cmd_link_delete(cmd);
+    xSemaphoreGive(At24_Mutex);
+
+    vTaskDelay(15 / portTICK_RATE_MS);
+
+    return ret;
+}
+
+#define PAGE_SIZE 32
+void at24c08_WriteData(uint16_t addr, uint16_t size, uint8_t data)
+{
+
+    uint16_t i;
+    uint16_t remain;
+
+    remain = PAGE_SIZE - addr % PAGE_SIZE;
+
+    if (remain)
+    {
+        remain = size > remain ? remain : size;
+        ESP_LOGI(TAG, "%d", __LINE__);
+        at24c08_WritePage(addr, remain, data);
+
+        addr += remain;
+        size -= remain;
+    }
+
+    remain = size / PAGE_SIZE;
+
+    for (i = 0; i < remain; i++)
+    {
+        ESP_LOGI(TAG, "%d", __LINE__);
+        at24c08_WritePage(addr, PAGE_SIZE, data);
+
+        addr += PAGE_SIZE;
+    }
+
+    remain = size % PAGE_SIZE;
+
+    if (remain)
+    {
+        ESP_LOGI(TAG, "%d", __LINE__);
+        at24c08_WritePage(addr, remain, data);
+        addr += remain;
+    }
+}
+
 esp_err_t E2P_Empty(uint16_t start_add, uint16_t end_add)
 {
     if (end_add <= start_add)
@@ -548,15 +620,16 @@ void E2prom_empty_all(bool flag)
 
     if (flag)
     {
-        // E2P_Empty(FN_SET_FLAG_ADD, E2P_SIZE - 1);
-        // E2P_Empty(FN_SW_ON_ADD, E2P_USAGED);
+        // E2P_Empty(FN_SET_FLAG_ADD, WEB_PORT_ADD);
+        // E2P_Empty(FN_SW_ON_ADD, E2P_SIZE - 1);
 
-        E2P_Empty(FN_SET_FLAG_ADD, WEB_PORT_ADD);
-        E2P_Empty(FN_SW_ON_ADD, E2P_SIZE - 1);
+        at24c08_WriteData(FN_SET_FLAG_ADD, WEB_PORT_ADD - FN_SET_FLAG_ADD, 0);
+        at24c08_WriteData(FN_SW_ON_ADD, E2P_USAGED - FN_SW_ON_ADD, 0);
     }
     else
     {
-        E2P_Empty(0, E2P_SIZE);
+        // E2P_Empty(0, E2P_SIZE);
+        at24c08_WriteData(0, E2P_USAGED, 0);
     }
 }
 // static void E2prom_read_defaul(void)
@@ -575,9 +648,24 @@ void E2prom_empty_all(bool flag)
 //flag =0 不写入序列号相关
 void E2prom_set_defaul(bool flag)
 {
+    Set_defaul_flag = true;
     // E2prom_read_defaul();
     E2prom_empty_all(flag);
     //写入默认值
+    ESP_LOGI(TAG, "set defaul\n");
+
+    E2P_WriteLenByte(FN_DP_ADD, 60, 4);
+    E2P_WriteOneByte(CG_DATA_LED_ADD, 1);
+    esp_restart();
+}
+
+void E2prom_set_0XFF(void)
+{
+    Set_defaul_flag = true;
+    // E2prom_read_defaul();
+    at24c08_WriteData(0, E2P_SIZE, 0xff);
+    //写入默认值
+
     ESP_LOGI(TAG, "set defaul\n");
 
     E2P_WriteLenByte(FN_DP_ADD, 60, 4);
@@ -600,20 +688,20 @@ static bool E2P_Check(void)
 
     while (1)
     {
-        cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, AT_DEV_ADD, ACK_CHECK_EN);
-        i2c_master_stop(cmd);
-        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 50 / portTICK_RATE_MS);
-        i2c_cmd_link_delete(cmd);
-        if (ret == ESP_OK)
-        {
-            ESP_LOGI(TAG, "Use AT rom");
-            E2P_M = 0;
-            E2P_SIZE = AT_E2P_SIZE;
-            DEV_ADD = AT_DEV_ADD;
-            break;
-        }
+        // cmd = i2c_cmd_link_create();
+        // i2c_master_start(cmd);
+        // i2c_master_write_byte(cmd, AT_DEV_ADD, ACK_CHECK_EN);
+        // i2c_master_stop(cmd);
+        // ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 50 / portTICK_RATE_MS);
+        // i2c_cmd_link_delete(cmd);
+        // if (ret == ESP_OK)
+        // {
+        //     ESP_LOGI(TAG, "Use AT rom");
+        //     E2P_M = 0;
+        //     E2P_SIZE = AT_E2P_SIZE;
+        //     DEV_ADD = AT_DEV_ADD;
+        //     break;
+        // }
 
         cmd = i2c_cmd_link_create();
         i2c_master_start(cmd);
@@ -650,6 +738,8 @@ static bool E2P_Check(void)
 
     if (temp == 0XFF)
     {
+        FM24C_Write(E2P_SIZE - 1, &Check_dat, 1);
+
         if (E2P_M)
             FM24C_Read((E2P_SIZE - 10), &temp, 1);
         else
