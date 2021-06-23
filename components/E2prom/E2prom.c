@@ -299,7 +299,7 @@ uint8_t E2P_ReadOneByte(uint16_t reg_addr)
     if (ret == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
-        E2prom_empty_all(true);
+        E2prom_empty_all(false);
         ESP_LOGI(TAG, "%d", __LINE__);
         esp_restart();
     }
@@ -359,7 +359,7 @@ void E2P_WriteLenByte(uint16_t WriteAddr, uint32_t DataToWrite, uint8_t Len)
     if (ret == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
-        E2prom_empty_all(true);
+        E2prom_empty_all(false);
         ESP_LOGI(TAG, "%d", __LINE__);
         esp_restart();
     }
@@ -412,7 +412,7 @@ uint32_t E2P_ReadLenByte(uint16_t ReadAddr, uint8_t Len)
     if (ret == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
-        E2prom_empty_all(true);
+        E2prom_empty_all(false);
         ESP_LOGI(TAG, "%d", __LINE__);
         esp_restart();
     }
@@ -458,7 +458,7 @@ void E2P_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead)
     if (ret == false)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
-        E2prom_empty_all(true);
+        E2prom_empty_all(false);
         ESP_LOGI(TAG, "%d", __LINE__);
         esp_restart();
     }
@@ -515,13 +515,11 @@ esp_err_t at24c08_WritePage(uint16_t reg_addr, uint8_t buf_len, uint8_t data)
 {
     // MulTry_I2C_WR_mulReg(at24c08_addr0 + reg_addr / 256, reg_addr % 256, buffer, buf_len); //iic multi write
 
-    uint8_t sla_addr = at24c08_addr0; //+ reg_addr / 256;
-
     xSemaphoreTake(At24_Mutex, -1);
     // IIC_Start(); //IIC start
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, 2 * sla_addr, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, FE_DEV_ADD, ACK_CHECK_EN);
     i2c_master_write_byte(cmd, (reg_addr / 256), ACK_CHECK_EN);
     i2c_master_write_byte(cmd, (reg_addr % 256), ACK_CHECK_EN);
 
@@ -656,7 +654,8 @@ void E2prom_set_defaul(bool flag)
 
     E2P_WriteLenByte(FN_DP_ADD, 60, 4);
     E2P_WriteOneByte(CG_DATA_LED_ADD, 1);
-    esp_restart();
+    Set_defaul_flag = false;
+    // esp_restart();
 }
 
 void E2prom_set_0XFF(void)
@@ -666,11 +665,12 @@ void E2prom_set_0XFF(void)
     at24c08_WriteData(0, E2P_SIZE, 0xff);
     //写入默认值
 
+    Set_defaul_flag = false;
     ESP_LOGI(TAG, "set defaul\n");
 
-    E2P_WriteLenByte(FN_DP_ADD, 60, 4);
-    E2P_WriteOneByte(CG_DATA_LED_ADD, 1);
-    esp_restart();
+    //     E2P_WriteLenByte(FN_DP_ADD, 60, 4);
+    //     E2P_WriteOneByte(CG_DATA_LED_ADD, 1);
+    //     esp_restart();
 }
 
 //检查AT24CXX是否正常,以及是否为新EEPROM
