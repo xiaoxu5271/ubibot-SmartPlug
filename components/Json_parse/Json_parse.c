@@ -90,7 +90,7 @@ char SIM_USER[32] = {0};
 char SIM_PWD[32] = {0};
 
 //c-type
-char C_TYPE[10] = "initial";
+char C_TYPE[20] = "initial";
 
 //cali 相关 f1_a,f1_b,f1_a,f2_b,,,,,
 f_cali f_cali_u[40] = {
@@ -687,9 +687,8 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
                     pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "c_type");
                     if (pSubSubSub != NULL)
                     {
-
-                        memcpy(C_TYPE, pSubSubSub->valuestring, 10);
-                        // ESP_LOGI(TAG, "C_TYPE=%s", pSubSubSub->valuestring);
+                        ESP_LOGI(TAG, "C_TYPE=%s", pSubSubSub->valuestring);
+                        strncpy(C_TYPE, pSubSubSub->valuestring, strlen(pSubSubSub->valuestring));
                     }
                     pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "set_state");
                     if (pSubSubSub != NULL)

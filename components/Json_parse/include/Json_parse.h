@@ -134,6 +134,6 @@ extern char SIM_USER[32];
 extern char SIM_PWD[32];
 
 //c-type
-extern char C_TYPE[10];
+extern char C_TYPE[20];
 
 #endif

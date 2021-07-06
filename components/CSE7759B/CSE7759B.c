@@ -695,20 +695,34 @@ void Energy_Read_Task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         if ((xEventGroupWaitBits(Net_sta_group, CSE_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & CSE_CHECK_BIT) == CSE_CHECK_BIT)
         {
-            if (((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT) && (mqtt_json_s.mqtt_switch_status == 1))
+            if (((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT))
             {
+
                 filed_buff = (char *)malloc(9);
                 time_buff = (char *)malloc(24);
                 Server_Timer_SEND(time_buff);
                 pJsonRoot = cJSON_CreateObject();
                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                 // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-                snprintf(filed_buff, 9, "field%d", sw_v_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_v_f_num, sw_v_val)));
-                snprintf(filed_buff, 9, "field%d", sw_c_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_c_f_num, sw_c_val)));
-                snprintf(filed_buff, 9, "field%d", sw_p_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_p_f_num, sw_p_val)));
+
+                if (mqtt_json_s.mqtt_switch_status == 1)
+                {
+                    snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_v_f_num, sw_v_val)));
+                    snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_c_f_num, sw_c_val)));
+                    snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_p_f_num, sw_p_val)));
+                }
+                else
+                {
+                    snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(0));
+                    snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(0));
+                    snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(0));
+                }
 
                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
                 if (OutBuffer != NULL)
