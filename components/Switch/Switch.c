@@ -23,6 +23,7 @@
 
 // static const char *TAG = "switch";
 uint64_t SW_last_time = 0, SW_on_time = 0;
+bool SW_last_sta = 0;
 
 //切换继电器
 void Switch_Relay(int8_t set_value)
@@ -69,14 +70,22 @@ void Switch_Relay(int8_t set_value)
 
     if (mqtt_json_s.mqtt_switch_status == 1)
     {
-        SW_last_time = (uint64_t)esp_timer_get_time();
+        if (SW_last_sta == 0)
+        {
+            SW_last_time = (uint64_t)esp_timer_get_time();
+        }
     }
     else
     {
-        //累加单次开启时长
-        SW_on_time += (uint64_t)esp_timer_get_time() - SW_last_time;
+        if (SW_last_sta == 1)
+        {
+            //累加单次开启时长
+            SW_on_time += (uint64_t)esp_timer_get_time() - SW_last_time;
+        }
     }
+    ESP_LOGI(TAG, "SW_on_time:%lld", (uint64_t)((SW_on_time + 500000) / 1000000));
 
+    SW_last_sta = mqtt_json_s.mqtt_switch_status;
     //D触发器 下降沿
     gpio_set_level(GPIO_CP, 0);
 }
