@@ -39,6 +39,9 @@ uint16_t Net_ErrCode = 0;
 bool scan_flag = false;
 char AP_SSID[15] = {0};
 
+esp_netif_t *STA_netif_t;
+esp_netif_t *AP_netif_t;
+
 static void tcp_server_task(void *pvParameters);
 
 void timer_wifi_cb(void *arg);
@@ -124,8 +127,8 @@ void init_wifi(void) //
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-    esp_netif_create_default_wifi_ap();
+    STA_netif_t = esp_netif_create_default_wifi_sta();
+    AP_netif_t = esp_netif_create_default_wifi_ap();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -345,17 +348,19 @@ void start_softap(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
 
-    tcpip_adapter_ip_info_t ip_info = {
-        .ip.addr = ipaddr_addr("192.168.1.1"),
-        .netmask.addr = ipaddr_addr("255.255.255.0"),
-        .gw.addr = ipaddr_addr("192.168.1.1"),
+    const esp_netif_ip_info_t ip_info = {
+        .ip = {.addr = ESP_IP4TOADDR(192, 168, 1, 1)},
+        .gw = {.addr = ESP_IP4TOADDR(192, 168, 1, 1)},
+        .netmask = {.addr = ESP_IP4TOADDR(255, 255, 255, 0)},
     };
 
-    ESP_ERROR_CHECK(tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP));
-    ESP_ERROR_CHECK(tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info));
-    ESP_ERROR_CHECK(tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP));
+    //注意，ap使用DHCPS ,即 DHCP服务器
+    ESP_ERROR_CHECK(esp_netif_dhcps_stop(AP_netif_t));
+    esp_netif_set_ip_info(AP_netif_t, &ip_info);
+    ESP_ERROR_CHECK(esp_netif_dhcps_start(AP_netif_t));
+
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_softap finished. ");
 }
