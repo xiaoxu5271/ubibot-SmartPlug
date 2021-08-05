@@ -619,11 +619,26 @@ void E2prom_empty_all(bool flag)
 
     if (flag)
     {
+        E2P_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+        E2P_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+        E2P_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+        E2P_Read(WEB_PORT_ADD, (uint8_t *)WEB_PORT, 5);
+        E2P_Read(MQTT_HOST_ADD, (uint8_t *)MQTT_SERVER, WEB_HOST_LEN);
+        E2P_Read(MQTT_PORT_ADD, (uint8_t *)MQTT_PORT, 5);
+
+        at24c08_WriteData(0, E2P_USAGED, 0);
+
+        E2P_Write(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
+        E2P_Write(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
+        E2P_Write(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
+        E2P_Write(WEB_PORT_ADD, (uint8_t *)WEB_PORT, 5);
+        E2P_Write(MQTT_HOST_ADD, (uint8_t *)MQTT_SERVER, WEB_HOST_LEN);
+        E2P_Write(MQTT_PORT_ADD, (uint8_t *)MQTT_PORT, 5);
+
         // E2P_Empty(FN_SET_FLAG_ADD, WEB_PORT_ADD);
         // E2P_Empty(FN_SW_ON_ADD, E2P_SIZE - 1);
-
-        at24c08_WriteData(FN_SET_FLAG_ADD, WEB_PORT_ADD - FN_SET_FLAG_ADD, 0);
-        at24c08_WriteData(FN_SW_ON_ADD, E2P_USAGED - FN_SW_ON_ADD, 0);
+        // at24c08_WriteData(FN_SET_FLAG_ADD, FN_SW_ON_ADD - FN_SET_FLAG_ADD, 0);
+        // at24c08_WriteData(FN_SW_ON_ADD, E2P_USAGED - FN_SW_ON_ADD, 0);
     }
     else
     {

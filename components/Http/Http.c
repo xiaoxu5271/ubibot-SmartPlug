@@ -602,6 +602,7 @@ uint16_t http_activate(void)
         {
             if (parse_objects_http_active(recv_buf))
             {
+                 ESP_LOGI(TAG, "active recv:%s", recv_buf);
                 Net_sta_flag = true;
                 ret = 1;
             }

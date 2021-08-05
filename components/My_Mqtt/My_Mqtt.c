@@ -135,6 +135,7 @@ void Send_Mqtt_Task(void *arg)
         .password = mqtt_pwd,
         .port = (uint32_t)strtoul(MQTT_PORT, 0, 10),
     };
+    ESP_LOGI(TAG, "mqtt_uri:%s,\nmqtt_usr:%s,\nmqtt_pwd:%s,\nMQTT_PORT:%s", mqtt_uri, mqtt_usr, mqtt_pwd, MQTT_PORT);
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
