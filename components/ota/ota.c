@@ -32,12 +32,16 @@ TaskHandle_t ota_handle = NULL;
 
 static void __attribute__((noreturn)) task_fatal_error()
 {
+    // 升级错误处理函数
     char Status_buff[100] = {0};
+    snprintf(ERROE_CODE, sizeof(ERROE_CODE), "error_ota");
     snprintf(Status_buff, sizeof(Status_buff), "{\"command_id\":\"%s\",\"status\":\"FAIL\"}\r\n", mqtt_json_s.mqtt_command_id);
     Send_Mqtt_Buff(Status_buff);
-    vTaskDelay(1000 / portTICK_RATE_MS);
+    vTaskNotifyGiveFromISR(Binary_dp, NULL);
+    // vTaskDelay(1000 / portTICK_RATE_MS);
     ESP_LOGE(TAG, "Exiting task due to fatal error...");
-    esp_restart();
+    // esp_restart();
+    OTA_FLAG = false;
     (void)vTaskDelete(NULL);
 }
 

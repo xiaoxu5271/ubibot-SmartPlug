@@ -91,6 +91,8 @@ char SIM_PWD[32] = {0};
 
 //c-type
 char C_TYPE[20] = "initial";
+char WARN_CODE[25] = {0};
+char ERROE_CODE[25] = {0};
 
 //cali 相关 f1_a,f1_b,f1_a,f2_b,,,,,
 f_cali f_cali_u[40] = {
@@ -711,83 +713,53 @@ uint16_t Create_Status_Json(char *status_buff, uint16_t buff_len, bool filed_fla
     char *ssid64_buff;
     esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC
 
-    if (filed_flag == true)
+    //new
+
+    snprintf(status_buff, buff_len, "],\"status\":\"mac=%02X:%02X:%02X:%02X:%02X:%02X,c_type=%s",
+             mac_sys[0],
+             mac_sys[1],
+             mac_sys[2],
+             mac_sys[3],
+             mac_sys[4],
+             mac_sys[5],
+             C_TYPE);
+
+    if (strlen(WARN_CODE) != 0)
     {
-        char *field_buff, *cali_buff;
-        field_buff = (char *)malloc(FILED_BUFF_SIZE);
-        cali_buff = (char *)malloc(CALI_BUFF_SIZE);
-        memset(field_buff, 0, FILED_BUFF_SIZE);
-        memset(cali_buff, 0, CALI_BUFF_SIZE);
-        Create_fields_num(field_buff);
-        Create_cali_buf(cali_buff);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",warning=%s", WARN_CODE);
+        memset(WARN_CODE, 0, sizeof(WARN_CODE));
+    }
+    if (strlen(ERROE_CODE) != 0)
+    {
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",errors=%s", ERROE_CODE);
+        memset(ERROE_CODE, 0, sizeof(ERROE_CODE));
+    }
 
-        if (net_mode == NET_WIFI)
-        {
-            ssid64_buff = (char *)malloc(64);
-            memset(ssid64_buff, 0, 64);
-            base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
-
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     C_TYPE,
-                     ssid64_buff,
-                     field_buff,
-                     cali_buff);
-            free(ssid64_buff);
-        }
-        else
-        {
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\",\"sensors\":[%s],\"cali\":[%s]}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     ICCID,
-                     C_TYPE,
-                     field_buff,
-                     cali_buff);
-        }
-        free(field_buff);
-        free(cali_buff);
+    if (net_mode == NET_WIFI)
+    {
+        ssid64_buff = (char *)malloc(64);
+        memset(ssid64_buff, 0, 64);
+        base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), "\",\"ssid_base64\":\"%s\"", ssid64_buff);
+        free(ssid64_buff);
     }
     else
     {
-        if (net_mode == NET_WIFI)
-        {
-            ssid64_buff = (char *)malloc(64);
-            memset(ssid64_buff, 0, 64);
-            base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",ICCID=%s\"", ICCID);
+    }
 
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\"}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     C_TYPE,
-                     ssid64_buff);
-            free(ssid64_buff);
-        }
-        else
-        {
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\"}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     ICCID,
-                     C_TYPE);
-        }
+    if (filed_flag == true)
+    {
+        char *field_buff;
+        field_buff = (char *)malloc(FILED_BUFF_SIZE);
+        memset(field_buff, 0, FILED_BUFF_SIZE);
+        Create_fields_num(field_buff);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",\"sensors\":[%s]}", field_buff);
+        free(field_buff);
+    }
+    else
+    {
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), "}");
     }
 
     return strlen(status_buff);

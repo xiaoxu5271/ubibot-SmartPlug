@@ -135,5 +135,7 @@ extern char SIM_PWD[32];
 
 //c-type
 extern char C_TYPE[20];
+extern char WARN_CODE[25];
+extern char ERROE_CODE[25];
 
 #endif
