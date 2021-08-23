@@ -132,6 +132,7 @@ void uart_event_task(void *pvParameters)
     uart_flush(EX_UART_NUM);
     char *ret_chr = NULL;
     bool flag_1 = false;
+    bool clean_flag = true;
 
     while (CHECK_FLAG == true || net_mode == NET_4G)
     {
@@ -174,12 +175,17 @@ void uart_event_task(void *pvParameters)
                             xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
                             if (model_id == SIM7600)
                             {
-                                if (strstr(EC20_RECV, "+CMQTTRXPAYLOAD: 0") != NULL)
+                                if (strstr(EC20_RECV, "+CMQTTRXPAYLOAD: 0") != NULL) //+CMQTTRXEND: 0   +CMQTTRXPAYLOAD: 0
                                 {
-                                    // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
-                                    if (net_mode == NET_4G)
+                                    clean_flag = false;
+                                    if (strstr(EC20_RECV, "+CMQTTRXEND: 0") != NULL)
                                     {
-                                        xQueueOverwrite(EC_mqtt_queue, (void *)EC20_RECV);
+                                        // ESP_LOGI("MQTT", "%s\n", EC20_RECV);
+                                        if (net_mode == NET_4G)
+                                        {
+                                            xQueueOverwrite(EC_mqtt_queue, (void *)EC20_RECV);
+                                        }
+                                        clean_flag = true;
                                     }
                                 }
                                 else if (strstr(EC20_RECV, "+CMQTTCONNLOST:") != NULL)
@@ -219,10 +225,13 @@ void uart_event_task(void *pvParameters)
                                 //     xQueueOverwrite(EC_at_queue, (void *)EC20_RECV);
                                 // }
                             }
-
-                            all_read_len = 0;
-                            memset(EC20_RECV, 0, BUF_SIZE);
-                            uart_flush(EX_UART_NUM);
+                            //判断是否需要清空当前缓存
+                            if (clean_flag)
+                            {
+                                all_read_len = 0;
+                                memset(EC20_RECV, 0, BUF_SIZE);
+                                uart_flush(EX_UART_NUM);
+                            }
                         }
                         // else if (strstr((char *)EC20_RECV, ">") != NULL)
                         else if (EC20_RECV[all_read_len - 2] == '>')
@@ -456,6 +465,7 @@ void EC20_M_Task(void *arg)
     {
         if (xQueueReceive(EC_mqtt_queue, (void *)mqtt_recv, 10 / portTICK_PERIOD_MS) == pdPASS)
         {
+            ESP_LOGI(TAG, "%d,%s", __LINE__, mqtt_recv);
             parse_objects_mqtt(mqtt_recv, true);
             memset(mqtt_recv, 0, 1024);
         }
@@ -1065,7 +1075,12 @@ uint8_t EC20_MQTT_INIT(void)
     {
         //开启mqtt
         ret = AT_Cmd_Send(NULL, 0, 0, "AT+CMQTTSTART\r\n", "OK", 1000, 1);
-        ret = AT_Cmd_Send(NULL, 0, 0, "AT+CMQTTACCQ=0,\"client1\"\r\n", "OK", 5000, 1);
+
+        //改用 ChannelId作为 Client ID
+        memset(cmd_buf, 0, CMD_LEN);
+        snprintf(cmd_buf, CMD_LEN, "AT+CMQTTACCQ=0,\"d_%s\"\r\n",
+                 ChannelId);
+        ret = AT_Cmd_Send(NULL, 0, 0, cmd_buf, "OK", 5000, 1);
 
         //连接
         memset(cmd_buf, 0, CMD_LEN);
@@ -1086,21 +1101,21 @@ uint8_t EC20_MQTT_INIT(void)
         //订阅
         memset(cmd_buf, 0, CMD_LEN);
         snprintf(cmd_buf, CMD_LEN, "AT+CMQTTSUB=0,%d,1\r\n", strlen(topic_s));
-        // ESP_LOGI(TAG, "%d,%s", __LINE__, cmd_buf);
+        ESP_LOGI(TAG, "%d,%s", __LINE__, cmd_buf);
         ret = AT_Cmd_Send(NULL, 0, 0, cmd_buf, ">", 1000, 5);
         if (ret == false)
         {
             ESP_LOGE(TAG, "%d", __LINE__);
             goto end;
         }
-        //ESP_LOGI(TAG, "%d", __LINE__);
+        ESP_LOGI(TAG, "%d，%s", __LINE__, topic_s);
         ret = AT_Cmd_Send(NULL, 0, 0, topic_s, "+CMQTTSUB: 0,0", 5000, 2);
         if (ret == false)
         {
             ESP_LOGE(TAG, "%d", __LINE__);
             goto end;
         }
-        //ESP_LOGI(TAG, "%d", __LINE__);
+        ESP_LOGI(TAG, "%d", __LINE__);
     }
     else
     {
