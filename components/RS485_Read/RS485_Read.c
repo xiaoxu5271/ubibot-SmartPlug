@@ -38,6 +38,7 @@ char Rs485_co2_tcmd[] = {0x61, 0x06, 0x00, 0x36, 0x00, 0x00, 0x60, 0x64}; //CO2
 char Rs485_co2_scmd[] = {0x61, 0x06, 0x00, 0x25, 0x00, 0x02, 0x10, 0x60}; //
 char Rs485_co2_gcmd[] = {0x61, 0x03, 0x00, 0x27, 0x00, 0x01, 0x3D, 0xA1}; //
 char Rs485_co2_rcmd[] = {0x61, 0x03, 0x00, 0x28, 0x00, 0x06, 0x4C, 0x60}; //
+char Rs485_is_cmd[] = {0x03, 0x03, 0x00, 0x02, 0x00, 0x02, 0x64, 0x29};   //乙烯氧气探头
 
 /*******************************************************************************
 //CO2 and temp/huimi value change
@@ -85,67 +86,92 @@ void read_485_th_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_th_cmd, recv_data, uart2_485);
-        if (racv_len > 0)
+
+        for (uint8_t i = 0; i < 5; i++)
         {
-            esp_log_buffer_hex(TAG, recv_data, racv_len);
-
-            if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
+            racv_len = RS485_Read(Rs485_th_cmd, recv_data, uart2_485);
+            if (racv_len >= 9)
             {
-                if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
+                esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+                if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, 7))
                 {
-                    ext_tem = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
-                    ext_hum = ((recv_data[5] << 8) + recv_data[6]) * 0.1;
-                    ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
-                    // RS485_status = true;
-
-                    //读取成功
-                    xEventGroupSetBits(Net_sta_group, RS485_CHECK_BIT);
-
-                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
                     {
-                        filed_buff = (char *)malloc(9);
-                        time_buff = (char *)malloc(24);
-                        Server_Timer_SEND(time_buff);
-                        pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
-                        snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_th_t_f_num, ext_tem)));
-                        snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_th_h_f_num, ext_hum)));
+                        ext_tem = ((recv_data[3] << 8) + recv_data[4]);
+                        if (ext_tem != 0x8000)
+                        {
+                            if (ext_tem <= 0x7fff) //"+"
+                            {
+                                ext_tem = ext_tem / 10;
+                            }
+                            else //"-"
+                            {
+                                ext_tem = 0xffff - ext_tem;
+                                ext_tem = -ext_tem / 10;
+                            }
+                        }
 
-                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                        cJSON_Delete(pJsonRoot);                       //delete cjson root
-                        len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
-                        // SaveBuffer = (uint8_t *)malloc(len);
-                        // memcpy(SaveBuffer, OutBuffer, len);
-                        xSemaphoreTake(Cache_muxtex, -1);
-                        DataSave((uint8_t *)OutBuffer, len);
-                        xSemaphoreGive(Cache_muxtex);
-                        free(OutBuffer);
-                        free(time_buff);
-                        free(filed_buff);
+                        ext_hum = ((recv_data[5] << 8) + recv_data[6]);
+                        if (ext_hum != 0x8000)
+                        {
+                            ext_hum = ext_hum / 10;
+                        }
+                        ESP_LOGI(TAG, "ext_tem=%f   ext_hum=%f\n", ext_tem, ext_hum);
+                        // RS485_status = true;
+
+                        //读取成功
+                        xEventGroupSetBits(Net_sta_group, RS485_CHECK_BIT);
+
+                        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                        {
+                            filed_buff = (char *)malloc(9);
+                            time_buff = (char *)malloc(24);
+                            Server_Timer_SEND(time_buff);
+                            pJsonRoot = cJSON_CreateObject();
+                            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                            snprintf(filed_buff, 9, "field%d", r1_th_t_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_th_t_f_num, ext_tem)));
+                            snprintf(filed_buff, 9, "field%d", r1_th_h_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_th_h_f_num, ext_hum)));
+
+                            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
+                            free(filed_buff);
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        RS485_status = false;
+                        ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                        // return 1;
                     }
                 }
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                    ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
-                RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
-                // return 1;
+                ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
             }
         }
-        else
-        {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
-        }
+
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
     }
@@ -170,57 +196,79 @@ void read_485_t_task(void *pvParameters)
 
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_t_cmd, recv_data, uart2_485);
-        if (racv_len > 0)
+        for (uint8_t i = 0; i < 5; i++)
         {
-            esp_log_buffer_hex(TAG, recv_data, racv_len);
-
-            if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, (racv_len - 2)))
+            racv_len = RS485_Read(Rs485_t_cmd, recv_data, uart2_485);
+            if (racv_len >= 7)
             {
-                if ((recv_data[0] == Rs485_t_cmd[0]) && (recv_data[1] == Rs485_t_cmd[1]))
+                esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+                if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, 5))
                 {
-                    Rs485_t_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
-                    ESP_LOGI(TAG, "Rs485_t_val=%f\n", Rs485_t_val);
-
-                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    if ((recv_data[0] == Rs485_t_cmd[0]) && (recv_data[1] == Rs485_t_cmd[1]))
                     {
+                        Rs485_t_val = ((recv_data[3] << 8) + recv_data[4]);
+                        if (Rs485_t_val != 0x8000)
+                        {
+                            if (Rs485_t_val <= 0x7fff) //"+"
+                            {
+                                Rs485_t_val = Rs485_t_val / 10;
+                            }
+                            else //"-"
+                            {
+                                Rs485_t_val = 0xffff - Rs485_t_val;
+                                Rs485_t_val = -Rs485_t_val / 10;
+                            }
+                        }
 
-                        filed_buff = (char *)malloc(9);
-                        time_buff = (char *)malloc(24);
-                        Server_Timer_SEND(time_buff);
-                        pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
-                        snprintf(filed_buff, 9, "field%d", r1_t_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_t_f_num, Rs485_t_val)));
-                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                        cJSON_Delete(pJsonRoot);                       //delete cjson root
-                        len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
-                        xSemaphoreTake(Cache_muxtex, -1);
-                        DataSave((uint8_t *)OutBuffer, len);
-                        xSemaphoreGive(Cache_muxtex);
-                        free(OutBuffer);
-                        free(filed_buff);
+                        ESP_LOGI(TAG, "Rs485_t_val=%f\n", Rs485_t_val);
+
+                        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                        {
+
+                            filed_buff = (char *)malloc(9);
+                            time_buff = (char *)malloc(24);
+                            Server_Timer_SEND(time_buff);
+                            pJsonRoot = cJSON_CreateObject();
+                            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                            snprintf(filed_buff, 9, "field%d", r1_t_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_t_f_num, Rs485_t_val)));
+                            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+                            free(time_buff);
+                            free(filed_buff);
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        RS485_status = false;
+                        ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                        // return 1;
                     }
                 }
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                    ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
-                RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
-                // return 1;
+                ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
             }
         }
-        else
-        {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
-        }
+
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
     }
@@ -243,54 +291,63 @@ void read_485_ws_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_ws_cmd, recv_data, uart2_485);
-        if (racv_len > 0)
+        for (uint8_t i = 0; i < 5; i++)
         {
-            esp_log_buffer_hex(TAG, recv_data, racv_len);
-
-            if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, (racv_len - 2)))
+            racv_len = RS485_Read(Rs485_ws_cmd, recv_data, uart2_485);
+            if (racv_len >= 7)
             {
-                if ((recv_data[0] == Rs485_ws_cmd[0]) && (recv_data[1] == Rs485_ws_cmd[1]))
-                {
-                    Rs485_ws_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
-                    ESP_LOGI(TAG, "Rs485_ws_val=%f\n", Rs485_ws_val);
+                esp_log_buffer_hex(TAG, recv_data, racv_len);
 
-                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, 5))
+                {
+                    if ((recv_data[0] == Rs485_ws_cmd[0]) && (recv_data[1] == Rs485_ws_cmd[1]))
                     {
-                        filed_buff = (char *)malloc(9);
-                        time_buff = (char *)malloc(24);
-                        Server_Timer_SEND(time_buff);
-                        pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
-                        snprintf(filed_buff, 9, "field%d", r1_ws_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_ws_f_num, Rs485_ws_val)));
-                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                        cJSON_Delete(pJsonRoot);                       //delete cjson root
-                        len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
-                        xSemaphoreTake(Cache_muxtex, -1);
-                        DataSave((uint8_t *)OutBuffer, len);
-                        xSemaphoreGive(Cache_muxtex);
-                        free(OutBuffer);
-                        free(filed_buff);
+                        Rs485_ws_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
+                        ESP_LOGI(TAG, "Rs485_ws_val=%f\n", Rs485_ws_val);
+
+                        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                        {
+                            filed_buff = (char *)malloc(9);
+                            time_buff = (char *)malloc(24);
+                            Server_Timer_SEND(time_buff);
+                            pJsonRoot = cJSON_CreateObject();
+                            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                            snprintf(filed_buff, 9, "field%d", r1_ws_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_ws_f_num, Rs485_ws_val)));
+                            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
+                            free(filed_buff);
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        RS485_status = false;
+                        ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
                     }
                 }
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                    ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
+                    // return 1;
                 }
             }
             else
             {
-                RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
-                // return 1;
+                ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
             }
-        }
-        else
-        {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -313,68 +370,77 @@ void read_485_sth_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_sth_cmd, recv_data, uart2_485);
-        if (racv_len > 0)
+        for (uint8_t i = 0; i < 5; i++)
         {
-            esp_log_buffer_hex(TAG, recv_data, racv_len);
-
-            if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
+            racv_len = RS485_Read(Rs485_sth_cmd, recv_data, uart2_485);
+            if (racv_len >= 9)
             {
-                if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
+                esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+                if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, 7))
                 {
-                    rs485_st_val = ((recv_data[5] << 8) + recv_data[6]);
-                    if (rs485_st_val <= 0x7fff)
+                    if ((recv_data[0] == Rs485_sth_cmd[0]) && (recv_data[1] == Rs485_sth_cmd[1]))
                     {
-                        rs485_st_val = rs485_st_val / 10;
+                        rs485_st_val = ((recv_data[5] << 8) + recv_data[6]);
+                        if (rs485_st_val <= 0x7fff)
+                        {
+                            rs485_st_val = rs485_st_val / 10;
+                        }
+                        else
+                        {
+                            rs485_st_val = 0xffff - rs485_st_val;
+                            rs485_st_val = -rs485_st_val / 10;
+                        }
+                        rs485_sh_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
+
+                        ESP_LOGI(TAG, "rs485_st_val=%f   rs485_sh_val=%f\n", rs485_st_val, rs485_sh_val);
+
+                        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                        {
+                            filed_buff = (char *)malloc(9);
+                            time_buff = (char *)malloc(24);
+                            Server_Timer_SEND(time_buff);
+                            pJsonRoot = cJSON_CreateObject();
+                            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                            snprintf(filed_buff, 9, "field%d", r1_sth_t_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_sth_t_f_num, rs485_st_val)));
+                            snprintf(filed_buff, 9, "field%d", r1_sth_h_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_sth_h_f_num, rs485_sh_val)));
+                            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
+                            free(filed_buff);
+                        }
+                        break;
                     }
                     else
                     {
-                        rs485_st_val = 0xffff - rs485_st_val;
-                        rs485_st_val = -rs485_st_val / 10;
-                    }
-                    rs485_sh_val = ((recv_data[3] << 8) + recv_data[4]) * 0.1;
-
-                    ESP_LOGI(TAG, "rs485_st_val=%f   rs485_sh_val=%f\n", rs485_st_val, rs485_sh_val);
-
-                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
-                    {
-                        filed_buff = (char *)malloc(9);
-                        time_buff = (char *)malloc(24);
-                        Server_Timer_SEND(time_buff);
-                        pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
-                        snprintf(filed_buff, 9, "field%d", r1_sth_t_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_sth_t_f_num, rs485_st_val)));
-                        snprintf(filed_buff, 9, "field%d", r1_sth_h_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_sth_h_f_num, rs485_sh_val)));
-                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                        cJSON_Delete(pJsonRoot);                       //delete cjson root
-                        len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
-                        xSemaphoreTake(Cache_muxtex, -1);
-                        DataSave((uint8_t *)OutBuffer, len);
-                        xSemaphoreGive(Cache_muxtex);
-                        free(OutBuffer);
-                        free(filed_buff);
+                        RS485_status = false;
+                        ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                        // return 1;
                     }
                 }
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                    ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
-                RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
-                // return 1;
+                ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
             }
-        }
-        else
-        {
-            ESP_LOGE(TAG, "RS485 NO ARK !!! line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -398,56 +464,65 @@ void read_485_lt_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_lt_cmd, recv_data, uart2_485);
-        if (racv_len > 0)
+        for (uint8_t i = 0; i < 5; i++)
         {
-            esp_log_buffer_hex(TAG, recv_data, racv_len);
-
-            if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, (racv_len - 2)))
+            racv_len = RS485_Read(Rs485_lt_cmd, recv_data, uart2_485);
+            if (racv_len >= 9)
             {
-                if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
+                esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+                if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, 7))
                 {
-                    light_val = (recv_data[3] << 24) + (recv_data[4] << 16) + (recv_data[5] << 8) + recv_data[6];
-                    ESP_LOGI(TAG, "light_val=%f\n", light_val);
-                    RS485_status = true;
-                    // 读取成功
-                    if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                    if ((recv_data[0] == Rs485_th_cmd[0]) && (recv_data[1] == Rs485_th_cmd[1]))
                     {
-                        filed_buff = (char *)malloc(9);
-                        time_buff = (char *)malloc(24);
-                        Server_Timer_SEND(time_buff);
-                        pJsonRoot = cJSON_CreateObject();
-                        cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
-                        snprintf(filed_buff, 9, "field%d", r1_light_f_num);
-                        cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_light_f_num, light_val)));
-                        OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                        cJSON_Delete(pJsonRoot);                       //delete cjson root
-                        len = strlen(OutBuffer);
-                        printf("len:%d\n%s\n", len, OutBuffer);
-                        xSemaphoreTake(Cache_muxtex, -1);
-                        DataSave((uint8_t *)OutBuffer, len);
-                        xSemaphoreGive(Cache_muxtex);
-                        free(OutBuffer);
-                        free(filed_buff);
+                        light_val = (recv_data[3] << 24) + (recv_data[4] << 16) + (recv_data[5] << 8) + recv_data[6];
+                        ESP_LOGI(TAG, "light_val=%f\n", light_val);
+                        RS485_status = true;
+                        // 读取成功
+                        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                        {
+                            filed_buff = (char *)malloc(9);
+                            time_buff = (char *)malloc(24);
+                            Server_Timer_SEND(time_buff);
+                            pJsonRoot = cJSON_CreateObject();
+                            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                            snprintf(filed_buff, 9, "field%d", r1_light_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_light_f_num, light_val)));
+                            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
+                            free(filed_buff);
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        RS485_status = false;
+                        ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                        // return 1;
                     }
                 }
                 else
                 {
                     RS485_status = false;
-                    ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                    ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
                     // return 1;
                 }
             }
             else
             {
-                RS485_status = false;
-                ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
-                // return 1;
+                ESP_LOGE(TAG, "RS485 NO ARK !!!  line:%d\n", __LINE__);
             }
-        }
-        else
-        {
-            ESP_LOGE(TAG, "RS485 NO ARK !!!  line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
@@ -472,121 +547,213 @@ void read_485_co2_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         xSemaphoreTake(RS485_Mutex, -1);
         recv_data = (uint8_t *)malloc(BUF_SIZE);
-        racv_len = RS485_Read(Rs485_co2_tcmd, recv_data, uart2_co2);
-        if (racv_len > 0)
+        for (uint8_t i = 0; i < 5; i++)
         {
-            // esp_log_buffer_hex("co2_t", recv_data, racv_len);
-            if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, (racv_len - 2)))
+            racv_len = RS485_Read(Rs485_co2_tcmd, recv_data, uart2_co2);
+            if (racv_len >= 8)
             {
-                racv_len = RS485_Read(Rs485_co2_scmd, recv_data, uart2_co2);
-                if (racv_len > 0)
+                // esp_log_buffer_hex("co2_t", recv_data, racv_len);
+                if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, 6))
                 {
-                    // esp_log_buffer_hex("co2_s", recv_data, racv_len);
-                    if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, (racv_len - 2)))
+                    racv_len = RS485_Read(Rs485_co2_scmd, recv_data, uart2_co2);
+                    if (racv_len >= 8)
                     {
-                        for (uint8_t i = 0; i < 10; i++)
+                        // esp_log_buffer_hex("co2_s", recv_data, racv_len);
+                        if ((recv_data[6] * 256 + recv_data[7]) == Get_Crc16(recv_data, 6))
                         {
-                            racv_len = RS485_Read(Rs485_co2_gcmd, recv_data, uart2_co2);
-                            if (racv_len > 0)
+                            for (uint8_t j = 0; j < 10; j++)
                             {
-                                // esp_log_buffer_hex("co2_g", recv_data, racv_len);
-                                if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, (racv_len - 2)))
+                                racv_len = RS485_Read(Rs485_co2_gcmd, recv_data, uart2_co2);
+                                if (racv_len >= 7)
                                 {
-                                    racv_len = RS485_Read(Rs485_co2_rcmd, recv_data, uart2_co2);
-                                    // esp_log_buffer_hex(TAG, recv_data, racv_len);
-                                    if (racv_len > 0)
+                                    // esp_log_buffer_hex("co2_g", recv_data, racv_len);
+                                    if ((recv_data[5] * 256 + recv_data[6]) == Get_Crc16(recv_data, 5))
                                     {
-                                        // esp_log_buffer_hex("co2_r", recv_data, racv_len);
-                                        if ((recv_data[15] * 256 + recv_data[16]) == Get_Crc16(recv_data, (racv_len - 2)))
+                                        racv_len = RS485_Read(Rs485_co2_rcmd, recv_data, uart2_co2);
+                                        // esp_log_buffer_hex(TAG, recv_data, racv_len);
+                                        if (racv_len >= 17)
                                         {
+                                            // esp_log_buffer_hex("co2_r", recv_data, racv_len);
+                                            if ((recv_data[15] * 256 + recv_data[16]) == Get_Crc16(recv_data, 15))
+                                            {
 
-                                            memcpy(val_buf, recv_data + 3, 4);
-                                            co2_val = unsignedchar_to_float(val_buf);
-                                            memcpy(val_buf, recv_data + 7, 4);
-                                            t_val = unsignedchar_to_float(val_buf);
-                                            memcpy(val_buf, recv_data + 11, 4);
-                                            h_val = unsignedchar_to_float(val_buf);
-                                            if ((co2_val >= 400) && (co2_val <= 10000))
-                                                break;
+                                                memcpy(val_buf, recv_data + 3, 4);
+                                                co2_val = unsignedchar_to_float(val_buf);
+                                                memcpy(val_buf, recv_data + 7, 4);
+                                                t_val = unsignedchar_to_float(val_buf);
+                                                memcpy(val_buf, recv_data + 11, 4);
+                                                h_val = unsignedchar_to_float(val_buf);
+                                                if ((co2_val >= 400) && (co2_val <= 10000))
+                                                    break;
+                                            }
+                                            else
+                                            {
+                                                ESP_LOGE(TAG, "co2_r CRC line:%d\n", __LINE__);
+                                            }
                                         }
                                         else
                                         {
-                                            ESP_LOGE(TAG, "co2_r CRC line:%d\n", __LINE__);
+                                            ESP_LOGE(TAG, "co2_r NO RECV line:%d\n", __LINE__);
                                         }
                                     }
                                     else
                                     {
-                                        ESP_LOGE(TAG, "co2_r NO RECV line:%d\n", __LINE__);
+                                        ESP_LOGE(TAG, "co2_g CRC ERR line:%d\n", __LINE__);
                                     }
                                 }
                                 else
                                 {
-                                    ESP_LOGE(TAG, "co2_g CRC ERR line:%d\n", __LINE__);
+                                    ESP_LOGE(TAG, "co2_g NO RECV line:%d\n", __LINE__);
                                 }
                             }
-                            else
+                            co2_val = ((int)(co2_val * 1000 + 0.5)) * 0.001; //保留3位
+                            t_val = ((int)(t_val * 1000 + 0.5)) * 0.001;     //保留3位
+                            h_val = ((int)(h_val * 1000 + 0.5)) * 0.001;     //保留3位
+
+                            ESP_LOGI(TAG, "CO2:%f,T:%f,H:%f", co2_val, t_val, h_val);
+                            if ((co2_val >= 100) && (co2_val <= 20000))
                             {
-                                ESP_LOGE(TAG, "co2_g NO RECV line:%d\n", __LINE__);
+                                if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                                {
+                                    filed_buff = (char *)malloc(9);
+                                    time_buff = (char *)malloc(24);
+                                    Server_Timer_SEND(time_buff);
+                                    pJsonRoot = cJSON_CreateObject();
+                                    cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                                    snprintf(filed_buff, 9, "field%d", r1_co2_f_num);
+                                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_f_num, co2_val)));
+                                    snprintf(filed_buff, 9, "field%d", r1_co2_t_f_num);
+                                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_t_f_num, t_val)));
+                                    snprintf(filed_buff, 9, "field%d", r1_co2_h_f_num);
+                                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_h_f_num, h_val)));
+                                    OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                                    if (OutBuffer != NULL)
+                                    {
+                                        len = strlen(OutBuffer);
+                                        ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                        xSemaphoreTake(Cache_muxtex, -1);
+                                        DataSave((uint8_t *)OutBuffer, len);
+                                        xSemaphoreGive(Cache_muxtex);
+                                        cJSON_free(OutBuffer);
+                                    }
+                                    cJSON_Delete(pJsonRoot); //delete cjson root
+
+                                    free(time_buff);
+                                    free(filed_buff);
+                                }
+                                break;
                             }
                         }
-                        co2_val = ((int)(co2_val * 1000 + 0.5)) * 0.001; //保留3位
-                        t_val = ((int)(t_val * 1000 + 0.5)) * 0.001;     //保留3位
-                        h_val = ((int)(h_val * 1000 + 0.5)) * 0.001;     //保留3位
-
-                        ESP_LOGI(TAG, "CO2:%f,T:%f,H:%f", co2_val, t_val, h_val);
-                        if ((co2_val >= 100) && (co2_val <= 20000))
+                        else
                         {
-                            if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
-                            {
-                                filed_buff = (char *)malloc(9);
-                                time_buff = (char *)malloc(24);
-                                Server_Timer_SEND(time_buff);
-                                pJsonRoot = cJSON_CreateObject();
-                                cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
-                                snprintf(filed_buff, 9, "field%d", r1_co2_f_num);
-                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_f_num, co2_val)));
-                                snprintf(filed_buff, 9, "field%d", r1_co2_t_f_num);
-                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_t_f_num, t_val)));
-                                snprintf(filed_buff, 9, "field%d", r1_co2_h_f_num);
-                                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_co2_h_f_num, h_val)));
-                                OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                                cJSON_Delete(pJsonRoot);                       //delete cjson root
-                                len = strlen(OutBuffer);
-                                printf("len:%d\n%s\n", len, OutBuffer);
-                                // SaveBuffer = (uint8_t *)malloc(len);
-                                // memcpy(SaveBuffer, OutBuffer, len);
-                                xSemaphoreTake(Cache_muxtex, -1);
-                                DataSave((uint8_t *)OutBuffer, len);
-                                xSemaphoreGive(Cache_muxtex);
-                                free(OutBuffer);
-                                free(time_buff);
-                                free(filed_buff);
-                            }
+                            ESP_LOGE(TAG, "co2_s CRC ERR line:%d\n", __LINE__);
                         }
                     }
                     else
                     {
-                        ESP_LOGE(TAG, "co2_s CRC ERR line:%d\n", __LINE__);
+                        ESP_LOGE(TAG, "co2_s NO RECV line:%d\n", __LINE__);
                     }
                 }
                 else
                 {
-                    ESP_LOGE(TAG, "co2_s NO RECV line:%d\n", __LINE__);
+                    ESP_LOGE(TAG, "co2_t CRC ERR line:%d\n", __LINE__);
+                    // return 1;
                 }
             }
             else
             {
-                ESP_LOGE(TAG, "co2_t CRC ERR line:%d\n", __LINE__);
-                // return 1;
+                ESP_LOGE(TAG, "co2_t NO RECV line:%d\n", __LINE__);
             }
-        }
-        else
-        {
-            ESP_LOGE(TAG, "co2_t NO RECV line:%d\n", __LINE__);
         }
         free(recv_data);
         xSemaphoreGive(RS485_Mutex);
         // vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+//读取485 乙烯氧气
+void read_485_IS_task(void *pvParameters)
+{
+    float IS_c2h4, IS_o2;
+    char *OutBuffer;
+    // uint8_t *SaveBuffer;
+    uint16_t len = 0;
+    cJSON *pJsonRoot;
+    uint8_t *recv_data;
+    char *filed_buff;
+    char *time_buff;
+    int racv_len = 0;
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, -1);
+        xSemaphoreTake(RS485_Mutex, -1);
+        recv_data = (uint8_t *)malloc(BUF_SIZE);
+        for (uint8_t i = 0; i < 5; i++)
+        {
+            racv_len = RS485_Read(Rs485_is_cmd, recv_data, uart2_485);
+            if (racv_len >= 9)
+            {
+                esp_log_buffer_hex(TAG, recv_data, racv_len);
+
+                if ((recv_data[7] * 256 + recv_data[8]) == Get_Crc16(recv_data, 7))
+                {
+                    if ((recv_data[0] == Rs485_is_cmd[0]) && (recv_data[1] == Rs485_is_cmd[1]))
+                    {
+                        IS_c2h4 = ((recv_data[3] * 256 + recv_data[4]) * 0.1);
+                        IS_o2 = ((recv_data[5] * 256 + recv_data[6]) * 0.1);
+                        ESP_LOGI(TAG, "IS_c2h4=%f,IS_o2=%f\n", IS_c2h4, IS_o2);
+                        RS485_status = true;
+                        // 读取成功
+                        if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
+                        {
+                            filed_buff = (char *)malloc(9);
+                            time_buff = (char *)malloc(24);
+                            Server_Timer_SEND(time_buff);
+                            pJsonRoot = cJSON_CreateObject();
+                            cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
+                            snprintf(filed_buff, 9, "field%d", r1_is_c2h4_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_is_c2h4_f_num, IS_c2h4)));
+                            snprintf(filed_buff, 9, "field%d", r1_is_o2_f_num);
+                            cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(r1_is_o2_f_num, IS_o2)));
+
+                            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+                            if (OutBuffer != NULL)
+                            {
+                                len = strlen(OutBuffer);
+                                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                                xSemaphoreTake(Cache_muxtex, -1);
+                                DataSave((uint8_t *)OutBuffer, len);
+                                xSemaphoreGive(Cache_muxtex);
+                                cJSON_free(OutBuffer);
+                            }
+                            cJSON_Delete(pJsonRoot); //delete cjson root
+
+                            free(time_buff);
+                            free(filed_buff);
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        RS485_status = false;
+                        ESP_LOGE(TAG, "485 add or cmd error line:%d\n", __LINE__);
+                        // return 1;
+                    }
+                }
+                else
+                {
+                    RS485_status = false;
+                    ESP_LOGE(TAG, "485 CRC error line:%d\n", __LINE__);
+                    // return 1;
+                }
+            }
+            else
+            {
+                ESP_LOGE(TAG, "RS485 NO ARK !!!  line:%d\n", __LINE__);
+            }
+        }
+        free(recv_data);
+        xSemaphoreGive(RS485_Mutex);
     }
 }
 
@@ -599,6 +766,7 @@ void RS485_Init(void)
     xTaskCreate(read_485_sth_task, "485_sth", 3072, NULL, 3, &Binary_485_sth);
     xTaskCreate(read_485_lt_task, "485_lt", 3072, NULL, 3, &Binary_485_lt);
     xTaskCreate(read_485_co2_task, "485_co2", 4096, NULL, 3, &Binary_485_co2);
+    xTaskCreate(read_485_IS_task, "485_IS", 4096, NULL, 3, &Binary_485_IS);
 }
 // /*******************************************************************************
 //                                       END

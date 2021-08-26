@@ -25,7 +25,7 @@
 #include "Http.h"
 #include "EC20.h"
 
-#include "Mqtt.h"
+#include "My_Mqtt.h"
 
 static const char *TAG = "MQTT";
 QueueHandle_t Send_Mqtt_Queue;
@@ -91,7 +91,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 void initialise_mqtt(void)
 {
-    xTaskCreate(Send_Mqtt_Task, "Send Mqtt", 4096, NULL, 10, NULL);
+    xTaskCreate(Send_Mqtt_Task, "Send My_Mqtt", 4096, NULL, 10, NULL);
 }
 
 void Start_W_Mqtt(void)
@@ -135,6 +135,7 @@ void Send_Mqtt_Task(void *arg)
         .password = mqtt_pwd,
         .port = (uint32_t)strtoul(MQTT_PORT, 0, 10),
     };
+    ESP_LOGI(TAG, "mqtt_uri:%s,\nmqtt_usr:%s,\nmqtt_pwd:%s,\nMQTT_PORT:%s", mqtt_uri, mqtt_usr, mqtt_pwd, MQTT_PORT);
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
@@ -178,5 +179,14 @@ void Send_Mqtt_Task(void *arg)
             free(status_buff);
             free(mqtt_buff);
         }
+    }
+}
+
+void Send_Mqtt_Buff(char *buff)
+{
+    // xEventGroupWaitBits(Net_sta_group, ACTIVED_BIT, false, true, -1); //等待激活
+    if ((xEventGroupGetBits(Net_sta_group) & MQTT_W_S_BIT) == MQTT_W_S_BIT)
+    {
+        esp_mqtt_client_publish(client, topic_p, buff, 0, 1, 0);
     }
 }

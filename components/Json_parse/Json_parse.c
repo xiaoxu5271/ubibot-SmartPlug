@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include <cJSON.h>
 #include "esp_system.h"
@@ -24,7 +25,7 @@
 #include "RtcUsr.h"
 #include "CSE7759B.h"
 #include "Switch.h"
-#include "Mqtt.h"
+#include "My_Mqtt.h"
 #include "EC20.h"
 
 #include "Json_parse.h"
@@ -47,28 +48,31 @@ uint8_t cg_data_led = 1;  //发送数据 LED状态 0关闭，1打开
 uint8_t net_mode = 0;     //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
 uint8_t de_sw_s = 0;      //开关默认上电状态
 uint32_t fn_sw_on = 3600; //开启时长统计
+uint32_t fn_485_is = 0;   //乙烯探头
 
 // field num 相关参数
-uint8_t sw_s_f_num = 1;      //开关状态
-uint8_t sw_v_f_num = 2;      //插座电压
-uint8_t sw_c_f_num = 3;      //插座电流
-uint8_t sw_p_f_num = 4;      //插座功率
-uint8_t sw_pc_f_num = 5;     //累计用电量
-uint8_t rssi_w_f_num = 6;    //wifi信号
-uint8_t rssi_g_f_num = 7;    //4G信号
-uint8_t sw_on_f_num = 8;     //累积开启时长
-uint8_t r1_light_f_num = 9;  //485光照
-uint8_t r1_th_t_f_num = 10;  //485空气温度
-uint8_t r1_th_h_f_num = 11;  //485空气湿度
-uint8_t r1_sth_t_f_num = 12; //485土壤温度
-uint8_t r1_sth_h_f_num = 13; //485土壤湿度
-uint8_t e1_t_f_num = 14;     //DS18B20温度
-uint8_t r1_t_f_num = 15;     //485温度探头温度
-uint8_t r1_ws_f_num = 16;    //485风速
-uint8_t r1_co2_f_num = 17;   //485 CO2
-uint8_t r1_ph_f_num = 18;    //485 PH
-uint8_t r1_co2_t_f_num = 19; // CO2 温度
-uint8_t r1_co2_h_f_num = 20; //CO2 湿度
+uint8_t sw_s_f_num = 1;        //开关状态
+uint8_t sw_v_f_num = 2;        //插座电压
+uint8_t sw_c_f_num = 3;        //插座电流
+uint8_t sw_p_f_num = 4;        //插座功率
+uint8_t sw_pc_f_num = 5;       //累计用电量
+uint8_t rssi_w_f_num = 6;      //wifi信号
+uint8_t rssi_g_f_num = 7;      //4G信号
+uint8_t sw_on_f_num = 8;       //累积开启时长
+uint8_t r1_light_f_num = 9;    //485光照
+uint8_t r1_th_t_f_num = 10;    //485空气温度
+uint8_t r1_th_h_f_num = 11;    //485空气湿度
+uint8_t r1_sth_t_f_num = 12;   //485土壤温度
+uint8_t r1_sth_h_f_num = 13;   //485土壤湿度
+uint8_t e1_t_f_num = 14;       //DS18B20温度
+uint8_t r1_t_f_num = 15;       //485温度探头温度
+uint8_t r1_ws_f_num = 16;      //485风速
+uint8_t r1_co2_f_num = 17;     //485 CO2
+uint8_t r1_ph_f_num = 18;      //485 PH
+uint8_t r1_co2_t_f_num = 19;   // CO2 温度
+uint8_t r1_co2_h_f_num = 20;   //CO2 湿度
+uint8_t r1_is_c2h4_f_num = 21; //485乙烯值
+uint8_t r1_is_o2_f_num = 22;   //485氧气值
 
 //
 char SerialNum[SERISE_NUM_LEN] = {0};
@@ -86,7 +90,9 @@ char SIM_USER[32] = {0};
 char SIM_PWD[32] = {0};
 
 //c-type
-char C_TYPE[10] = "initial";
+char C_TYPE[20] = "initial";
+char WARN_CODE[25] = {0};
+char ERROE_CODE[25] = {0};
 
 //cali 相关 f1_a,f1_b,f1_a,f2_b,,,,,
 f_cali f_cali_u[40] = {
@@ -201,7 +207,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_dp = (unsigned long)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_DP_ADD, fn_dp, 4);
-            printf("fn_dp = %d\n", fn_dp);
+            ESP_LOGI(TAG, "fn_dp = %d\n", fn_dp);
         }
     }
 
@@ -213,7 +219,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_485_t = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_485_T_ADD, fn_485_t, 4);
-            printf("fn_485_th = %d\n", fn_485_t);
+            ESP_LOGI(TAG, "fn_485_th = %d\n", fn_485_t);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_th"); //""
@@ -224,7 +230,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_485_th = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_485_TH_ADD, fn_485_th, 4);
-            printf("fn_485_th = %d\n", fn_485_th);
+            ESP_LOGI(TAG, "fn_485_th = %d\n", fn_485_th);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_sth"); //"fn_485_sth"
@@ -234,7 +240,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_485_sth = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_485_STH_ADD, fn_485_sth, 4);
-            printf("fn_485_sth = %d\n", fn_485_sth);
+            ESP_LOGI(TAG, "fn_485_sth = %d\n", fn_485_sth);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_ws"); //
@@ -244,7 +250,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_485_ws = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_485_WS_ADD, fn_485_ws, 4);
-            printf("fn_485_ws = %d\n", fn_485_ws);
+            ESP_LOGI(TAG, "fn_485_ws = %d\n", fn_485_ws);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_lt"); //
@@ -254,7 +260,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_485_lt = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_485_LT_ADD, fn_485_lt, 4);
-            printf("fn_485_lt = %d\n", fn_485_lt);
+            ESP_LOGI(TAG, "fn_485_lt = %d\n", fn_485_lt);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_co2"); //
@@ -264,7 +270,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_485_co2 = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_485_CO2_ADD, fn_485_co2, 4);
-            printf("fn_485_co2 = %d\n", fn_485_co2);
+            ESP_LOGI(TAG, "fn_485_co2 = %d\n", fn_485_co2);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_ext_t"); //"fn_ext_t"
@@ -274,7 +280,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_ext_t = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_EXT_ADD, fn_ext_t, 4);
-            printf("fn_ext_t = %d\n", fn_ext_t);
+            ESP_LOGI(TAG, "fn_ext_t = %d\n", fn_ext_t);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_e"); //"fn_sw_e"
@@ -284,7 +290,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_sw_e = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_ENERGY_ADD, fn_sw_e, 4);
-            printf("fn_sw_e = %d\n", fn_sw_e);
+            ESP_LOGI(TAG, "fn_sw_e = %d\n", fn_sw_e);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_pc"); //"fn_sw_pc"
@@ -294,7 +300,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_sw_pc = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_ELE_QUAN_ADD, fn_sw_pc, 4);
-            printf("fn_sw_pc = %d\n", fn_sw_pc);
+            ESP_LOGI(TAG, "fn_sw_pc = %d\n", fn_sw_pc);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_sw_on"); //"fn_sw_pc"
@@ -304,7 +310,7 @@ static short Parse_metadata(char *ptrptr)
         {
             fn_sw_on = (uint32_t)pSubSubSub->valueint;
             E2P_WriteLenByte(FN_SW_ON_ADD, fn_sw_on, 4);
-            printf("fn_sw_on = %d\n", fn_sw_on);
+            ESP_LOGI(TAG, "fn_sw_on = %d\n", fn_sw_on);
         }
     }
     pSubSubSub = cJSON_GetObjectItem(pJsonJson, "cg_data_led"); //"cg_data_led"
@@ -315,7 +321,7 @@ static short Parse_metadata(char *ptrptr)
         {
             cg_data_led = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(CG_DATA_LED_ADD, cg_data_led);
-            printf("cg_data_led = %d\n", cg_data_led);
+            ESP_LOGI(TAG, "cg_data_led = %d\n", cg_data_led);
             // if (cg_data_led == 0)
             // {
             //     Turn_Off_LED();
@@ -324,6 +330,16 @@ static short Parse_metadata(char *ptrptr)
             // {
             //     Turn_ON_LED();
             // }
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "fn_485_is"); //"fn_sw_pc"
+    if (NULL != pSubSubSub)
+    {
+        if ((uint32_t)pSubSubSub->valueint != fn_485_is)
+        {
+            fn_485_is = (uint32_t)pSubSubSub->valueint;
+            E2P_WriteLenByte(FN_485_IS_ADDR, fn_485_is, 4);
+            ESP_LOGI(TAG, "fn_485_is = %d\n", fn_485_is);
         }
     }
 
@@ -335,7 +351,7 @@ static short Parse_metadata(char *ptrptr)
 
     //         net_mode = (uint8_t)pSubSubSub->valueint;
     //         E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
-    //         printf("net_mode = %d\n", net_mode);
+    //         ESP_LOGI(TAG,"net_mode = %d\n", net_mode);
     //     }
     // }
 
@@ -346,7 +362,7 @@ static short Parse_metadata(char *ptrptr)
         {
             de_sw_s = (uint8_t)pSubSubSub->valueint;
             E2P_WriteOneByte(DE_SWITCH_STA_ADD, de_sw_s); //写入net_mode
-            printf("de_sw_s = %d\n", de_sw_s);
+            ESP_LOGI(TAG, "de_sw_s = %d\n", de_sw_s);
         }
     }
     cJSON_Delete(pJsonJson);
@@ -365,7 +381,7 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
 {
     cJSON *cjson_blu_data_parse = NULL;
     cJSON *cjson_blu_data_parse_command = NULL;
-    printf("start_ble_parse_json：\r\n%s\n", blu_json_data);
+    ESP_LOGI(TAG, "start_ble_parse_json：\r\n%s\n", blu_json_data);
 
     char *resp_val = NULL;
     resp_val = strstr(blu_json_data, "{");
@@ -378,18 +394,21 @@ int32_t parse_objects_bluetooth(char *blu_json_data)
 
     if (cjson_blu_data_parse == NULL) //如果数据包不为JSON则退出
     {
-        printf("Json Formatting error2\n");
+        ESP_LOGE(TAG, "Json Formatting error2\n");
         cJSON_Delete(cjson_blu_data_parse);
         return BLU_JSON_FORMAT_ERROR;
     }
     else
     {
         cjson_blu_data_parse_command = cJSON_GetObjectItem(cjson_blu_data_parse, "command");
-        printf("command=%s\r\n", cjson_blu_data_parse_command->valuestring);
+        ESP_LOGI(TAG, "command=%s\r\n", cjson_blu_data_parse_command->valuestring);
         char *Json_temp;
         Json_temp = cJSON_PrintUnformatted(cjson_blu_data_parse);
-        ParseTcpUartCmd(Json_temp);
-        free(Json_temp);
+        if (Json_temp != NULL)
+        {
+            ParseTcpUartCmd(Json_temp);
+            cJSON_free(Json_temp);
+        }
     }
     cJSON_Delete(cjson_blu_data_parse);
     return 1;
@@ -408,7 +427,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
     cJSON *json_data_parse_channel_user_id = NULL;
     //char *json_print;
 
-    // printf("start_parse_active_http_json\r\n");
+    // ESP_LOGI(TAG,"start_parse_active_http_json\r\n");
     char *resp_val = NULL;
     resp_val = strstr(http_json_data, "{\"result\":\"success\",");
     if (resp_val == NULL)
@@ -420,7 +439,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
 
     if (json_data_parse == NULL)
     {
-        // printf("Json Formatting error3\n");
+        // ESP_LOGI(TAG,"Json Formatting error3\n");
         ESP_LOGE(TAG, "%s", http_json_data);
         cJSON_Delete(json_data_parse);
         return 0;
@@ -430,14 +449,14 @@ esp_err_t parse_objects_http_active(char *http_json_data)
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "result");
         if (!(strcmp(json_data_parse_value->valuestring, "success")))
         {
-            printf("active:success\r\n");
+            ESP_LOGI(TAG, "active:success\r\n");
 
             json_data_parse_time_value = cJSON_GetObjectItem(json_data_parse, "server_time");
             Server_Timer_GET(json_data_parse_time_value->valuestring);
         }
         else
         {
-            printf("active:error\r\n");
+            ESP_LOGE(TAG, "active:error\r\n");
             cJSON_Delete(json_data_parse);
             return 0;
         }
@@ -446,7 +465,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
         {
             json_data_parse_channel_value = cJSON_GetObjectItem(json_data_parse, "channel");
 
-            //printf("%s\r\n", cJSON_Print(json_data_parse_channel_value));
+            //ESP_LOGI(TAG,"%s\r\n", cJSON_Print(json_data_parse_channel_value));
 
             json_data_parse_channel_channel_write_key = cJSON_GetObjectItem(json_data_parse_channel_value, "write_key");
             json_data_parse_channel_channel_id_value = cJSON_GetObjectItem(json_data_parse_channel_value, "channel_id");
@@ -459,7 +478,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             if (strcmp(ApiKey, json_data_parse_channel_channel_write_key->valuestring) != 0)
             {
                 strcpy(ApiKey, json_data_parse_channel_channel_write_key->valuestring);
-                printf("api_key:%s\n", ApiKey);
+                ESP_LOGI(TAG, "api_key:%s\n", ApiKey);
                 E2P_Write(API_KEY_ADD, (uint8_t *)ApiKey, API_KEY_LEN);
             }
 
@@ -467,7 +486,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             if (strcmp(ChannelId, json_data_parse_channel_channel_id_value->valuestring) != 0)
             {
                 strcpy(ChannelId, json_data_parse_channel_channel_id_value->valuestring);
-                printf("ChannelId:%s\n", ChannelId);
+                ESP_LOGI(TAG, "ChannelId:%s\n", ChannelId);
                 E2P_Write(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
             }
 
@@ -475,7 +494,7 @@ esp_err_t parse_objects_http_active(char *http_json_data)
             if (strcmp(USER_ID, json_data_parse_channel_user_id->valuestring) != 0)
             {
                 strcpy(USER_ID, json_data_parse_channel_user_id->valuestring);
-                printf("USER_ID:%s\n", USER_ID);
+                ESP_LOGI(TAG, "USER_ID:%s\n", USER_ID);
                 E2P_Write(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
             }
         }
@@ -503,7 +522,7 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
     if (json_data_parse == NULL)
     {
 
-        // printf("Json Formatting error3\n");
+        // ESP_LOGI(TAG,"Json Formatting error3\n");
         ESP_LOGE(TAG, "%s", http_json_data);
         cJSON_Delete(json_data_parse);
         return 0;
@@ -513,7 +532,7 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "metadata");
         if (json_data_parse_value != NULL)
         {
-            // printf("metadata: %s\n", json_data_parse_value->valuestring);
+            // ESP_LOGI(TAG,"metadata: %s\n", json_data_parse_value->valuestring);
             Parse_metadata(json_data_parse_value->valuestring);
         }
 
@@ -528,15 +547,18 @@ esp_err_t parse_objects_http_respond(char *http_json_data)
         {
             char *mqtt_json;
             mqtt_json = cJSON_PrintUnformatted(json_data_parse_value);
-            ESP_LOGI(TAG, "%s", mqtt_json);
-            parse_objects_mqtt(mqtt_json, false); //parse mqtt
-            free(mqtt_json);
+            if (mqtt_json != NULL)
+            {
+                ESP_LOGI(TAG, "%s", mqtt_json);
+                parse_objects_mqtt(mqtt_json, false); //parse mqtt
+                cJSON_free(mqtt_json);
+            }
         }
 
         json_data_parse_value = cJSON_GetObjectItem(json_data_parse, "cali"); //cali
         if (NULL != json_data_parse_value)
         {
-            // printf("cali: %s\n", json_data_parse_value->valuestring);
+            // ESP_LOGI(TAG,"cali: %s\n", json_data_parse_value->valuestring);
             Parse_cali_dat(json_data_parse_value->valuestring); //parse cali
         }
     }
@@ -562,7 +584,7 @@ esp_err_t parse_objects_heart(char *json_data)
     if (json_data_parse == NULL) //如果数据包不为JSON则退出
     {
 
-        printf("Json Formatting error4\n");
+        ESP_LOGE(TAG, "Json Formatting error4\n");
 
         cJSON_Delete(json_data_parse);
         return 0;
@@ -577,7 +599,7 @@ esp_err_t parse_objects_heart(char *json_data)
         }
         else
         {
-            printf("active:error\r\n");
+            ESP_LOGE(TAG, "active:error\r\n");
             cJSON_Delete(json_data_parse);
             return 0;
         }
@@ -603,7 +625,7 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
 
     if (json_data_parse == NULL) //如果数据包不为JSON则退出
     {
-        printf("Json Formatting error5\n");
+        ESP_LOGI(TAG, "Json Formatting error5\n");
         cJSON_Delete(json_data_parse);
         return 0;
     }
@@ -667,9 +689,8 @@ esp_err_t parse_objects_mqtt(char *mqtt_json_data, bool sw_flag)
                     pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "c_type");
                     if (pSubSubSub != NULL)
                     {
-
-                        memcpy(C_TYPE, pSubSubSub->valuestring, 10);
-                        // ESP_LOGI(TAG, "C_TYPE=%s", pSubSubSub->valuestring);
+                        ESP_LOGI(TAG, "C_TYPE=%s", pSubSubSub->valuestring);
+                        strncpy(C_TYPE, pSubSubSub->valuestring, strlen(pSubSubSub->valuestring));
                     }
                     pSubSubSub = cJSON_GetObjectItem(json_data_parse_1, "set_state");
                     if (pSubSubSub != NULL)
@@ -692,83 +713,53 @@ uint16_t Create_Status_Json(char *status_buff, uint16_t buff_len, bool filed_fla
     char *ssid64_buff;
     esp_read_mac(mac_sys, 0); //获取芯片内部默认出厂MAC
 
-    if (filed_flag == true)
+    //new
+
+    snprintf(status_buff, buff_len, "],\"status\":\"mac=%02X:%02X:%02X:%02X:%02X:%02X,c_type=%s",
+             mac_sys[0],
+             mac_sys[1],
+             mac_sys[2],
+             mac_sys[3],
+             mac_sys[4],
+             mac_sys[5],
+             C_TYPE);
+
+    if (strlen(WARN_CODE) != 0)
     {
-        char *field_buff, *cali_buff;
-        field_buff = (char *)malloc(FILED_BUFF_SIZE);
-        cali_buff = (char *)malloc(CALI_BUFF_SIZE);
-        memset(field_buff, 0, FILED_BUFF_SIZE);
-        memset(cali_buff, 0, CALI_BUFF_SIZE);
-        Create_fields_num(field_buff);
-        Create_cali_buf(cali_buff);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",warning=%s", WARN_CODE);
+        memset(WARN_CODE, 0, sizeof(WARN_CODE));
+    }
+    if (strlen(ERROE_CODE) != 0)
+    {
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",errors=%s", ERROE_CODE);
+        memset(ERROE_CODE, 0, sizeof(ERROE_CODE));
+    }
 
-        if (net_mode == NET_WIFI)
-        {
-            ssid64_buff = (char *)malloc(64);
-            memset(ssid64_buff, 0, 64);
-            base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
-
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\",\"sensors\":[%s],\"cali\":[%s]}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     C_TYPE,
-                     ssid64_buff,
-                     field_buff,
-                     cali_buff);
-            free(ssid64_buff);
-        }
-        else
-        {
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\",\"sensors\":[%s],\"cali\":[%s]}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     ICCID,
-                     C_TYPE,
-                     field_buff,
-                     cali_buff);
-        }
-        free(field_buff);
-        free(cali_buff);
+    if (net_mode == NET_WIFI)
+    {
+        ssid64_buff = (char *)malloc(64);
+        memset(ssid64_buff, 0, 64);
+        base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), "\",\"ssid_base64\":\"%s\"", ssid64_buff);
+        free(ssid64_buff);
     }
     else
     {
-        if (net_mode == NET_WIFI)
-        {
-            ssid64_buff = (char *)malloc(64);
-            memset(ssid64_buff, 0, 64);
-            base64_encode(wifi_data.wifi_ssid, strlen(wifi_data.wifi_ssid), ssid64_buff, 64);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",ICCID=%s\"", ICCID);
+    }
 
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,c_type=%s\",\"ssid_base64\":\"%s\"}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     C_TYPE,
-                     ssid64_buff);
-            free(ssid64_buff);
-        }
-        else
-        {
-            snprintf(status_buff, buff_len, "],\"status\":\"mac=%02x:%02x:%02x:%02x:%02x:%02x,ICCID=%s,c_type=%s\"}",
-                     mac_sys[0],
-                     mac_sys[1],
-                     mac_sys[2],
-                     mac_sys[3],
-                     mac_sys[4],
-                     mac_sys[5],
-                     ICCID,
-                     C_TYPE);
-        }
+    if (filed_flag == true)
+    {
+        char *field_buff;
+        field_buff = (char *)malloc(FILED_BUFF_SIZE);
+        memset(field_buff, 0, FILED_BUFF_SIZE);
+        Create_fields_num(field_buff);
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), ",\"sensors\":[%s]}", field_buff);
+        free(field_buff);
+    }
+    else
+    {
+        snprintf(status_buff + strlen(status_buff), buff_len - strlen(status_buff), "}");
     }
 
     return strlen(status_buff);
@@ -803,9 +794,11 @@ void Create_NET_Json(void)
             }
             else
             {
-                EC20_Get_Rssi(&ec_rssi_val);
-                snprintf(filed_buff, 9, "field%d", rssi_g_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
+                if (EC20_Get_Rssi(&ec_rssi_val))
+                {
+                    snprintf(filed_buff, 9, "field%d", rssi_g_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(ec_rssi_val));
+                }
             }
         }
         cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
@@ -813,15 +806,18 @@ void Create_NET_Json(void)
         cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-        cJSON_Delete(pJsonRoot);                       //delete cjson root
-        len = strlen(OutBuffer);
-        printf("len:%d\n%s\n", len, OutBuffer);
-        // Send_Mqtt((uint8_t *)OutBuffer, len);
-        xSemaphoreTake(Cache_muxtex, -1);
-        DataSave((uint8_t *)OutBuffer, len);
-        xSemaphoreGive(Cache_muxtex);
+        if (OutBuffer != NULL)
+        {
+            len = strlen(OutBuffer);
+            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave((uint8_t *)OutBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            cJSON_free(OutBuffer);
+        }
+        cJSON_Delete(pJsonRoot); //delete cjson root
+
         free(status_buf);
-        free(OutBuffer);
         free(filed_buff);
         free(time_buff);
     }
@@ -832,11 +828,10 @@ void Create_Switch_Json(void)
     if ((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT)
     {
         char *OutBuffer;
-        char *time_buff;
         uint16_t len = 0;
         cJSON *pJsonRoot;
         char *status_buf = (char *)malloc(50);
-        time_buff = (char *)malloc(24);
+        char *time_buff = (char *)malloc(24);
         Server_Timer_SEND(time_buff);
 
         pJsonRoot = cJSON_CreateObject();
@@ -847,15 +842,18 @@ void Create_Switch_Json(void)
         cJSON_AddItemToObject(pJsonRoot, "status", cJSON_CreateString(status_buf));
 
         OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-        cJSON_Delete(pJsonRoot);                       //delete cjson root
-        len = strlen(OutBuffer);
-        printf("len:%d\n%s\n", len, OutBuffer);
-        // Send_Mqtt((uint8_t *)OutBuffer, len);
-        xSemaphoreTake(Cache_muxtex, -1);
-        DataSave((uint8_t *)OutBuffer, len);
-        xSemaphoreGive(Cache_muxtex);
+        if (OutBuffer != NULL)
+        {
+            len = strlen(OutBuffer);
+            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+            xSemaphoreTake(Cache_muxtex, -1);
+            DataSave((uint8_t *)OutBuffer, len);
+            xSemaphoreGive(Cache_muxtex);
+            cJSON_free(OutBuffer);
+        }
+        cJSON_Delete(pJsonRoot); //delete cjson root
+
         free(status_buf);
-        free(OutBuffer);
         free(time_buff);
     }
 }
@@ -871,32 +869,37 @@ void Create_fields_num(char *read_buf)
 
     pJsonRoot = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(pJsonRoot, "sw_s", sw_s_f_num);         //sw_s_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_v", sw_v_f_num);         //sw_v_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_c", sw_c_f_num);         //sw_c_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_p", sw_p_f_num);         //sw_p_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_pc", sw_pc_f_num);       //sw_pc_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "rssi_w", rssi_w_f_num);     //rssi_w_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "rssi_g", rssi_g_f_num);     //rssi_g_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_light", r1_light_f_num); //r1_light_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_th_t", r1_th_t_f_num);   //r1_th_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_th_h", r1_th_h_f_num);   //r1_th_h_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_t", r1_sth_t_f_num); //r1_sth_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_h", r1_sth_h_f_num); //r1_sth_h_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "e1_t", e1_t_f_num);         //e1_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_t", r1_t_f_num);         //r1_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_ws", r1_ws_f_num);       //r1_ws_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_co2", r1_co2_f_num);     //r1_co2_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);       //r1_ph_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_t", r1_co2_t_f_num); //r1_co2_t_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_h", r1_co2_h_f_num); //r1_co2_h_f_num
-    cJSON_AddNumberToObject(pJsonRoot, "sw_on", sw_on_f_num);       //sw_on_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_s", sw_s_f_num);             //sw_s_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_v", sw_v_f_num);             //sw_v_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_c", sw_c_f_num);             //sw_c_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_p", sw_p_f_num);             //sw_p_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_pc", sw_pc_f_num);           //sw_pc_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "rssi_w", rssi_w_f_num);         //rssi_w_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "rssi_g", rssi_g_f_num);         //rssi_g_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_light", r1_light_f_num);     //r1_light_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_th_t", r1_th_t_f_num);       //r1_th_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_th_h", r1_th_h_f_num);       //r1_th_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_t", r1_sth_t_f_num);     //r1_sth_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_sth_h", r1_sth_h_f_num);     //r1_sth_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "e1_t", e1_t_f_num);             //e1_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_t", r1_t_f_num);             //r1_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_ws", r1_ws_f_num);           //r1_ws_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2", r1_co2_f_num);         //r1_co2_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_ph", r1_ph_f_num);           //r1_ph_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_t", r1_co2_t_f_num);     //r1_co2_t_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_co2_h", r1_co2_h_f_num);     //r1_co2_h_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "sw_on", sw_on_f_num);           //sw_on_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_is_c2h4", r1_is_c2h4_f_num); //r1_is_c2h4_f_num
+    cJSON_AddNumberToObject(pJsonRoot, "r1_is_o2", r1_is_o2_f_num);     //r1_is_c2h4_f_num
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    data_len = strlen(out_buf);
+    if (out_buf != NULL)
+    {
+        data_len = strlen(out_buf); //error
+        memcpy(read_buf, out_buf, data_len);
+        cJSON_free(out_buf);
+    }
     cJSON_Delete(pJsonRoot); //delete cjson root
-    memcpy(read_buf, out_buf, data_len);
-    free(out_buf);
 }
 
 /*******************************************************************************
@@ -915,15 +918,33 @@ void Create_cali_buf(char *read_buf)
     }
 
     out_buf = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-    cJSON_Delete(pJsonRoot);                     //delete cjson root
-    strcpy(read_buf, out_buf);
-    free(out_buf);
+    if (out_buf != NULL)
+    {
+        strcpy(read_buf, out_buf); //error
+        cJSON_free(out_buf);
+    }
+    cJSON_Delete(pJsonRoot); //delete cjson root
 }
 
-esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
+esp_err_t ParseTcpUartCmd(char *pcCmdBuffer, ...)
 {
-    // char send_buf[128] = {0};
-    // sprintf(send_buf, "{\"status\":0,\"code\": 0}");
+    char *Ret_OK = "{\"status\":0,\"code\": 0}\r\n";
+    char *Ret_Fail = "{\"status\":1,\"code\":1}\r\n";
+
+    va_list argp;
+    /*argp指向传入的第一个可选参数，msg是最后一个确定的参数*/
+    va_start(argp, pcCmdBuffer);
+    int sock = 0;
+    int tcp_flag = va_arg(argp, int);
+    if (tcp_flag == 1)
+    {
+        sock = va_arg(argp, int);
+        ESP_LOGI(TAG, "sock: %d\n", sock);
+    }
+    va_end(argp);
+
+    esp_err_t ret = ESP_FAIL;
+
     if (NULL == pcCmdBuffer) //null
     {
         ESP_LOGE(TAG, "%d", __LINE__);
@@ -952,21 +973,21 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                     pSub = cJSON_GetObjectItem(pJson, "ProductID"); //"ProductID"
                     if (NULL != pSub)
                     {
-                        printf("ProductID= %s, len= %d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        ESP_LOGI(TAG, "ProductID= %s, len= %d\n", pSub->valuestring, strlen(pSub->valuestring));
                         E2P_Write(PRODUCT_ID_ADDR, (uint8_t *)pSub->valuestring, PRODUCT_ID_LEN); //save Prfield1uctID
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "SeriesNumber"); //"SeriesNumber"
                     if (NULL != pSub)
                     {
-                        printf("SeriesNumber= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        ESP_LOGI(TAG, "SeriesNumber= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                         E2P_Write(SERISE_NUM_ADDR, (uint8_t *)pSub->valuestring, SERISE_NUM_LEN); //save
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "Host"); //"Host"
                     if (NULL != pSub)
                     {
-                        printf("Host= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        ESP_LOGI(TAG, "Host= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                         E2P_Write(WEB_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save
                     }
 
@@ -974,36 +995,44 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                     if (NULL != pSub)
                     {
 
-                        printf("Port= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        ESP_LOGI(TAG, "Port= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                         E2P_Write(WEB_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "MqttHost"); //"mqtt Host"
                     if (NULL != pSub)
                     {
-                        printf("MqttHost= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        ESP_LOGI(TAG, "MqttHost= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                         E2P_Write(MQTT_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save
                     }
 
                     pSub = cJSON_GetObjectItem(pJson, "MqttPort"); //"Host"
                     if (NULL != pSub)
                     {
-                        printf("MqttPort= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                        ESP_LOGI(TAG, "MqttPort= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                         E2P_Write(MQTT_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
                     }
-
-                    printf("{\"status\":0,\"code\": 0}");
+                    if (tcp_flag)
+                    {
+                        Tcp_Send(sock, Ret_OK);
+                    }
+                    printf("%s", Ret_OK);
 
                     vTaskDelay(3000 / portTICK_RATE_MS);
                     cJSON_Delete(pJson);
                     esp_restart(); //芯片复位 函数位于esp_system.h
 
-                    return ESP_OK;
+                    ret = ESP_OK;
                 }
                 else
                 {
+                    ret = ESP_FAIL;
                     //密码错误
-                    printf("{\"status\":1,\"code\": 101}\r\n");
+                    if (tcp_flag)
+                    {
+                        Tcp_Send(sock, Ret_Fail);
+                    }
+                    printf("%s", Ret_Fail);
                 }
             }
         }
@@ -1016,7 +1045,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 bzero(wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
                 strcpy(wifi_data.wifi_ssid, pSub->valuestring);
                 E2P_Write(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
-                printf("WIFI_SSID = %s\r\n", pSub->valuestring);
+                ESP_LOGI(TAG, "WIFI_SSID = %s\r\n", pSub->valuestring);
                 net_mode = NET_WIFI;
                 E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
             }
@@ -1027,7 +1056,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 bzero(wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
                 strcpy(wifi_data.wifi_pwd, pSub->valuestring);
                 E2P_Write(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
-                printf("WIFI_PWD = %s\r\n", pSub->valuestring);
+                ESP_LOGI(TAG, "WIFI_PWD = %s\r\n", pSub->valuestring);
             }
 
             pSub = cJSON_GetObjectItem(pJson, "apn"); //"apns"
@@ -1036,7 +1065,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 bzero(SIM_APN, sizeof(SIM_APN));
                 strcpy(SIM_APN, pSub->valuestring);
                 E2P_Write(APN_ADDR, (uint8_t *)SIM_APN, sizeof(SIM_APN));
-                printf("apn = %s\r\n", SIM_APN);
+                ESP_LOGI(TAG, "apn = %s\r\n", SIM_APN);
                 net_mode = NET_4G;
                 E2P_WriteOneByte(NET_MODE_ADD, net_mode); //写入net_mode
             }
@@ -1047,7 +1076,7 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 bzero(SIM_USER, sizeof(SIM_USER));
                 strcpy(SIM_USER, pSub->valuestring);
                 E2P_Write(BEARER_USER_ADDR, (uint8_t *)SIM_USER, sizeof(SIM_USER));
-                printf("user = %s\r\n", SIM_USER);
+                ESP_LOGI(TAG, "user = %s\r\n", SIM_USER);
             }
 
             pSub = cJSON_GetObjectItem(pJson, "pwd"); //"pwd"
@@ -1056,14 +1085,20 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 bzero(SIM_PWD, sizeof(SIM_PWD));
                 strcpy(SIM_PWD, pSub->valuestring);
                 E2P_Write(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
-                printf("pwd = %s\r\n", SIM_PWD);
+                ESP_LOGI(TAG, "pwd = %s\r\n", SIM_PWD);
             }
-            Net_Switch();
-            cJSON_Delete(pJson); //delete pJson
-            printf("{\"status\":0,\"code\": 0}\r\n");
-            //重置网络
 
-            return 1;
+            if (tcp_flag)
+            {
+                Tcp_Send(sock, Ret_OK);
+                //AP配置，先关闭蓝牙
+                ble_app_stop();
+            }
+            printf("%s", Ret_OK);
+            vTaskDelay(1000 / portTICK_RATE_MS);
+            Net_Switch();
+
+            ret = ESP_OK;
         }
         //{"command":"SetupHost","Host":"api.ubibot.io","Port":"80","MqttHost":"mqtt.ubibot.io","MqttPort":"1883"}
         else if (!strcmp((char const *)pSub->valuestring, "SetupHost")) //Command:SetupWifi
@@ -1078,31 +1113,35 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             pSub = cJSON_GetObjectItem(pJson, "Port"); //"WEB PORT"
             if (NULL != pSub)
             {
-                printf("Port= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                ESP_LOGI(TAG, "Port= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                 E2P_Write(WEB_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
             }
 
             pSub = cJSON_GetObjectItem(pJson, "MqttHost"); //"mqtt Host"
             if (NULL != pSub)
             {
-                printf("MqttHost= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                ESP_LOGI(TAG, "MqttHost= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                 E2P_Write(MQTT_HOST_ADD, (uint8_t *)pSub->valuestring, WEB_HOST_LEN); //save
             }
 
             pSub = cJSON_GetObjectItem(pJson, "MqttPort"); //"Host"
             if (NULL != pSub)
             {
-                printf("MqttPort= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
+                ESP_LOGI(TAG, "MqttPort= %s, len=%d\n", pSub->valuestring, strlen(pSub->valuestring));
                 E2P_Write(MQTT_PORT_ADD, (uint8_t *)pSub->valuestring, 5); //save
             }
 
-            printf("{\"status\":0,\"code\": 0}");
+            if (tcp_flag)
+            {
+                Tcp_Send(sock, Ret_OK);
+            }
+            printf("%s", Ret_OK);
 
             vTaskDelay(3000 / portTICK_RATE_MS);
             cJSON_Delete(pJson);
             esp_restart(); //芯片复位 函数位于esp_system.h
 
-            return ESP_OK;
+            ret = ESP_OK;
         }
 
         //{"command":"ReadProduct"}
@@ -1144,59 +1183,74 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             cJSON_AddItemToObject(root, "MAC", cJSON_CreateString(mac_buff));
             cJSON_AddItemToObject(root, "firmware", cJSON_CreateString(FIRMWARE));
 
-            // sprintf(json_temp, "%s", cJSON_PrintUnformatted(root));
             json_temp = cJSON_PrintUnformatted(root);
-            printf("%s\n", json_temp);
+            if (json_temp != NULL)
+            {
+                printf("%s\r\n", json_temp);
+                cJSON_free(json_temp);
+            }
             cJSON_Delete(root); //delete pJson
-            free(json_temp);
         }
         //{"command":"CheckSensors"}
         else if (!strcmp((char const *)pSub->valuestring, "CheckSensors"))
         {
             cJSON *root = cJSON_CreateObject();
             char *json_temp;
+            char wifi_ssid[33] = {0};
+            int8_t wifi_rssi;
 
             bool result_flag = true;
             bool RS484_flag = false;
             bool ENERGY_flag = false;
             bool DS18B20_flag = false;
+            bool WIFI_flag = false;
 
             xTaskNotifyGive(Binary_485_th);
             xTaskNotifyGive(Binary_ext);
             xTaskNotifyGive(Binary_energy);
 
+            if (Check_Wifi((uint8_t *)wifi_ssid, &wifi_rssi))
+            {
+                WIFI_flag = true;
+            }
+            else
+            {
+                result_flag = false;
+                WIFI_flag = false;
+            }
+
             if ((xEventGroupWaitBits(Net_sta_group, RS485_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & RS485_CHECK_BIT) == RS485_CHECK_BIT)
             {
-                // printf("{\"result\":\"RS485 OK\",\"temp_val\":%d,\"humi_val\":%d}\r\n", (int)ext_tem, (int)ext_hum);
+                // ESP_LOGI(TAG,"{\"result\":\"RS485 OK\",\"temp_val\":%d,\"humi_val\":%d}\r\n", (int)ext_tem, (int)ext_hum);
                 RS484_flag = true;
             }
             else
             {
-                // printf("{\"result\":\"RS485 ERROR\"}\r\n");
+                // ESP_LOGI(TAG,"{\"result\":\"RS485 ERROR\"}\r\n");
                 result_flag = false;
                 RS484_flag = false;
             }
 
-            if ((xEventGroupWaitBits(Net_sta_group, CSE_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & CSE_CHECK_BIT) == CSE_CHECK_BIT)
-            {
-                // printf("{\"result\":\"ENERGY OK\"}\r\n");
-                ENERGY_flag = true;
-            }
-            else
-            {
-                // printf("{\"result\":\"ENERGY ERROR\"}\r\n");
-                result_flag = false;
-                ENERGY_flag = false;
-            }
+            // if ((xEventGroupWaitBits(Net_sta_group, CSE_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & CSE_CHECK_BIT) == CSE_CHECK_BIT)
+            // {
+            //     // ESP_LOGI(TAG,"{\"result\":\"ENERGY OK\"}\r\n");
+            //     ENERGY_flag = true;
+            // }
+            // else
+            // {
+            //     // ESP_LOGI(TAG,"{\"result\":\"ENERGY ERROR\"}\r\n");
+            //     result_flag = false;
+            //     ENERGY_flag = false;
+            // }
 
             if ((xEventGroupWaitBits(Net_sta_group, DS18B20_CHECK_BIT, true, true, 5000 / portTICK_RATE_MS) & DS18B20_CHECK_BIT) == DS18B20_CHECK_BIT)
             {
-                // printf("{\"result\":\"DS18B20 OK\",\"ext_temp_val\":%d}\r\n", (int)DS18B20_TEM);
+                // ESP_LOGI(TAG,"{\"result\":\"DS18B20 OK\",\"ext_temp_val\":%d}\r\n", (int)DS18B20_TEM);
                 DS18B20_flag = true;
             }
             else
             {
-                // printf("{\"result\":\"DS18B20 ERROR\"}\r\n");
+                // ESP_LOGI(TAG,"{\"result\":\"DS18B20 ERROR\"}\r\n");
                 result_flag = false;
                 DS18B20_flag = false;
             }
@@ -1216,28 +1270,44 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
                 cJSON_AddStringToObject(root, "result", "ERROR");
             }
 
+            if (WIFI_flag == true)
+            {
+                cJSON_AddStringToObject(root, "ssid", wifi_ssid);
+                cJSON_AddNumberToObject(root, "rssi", wifi_rssi);
+            }
+            else
+            {
+                cJSON_AddStringToObject(root, "ssid", "NULL");
+                cJSON_AddNumberToObject(root, "rssi", 0);
+            }
+
             if (RS484_flag == true)
             {
-                cJSON_AddNumberToObject(root, "temp_val", (int)ext_tem);
-                cJSON_AddNumberToObject(root, "humi_val", (int)ext_hum);
+                // cJSON_AddNumberToObject(root, "temp_val", (int)ext_tem);
+                // cJSON_AddNumberToObject(root, "humi_val", (int)ext_hum);
+                ESP_LOGI(TAG, "temp_val:%d\n", (int)ext_tem);
+                ESP_LOGI(TAG, "temp_val:%d\n", (int)ext_tem);
+                cJSON_AddStringToObject(root, "RS485", "OK");
             }
             else
             {
                 cJSON_AddStringToObject(root, "RS485", "ERROR");
             }
 
-            if (ENERGY_flag == true)
-            {
-                cJSON_AddStringToObject(root, "ENERGY", "OK");
-            }
-            else
-            {
-                cJSON_AddStringToObject(root, "ENERGY", "ERROR");
-            }
+            // if (ENERGY_flag == true)
+            // {
+            //     cJSON_AddStringToObject(root, "ENERGY", "OK");
+            // }
+            // else
+            // {
+            //     cJSON_AddStringToObject(root, "ENERGY", "ERROR");
+            // }
 
             if (DS18B20_flag == true)
             {
-                cJSON_AddNumberToObject(root, "ext_temp_val", (int)DS18B20_TEM);
+                // cJSON_AddNumberToObject(root, "ext_temp_val", (int)DS18B20_TEM);
+                ESP_LOGI(TAG, "DS18B20:%d\n", (int)DS18B20_TEM);
+                cJSON_AddStringToObject(root, "DS18B20", "OK");
             }
             else
             {
@@ -1263,35 +1333,48 @@ esp_err_t ParseTcpUartCmd(char *pcCmdBuffer)
             }
 
             json_temp = cJSON_PrintUnformatted(root);
-            printf("%s\n", json_temp);
+            if (json_temp != NULL)
+            {
+                if (tcp_flag)
+                {
+                    Tcp_Send(sock, json_temp);
+                }
+                printf("%s\r\n", json_temp);
+                cJSON_free(json_temp);
+            }
             cJSON_Delete(root); //delete pJson
-            free(json_temp);
+            ret = ESP_OK;
         }
         //{"command":"CheckModule"}
         else if (!strcmp((char const *)pSub->valuestring, "CheckModule"))
         {
             Check_Module();
+            ret = ESP_OK;
         }
         //{"command":"ScanWifiList"}
         else if (!strcmp((char const *)pSub->valuestring, "ScanWifiList"))
         {
             Scan_Wifi();
+            ret = ESP_OK;
         }
         //{"command":"reboot"}
         else if (!strcmp((char const *)pSub->valuestring, "reboot"))
         {
             esp_restart();
+            ret = ESP_OK;
         }
         //{"command":"AllReset"}
         else if (!strcmp((char const *)pSub->valuestring, "AllReset"))
         {
-            E2prom_set_defaul(false);
+            // E2prom_set_defaul(false);
+            E2prom_set_0XFF();
+            ret = ESP_OK;
         }
     }
 
     cJSON_Delete(pJson); //delete pJson
 
-    return ESP_FAIL;
+    return ret;
 }
 
 /*******************************************************************************
@@ -1494,6 +1577,24 @@ static short Parse_fields_num(char *ptrptr)
             E2P_WriteOneByte(RS485_CO2_H_NUM_ADDR, r1_co2_h_f_num); //
         }
     }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_is_c2h4"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != r1_is_c2h4_f_num)
+        {
+            r1_is_c2h4_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(R1_IS_C2H4_F_NUM_ADDR, r1_is_c2h4_f_num); //
+        }
+    }
+    pSubSubSub = cJSON_GetObjectItem(pJsonJson, "r1_is_o2"); //""
+    if (NULL != pSubSubSub)
+    {
+        if ((uint8_t)pSubSubSub->valueint != r1_is_o2_f_num)
+        {
+            r1_is_o2_f_num = (uint8_t)pSubSubSub->valueint;
+            E2P_WriteOneByte(R1_IS_O2_F_NUM_ADDR, r1_is_o2_f_num); //
+        }
+    }
 
     cJSON_Delete(pJsonJson);
 
@@ -1518,7 +1619,7 @@ static short Parse_cali_dat(char *ptrptr)
         return ESP_FAIL;
     }
 
-    for (uint8_t i = 0; i < 40; i++)
+    for (uint8_t i = 0; i < 20; i++)
     {
         pSubSubSub = cJSON_GetObjectItem(pJsonJson, f_cali_str[i]); //
         if (NULL != pSubSubSub)
@@ -1664,7 +1765,7 @@ char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_s
                 {
                     if (first_len != NULL)
                     {
-                        // printf("s_strstr,i=%d\n", i);
+                        // ESP_LOGI(TAG,"s_strstr,i=%d\n", i);
                         *first_len = i;
                     }
                     return (char *)_pBegin + i + s32CmpLen;
@@ -1679,28 +1780,42 @@ char *s_strstr(const char *_pBegin, int _ReadLen, int *first_len, const char *_s
 //读取EEPROM中的metadata
 void Read_Metadate_E2p(void)
 {
-    uint8_t Last_Switch_Status;
+    uint8_t Last_Switch_Status, reset_reason;
     de_sw_s = E2P_ReadOneByte(DE_SWITCH_STA_ADD); //上电开关默认状态
-    switch (de_sw_s)
+    Last_Switch_Status = E2P_ReadOneByte(LAST_SWITCH_ADD);
+    reset_reason = esp_reset_reason();
+    ESP_LOGI(TAG, "reset_reason=%d", reset_reason);
+    //上电启动
+    if (reset_reason == ESP_RST_POWERON || reset_reason == ESP_RST_WDT)
     {
-    case 0:
-        Switch_Relay(0);
-        break;
-
-    case 1:
-        Switch_Relay(1);
-        break;
-
-    case 2:
-        Last_Switch_Status = E2P_ReadOneByte(LAST_SWITCH_ADD);
-        if (Last_Switch_Status <= 100)
+        ESP_LOGI(TAG, "de_sw_s=%d", de_sw_s);
+        switch (de_sw_s)
         {
-            Switch_Relay(E2P_ReadOneByte(LAST_SWITCH_ADD));
-        }
-        break;
+        case 0:
+            Switch_Relay(0);
+            break;
 
-    default:
-        break;
+        case 1:
+            Switch_Relay(1);
+            break;
+
+        case 2:
+            Last_Switch_Status = E2P_ReadOneByte(LAST_SWITCH_ADD);
+            if (Last_Switch_Status <= 100)
+            {
+                Switch_Relay(E2P_ReadOneByte(LAST_SWITCH_ADD));
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+    //意外复位
+    else
+    {
+        ESP_LOGI(TAG, "Last_Switch_Status=%d", Last_Switch_Status);
+        Switch_Relay(Last_Switch_Status);
     }
 
     fn_dp = E2P_ReadLenByte(FN_DP_ADD, 4);           //数据发送频率
@@ -1716,53 +1831,55 @@ void Read_Metadate_E2p(void)
     cg_data_led = E2P_ReadOneByte(CG_DATA_LED_ADD);  //发送数据 LED状态 0关闭，1打开
     net_mode = E2P_ReadOneByte(NET_MODE_ADD);        //上网模式选择 0：自动模式 1：lan模式 2：wifi模式
     fn_sw_on = E2P_ReadLenByte(FN_SW_ON_ADD, 4);     //累积开启时长统计周期
+    fn_485_is = E2P_ReadLenByte(FN_485_IS_ADDR, 4);
 
-    printf("E2P USAGE:%d\n", E2P_USAGED);
+    ESP_LOGI(TAG, "E2P USAGE:%d\n", E2P_USAGED);
 
-    printf("fn_dp:%d\n", fn_dp);
-    printf("fn_485_t:%d\n", fn_485_t);
-    printf("fn_485_th:%d\n", fn_485_th);
-    printf("fn_485_sth:%d\n", fn_485_sth);
-    printf("fn_485_ws:%d\n", fn_485_ws);
-    printf("fn_485_lt:%d\n", fn_485_lt);
-    printf("fn_485_co2:%d\n", fn_485_co2);
-    printf("fn_ext_t:%d\n", fn_ext_t);
-    printf("fn_sw_e:%d\n", fn_sw_e);
-    printf("cg_data_led:%d\n", cg_data_led);
-    printf("net_mode:%d\n", net_mode);
-    printf("de_sw_s:%d\n", de_sw_s);
-    printf("fn_sw_on:%d\n", fn_sw_on);
+    ESP_LOGI(TAG, "fn_dp:%d\n", fn_dp);
+    ESP_LOGI(TAG, "fn_485_t:%d\n", fn_485_t);
+    ESP_LOGI(TAG, "fn_485_th:%d\n", fn_485_th);
+    ESP_LOGI(TAG, "fn_485_sth:%d\n", fn_485_sth);
+    ESP_LOGI(TAG, "fn_485_ws:%d\n", fn_485_ws);
+    ESP_LOGI(TAG, "fn_485_lt:%d\n", fn_485_lt);
+    ESP_LOGI(TAG, "fn_485_co2:%d\n", fn_485_co2);
+    ESP_LOGI(TAG, "fn_ext_t:%d\n", fn_ext_t);
+    ESP_LOGI(TAG, "fn_sw_e:%d\n", fn_sw_e);
+    ESP_LOGI(TAG, "cg_data_led:%d\n", cg_data_led);
+    ESP_LOGI(TAG, "net_mode:%d\n", net_mode);
+    ESP_LOGI(TAG, "de_sw_s:%d\n", de_sw_s);
+    ESP_LOGI(TAG, "fn_sw_on:%d\n", fn_sw_on);
+    ESP_LOGI(TAG, "fn_485_is:%d\n", fn_485_is);
 }
 
 void Read_Product_E2p(void)
 {
-    printf("FIRMWARE=%s\n", FIRMWARE);
+    ESP_LOGI(TAG, "FIRMWARE=%s\n", FIRMWARE);
     E2P_Read(SERISE_NUM_ADDR, (uint8_t *)SerialNum, SERISE_NUM_LEN);
-    printf("SerialNum=%s\n", SerialNum);
+    ESP_LOGI(TAG, "SerialNum=%s\n", SerialNum);
     E2P_Read(PRODUCT_ID_ADDR, (uint8_t *)ProductId, PRODUCT_ID_LEN);
-    printf("ProductId=%s\n", ProductId);
+    ESP_LOGI(TAG, "ProductId=%s\n", ProductId);
     E2P_Read(WEB_HOST_ADD, (uint8_t *)WEB_SERVER, WEB_HOST_LEN);
-    printf("WEB_SERVER=%s\n", WEB_SERVER);
+    ESP_LOGI(TAG, "WEB_SERVER=%s\n", WEB_SERVER);
     E2P_Read(WEB_PORT_ADD, (uint8_t *)WEB_PORT, 5);
-    printf("WEB_PORT=%s\n", WEB_PORT);
+    ESP_LOGI(TAG, "WEB_PORT=%s\n", WEB_PORT);
     E2P_Read(MQTT_HOST_ADD, (uint8_t *)MQTT_SERVER, WEB_HOST_LEN);
-    printf("MQTT_SERVER=%s\n", MQTT_SERVER);
+    ESP_LOGI(TAG, "MQTT_SERVER=%s\n", MQTT_SERVER);
     E2P_Read(MQTT_PORT_ADD, (uint8_t *)MQTT_PORT, 5);
-    printf("MQTT_PORT=%s\n", MQTT_PORT);
+    ESP_LOGI(TAG, "MQTT_PORT=%s\n", MQTT_PORT);
     E2P_Read(CHANNEL_ID_ADD, (uint8_t *)ChannelId, CHANNEL_ID_LEN);
-    printf("ChannelId=%s\n", ChannelId);
+    ESP_LOGI(TAG, "ChannelId=%s\n", ChannelId);
     E2P_Read(USER_ID_ADD, (uint8_t *)USER_ID, USER_ID_LEN);
-    printf("USER_ID=%s\n", USER_ID);
+    ESP_LOGI(TAG, "USER_ID=%s\n", USER_ID);
     E2P_Read(API_KEY_ADD, (uint8_t *)ApiKey, API_KEY_LEN);
-    printf("ApiKey=%s\n", ApiKey);
+    ESP_LOGI(TAG, "ApiKey=%s\n", ApiKey);
     E2P_Read(WIFI_SSID_ADD, (uint8_t *)wifi_data.wifi_ssid, sizeof(wifi_data.wifi_ssid));
     E2P_Read(WIFI_PASSWORD_ADD, (uint8_t *)wifi_data.wifi_pwd, sizeof(wifi_data.wifi_pwd));
-    printf("wifi ssid=%s,wifi password=%s\n", wifi_data.wifi_ssid, wifi_data.wifi_pwd);
+    ESP_LOGI(TAG, "wifi ssid=%s,wifi password=%s\n", wifi_data.wifi_ssid, wifi_data.wifi_pwd);
 
     E2P_Read(APN_ADDR, (uint8_t *)SIM_APN, sizeof(SIM_APN));
     E2P_Read(BEARER_USER_ADDR, (uint8_t *)SIM_USER, sizeof(SIM_USER));
     E2P_Read(BEARER_PWD_ADDR, (uint8_t *)SIM_PWD, sizeof(SIM_PWD));
-    printf("APN=%s,USER=%s,PWD=%s\n", SIM_APN, SIM_USER, SIM_PWD);
+    ESP_LOGI(TAG, "APN=%s,USER=%s,PWD=%s\n", SIM_APN, SIM_USER, SIM_PWD);
 
     if (strlen(WEB_SERVER) == 0)
     {
@@ -1866,6 +1983,14 @@ void Read_Fields_E2p(void)
     {
         sw_on_f_num = sensors_temp;
     }
+    if ((sensors_temp = E2P_ReadOneByte(R1_IS_C2H4_F_NUM_ADDR)) != 0)
+    {
+        r1_is_c2h4_f_num = sensors_temp;
+    }
+    if ((sensors_temp = E2P_ReadOneByte(R1_IS_O2_F_NUM_ADDR)) != 0)
+    {
+        r1_is_o2_f_num = sensors_temp;
+    }
 
     for (uint8_t i = 0; i < 40; i++)
     {
@@ -1875,27 +2000,29 @@ void Read_Fields_E2p(void)
             f_cali_u[i].val = 1;
         }
 
-        printf("%s:%f\n", f_cali_str[i], f_cali_u[i].val);
+        ESP_LOGI(TAG, "%s:%f\n", f_cali_str[i], f_cali_u[i].val);
     }
 
-    printf("sw_s_f_num:%d\n", sw_s_f_num);
-    printf("sw_v_f_num:%d\n", sw_v_f_num);
-    printf("sw_c_f_num:%d\n", sw_c_f_num);
-    printf("sw_p_f_num:%d\n", sw_p_f_num);
-    printf("sw_pc_f_num:%d\n", sw_pc_f_num);
-    printf("rssi_w_f_num:%d\n", rssi_w_f_num);
-    printf("rssi_g_f_num:%d\n", rssi_g_f_num);
-    printf("sw_on_f_num:%d\n", sw_on_f_num);
-    printf("r1_light_f_num:%d\n", r1_light_f_num);
-    printf("r1_th_t_f_num:%d\n", r1_th_t_f_num);
-    printf("r1_th_h_f_num:%d\n", r1_th_h_f_num);
-    printf("r1_sth_t_f_num:%d\n", r1_sth_t_f_num);
-    printf("r1_sth_h_f_num:%d\n", r1_sth_h_f_num);
-    printf("e1_t_f_num:%d\n", e1_t_f_num);
-    printf("r1_t_f_num:%d\n", r1_t_f_num);
-    printf("r1_ws_f_num:%d\n", r1_ws_f_num);
-    printf("r1_co2_f_num:%d\n", r1_co2_f_num);
-    printf("r1_ph_f_num:%d\n", r1_ph_f_num);
-    printf("r1_co2_t_f_num:%d\n", r1_co2_t_f_num);
-    printf("r1_co2_h_f_num:%d\n", r1_co2_h_f_num);
+    ESP_LOGI(TAG, "sw_s_f_num:%d\n", sw_s_f_num);
+    ESP_LOGI(TAG, "sw_v_f_num:%d\n", sw_v_f_num);
+    ESP_LOGI(TAG, "sw_c_f_num:%d\n", sw_c_f_num);
+    ESP_LOGI(TAG, "sw_p_f_num:%d\n", sw_p_f_num);
+    ESP_LOGI(TAG, "sw_pc_f_num:%d\n", sw_pc_f_num);
+    ESP_LOGI(TAG, "rssi_w_f_num:%d\n", rssi_w_f_num);
+    ESP_LOGI(TAG, "rssi_g_f_num:%d\n", rssi_g_f_num);
+    ESP_LOGI(TAG, "sw_on_f_num:%d\n", sw_on_f_num);
+    ESP_LOGI(TAG, "r1_light_f_num:%d\n", r1_light_f_num);
+    ESP_LOGI(TAG, "r1_th_t_f_num:%d\n", r1_th_t_f_num);
+    ESP_LOGI(TAG, "r1_th_h_f_num:%d\n", r1_th_h_f_num);
+    ESP_LOGI(TAG, "r1_sth_t_f_num:%d\n", r1_sth_t_f_num);
+    ESP_LOGI(TAG, "r1_sth_h_f_num:%d\n", r1_sth_h_f_num);
+    ESP_LOGI(TAG, "e1_t_f_num:%d\n", e1_t_f_num);
+    ESP_LOGI(TAG, "r1_t_f_num:%d\n", r1_t_f_num);
+    ESP_LOGI(TAG, "r1_ws_f_num:%d\n", r1_ws_f_num);
+    ESP_LOGI(TAG, "r1_co2_f_num:%d\n", r1_co2_f_num);
+    ESP_LOGI(TAG, "r1_ph_f_num:%d\n", r1_ph_f_num);
+    ESP_LOGI(TAG, "r1_co2_t_f_num:%d\n", r1_co2_t_f_num);
+    ESP_LOGI(TAG, "r1_co2_h_f_num:%d\n", r1_co2_h_f_num);
+    ESP_LOGI(TAG, "r1_is_c2h4_f_num:%d\n", r1_is_c2h4_f_num);
+    ESP_LOGI(TAG, "r1_is_o2_f_num:%d\n", r1_is_o2_f_num);
 }

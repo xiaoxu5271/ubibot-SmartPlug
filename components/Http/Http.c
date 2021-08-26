@@ -23,7 +23,7 @@
 // #include "w5500_driver.h"
 #include "my_base64.h"
 #include "Http.h"
-#include "Mqtt.h"
+#include "My_Mqtt.h"
 
 TaskHandle_t Binary_Heart_Send = NULL;
 TaskHandle_t Binary_dp = NULL;
@@ -33,6 +33,7 @@ TaskHandle_t Binary_485_sth = NULL;
 TaskHandle_t Binary_485_ws = NULL;
 TaskHandle_t Binary_485_lt = NULL;
 TaskHandle_t Binary_485_co2 = NULL;
+TaskHandle_t Binary_485_IS = NULL;
 TaskHandle_t Binary_ext = NULL;
 TaskHandle_t Binary_energy = NULL;
 TaskHandle_t Binary_ele_quan = NULL;
@@ -67,6 +68,7 @@ void timer_heart_cb(void *arg)
         if (ble_num >= 60 * 15)
         {
             ble_app_stop();
+            start_user_wifi();
             ble_num = 0;
         }
     }
@@ -138,6 +140,12 @@ void timer_heart_cb(void *arg)
         if (min_num % fn_sw_on == 0)
         {
             vTaskNotifyGiveFromISR(Sw_on_Task_Handle, NULL);
+        }
+
+    if (fn_485_is)
+        if (min_num % fn_485_is == 0)
+        {
+            vTaskNotifyGiveFromISR(Binary_485_IS, NULL);
         }
 }
 
@@ -251,6 +259,7 @@ int32_t http_post_init(uint32_t Content_Length)
                      WEB_SERVER,
                      Content_Length);
         }
+        ESP_LOGI(TAG, "%d,%s", __LINE__, build_po_url);
 
         const struct addrinfo hints = {
             .ai_family = AF_INET,
@@ -259,7 +268,6 @@ int32_t http_post_init(uint32_t Content_Length)
         struct addrinfo *res;
         // struct in_addr *addr;
         int32_t s = 0;
-
         int err = getaddrinfo((const char *)WEB_SERVER, (const char *)WEB_PORT, &hints, &res); //step1：DNS域名解析
 
         if (err != 0 || res == NULL)
@@ -332,7 +340,7 @@ int32_t http_post_init(uint32_t Content_Length)
         {
             //conect URL
             snprintf(cmd_buf, CMD_LEN, "AT+HTTPPARA=\"URL\",\"%s\"\r\n", build_po_url);
-            if (AT_Cmd_Send(cmd_buf, "OK", 1000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "OK", 1000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -342,7 +350,7 @@ int32_t http_post_init(uint32_t Content_Length)
             //send data to post ,INPUT LEN
             bzero(cmd_buf, CMD_LEN);
             snprintf(cmd_buf, CMD_LEN, "AT+HTTPDATA=%d,5000\r\n", Content_Length);
-            if (AT_Cmd_Send(cmd_buf, "DOWNLOAD", 1000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "DOWNLOAD", 2000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -360,7 +368,7 @@ int32_t http_post_init(uint32_t Content_Length)
             }
 
             snprintf(cmd_buf, CMD_LEN, "AT+QHTTPURL=%d,60\r\n", (strlen(build_po_url)));
-            if (AT_Cmd_Send(cmd_buf, "CONNECT", 2000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "CONNECT", 2000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -369,7 +377,7 @@ int32_t http_post_init(uint32_t Content_Length)
 
             bzero(cmd_buf, CMD_LEN);
             snprintf(cmd_buf, CMD_LEN, "%s\r\n", build_po_url);
-            if (AT_Cmd_Send(cmd_buf, "OK", 60000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "OK", 60000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -378,7 +386,7 @@ int32_t http_post_init(uint32_t Content_Length)
 
             bzero(cmd_buf, CMD_LEN);
             snprintf(cmd_buf, CMD_LEN, "AT+QHTTPPOST=%d,%d,%d\r\n", Content_Length, 60, 60);
-            if (AT_Cmd_Send(cmd_buf, "CONNECT", 6000, 1) == NULL)
+            if (AT_Cmd_Send(NULL, 0, 0, cmd_buf, "CONNECT", 6000, 1) == false)
             {
                 ESP_LOGE(TAG, "EC20_Post %d", __LINE__);
                 ret = -1;
@@ -594,6 +602,7 @@ uint16_t http_activate(void)
         {
             if (parse_objects_http_active(recv_buf))
             {
+                 ESP_LOGI(TAG, "active recv:%s", recv_buf);
                 Net_sta_flag = true;
                 ret = 1;
             }

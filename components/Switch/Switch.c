@@ -23,6 +23,7 @@
 
 // static const char *TAG = "switch";
 uint64_t SW_last_time = 0, SW_on_time = 0;
+bool SW_last_sta = 0;
 
 //切换继电器
 void Switch_Relay(int8_t set_value)
@@ -30,10 +31,10 @@ void Switch_Relay(int8_t set_value)
     if (set_value == -1)
     {
         mqtt_json_s.mqtt_switch_status = !mqtt_json_s.mqtt_switch_status;
-        memcpy(C_TYPE, "physical", 9);
+        strncpy(C_TYPE, "physical", 9);
     }
 
-    else if (set_value >= 1 && set_value < 100)
+    else if (set_value >= 1 && set_value <= 100)
     {
         if (mqtt_json_s.mqtt_switch_status != 1)
         {
@@ -47,8 +48,13 @@ void Switch_Relay(int8_t set_value)
             mqtt_json_s.mqtt_switch_status = 0;
         }
     }
+
     gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
     Create_Switch_Json(); //构建开关状态
+
+    //D触发器 上升沿
+    gpio_set_level(GPIO_CP, 1);
+
     // if (Binary_energy != NULL)
     // {
     //     xTaskNotifyGive(Binary_energy);
@@ -57,20 +63,31 @@ void Switch_Relay(int8_t set_value)
     {
         xTaskNotifyGive(Binary_dp);
     }
-    if (de_sw_s == 2)
-    {
-        E2P_WriteOneByte(LAST_SWITCH_ADD, mqtt_json_s.mqtt_switch_status); //写入开关状态
-    }
+    // if (de_sw_s == 2)
+    // {
+    E2P_WriteOneByte(LAST_SWITCH_ADD, mqtt_json_s.mqtt_switch_status); //写入开关状态
+    // }
 
     if (mqtt_json_s.mqtt_switch_status == 1)
     {
-        SW_last_time = (uint64_t)esp_timer_get_time();
+        if (SW_last_sta == 0)
+        {
+            SW_last_time = (uint64_t)esp_timer_get_time();
+        }
     }
     else
     {
-        //累加单次开启时长
-        SW_on_time += (uint64_t)esp_timer_get_time() - SW_last_time;
+        if (SW_last_sta == 1)
+        {
+            //累加单次开启时长
+            SW_on_time += (uint64_t)esp_timer_get_time() - SW_last_time;
+        }
     }
+    ESP_LOGI(TAG, "SW_on_time:%lld", (uint64_t)((SW_on_time + 500000) / 1000000));
+
+    SW_last_sta = mqtt_json_s.mqtt_switch_status;
+    //D触发器 下降沿
+    gpio_set_level(GPIO_CP, 0);
 }
 
 //读取，构建累积开启时长
@@ -104,15 +121,19 @@ void Sw_on_quan_Task(void *pvParameters)
             cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
             snprintf(filed_buff, 9, "field%d", sw_on_f_num);
             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber((uint64_t)((SW_on_time + 500000) / 1000000))); //四舍五入
-            OutBuffer = cJSON_PrintUnformatted(pJsonRoot);                                                                 //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                                                                                       //delete cjson root
-            len = strlen(OutBuffer);
-            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
 
-            xSemaphoreTake(Cache_muxtex, -1);
-            DataSave((uint8_t *)OutBuffer, len);
-            xSemaphoreGive(Cache_muxtex);
-            free(OutBuffer);
+            OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
+            if (OutBuffer != NULL)
+            {
+                len = strlen(OutBuffer);
+                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                xSemaphoreTake(Cache_muxtex, -1);
+                DataSave((uint8_t *)OutBuffer, len);
+                xSemaphoreGive(Cache_muxtex);
+                cJSON_free(OutBuffer);
+            }
+            cJSON_Delete(pJsonRoot); //delete cjson root
+
             free(filed_buff);
             free(time_buff);
             //清空统计
@@ -131,6 +152,13 @@ void Switch_Init(void)
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf);
 
-    gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = (1ULL << GPIO_CP);
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+    // gpio_set_level(GPIO_RLY, 0);
+    // gpio_set_level(GPIO_RLY, mqtt_json_s.mqtt_switch_status);
     xTaskCreate(Sw_on_quan_Task, "sw on quan", 4096, NULL, 5, &Sw_on_Task_Handle);
 }

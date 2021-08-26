@@ -79,6 +79,7 @@ void sw_uart2(uint8_t uart2_mode)
         gpio_set_level(UART2_SW, 0); //RS485输出模式
         uart_flush(UART_NUM_2);
         uart_flush_input(UART_NUM_2);
+        uart_set_parity(UART_NUM_2, UART_PARITY_DISABLE);
         uart_set_baudrate(UART_NUM_2, 9600);
         break;
 
@@ -86,6 +87,7 @@ void sw_uart2(uint8_t uart2_mode)
         gpio_set_level(UART2_SW, 1); //电能输出模式
         uart_flush(UART_NUM_2);
         uart_flush_input(UART_NUM_2);
+        uart_set_parity(UART_NUM_2, UART_PARITY_EVEN);
         uart_set_baudrate(UART_NUM_2, 4800);
         break;
 
@@ -93,6 +95,7 @@ void sw_uart2(uint8_t uart2_mode)
         gpio_set_level(UART2_SW, 0); //CO2输出模式
         uart_flush(UART_NUM_2);
         uart_flush_input(UART_NUM_2);
+        uart_set_parity(UART_NUM_2, UART_PARITY_DISABLE);
         uart_set_baudrate(UART_NUM_2, 19200);
 
     default:
@@ -128,7 +131,7 @@ void Uart0_Task(void *arg)
                     all_read_len += event.size;
                     data_u0[all_read_len] = 0; //去掉字符串结束符，防止字符串拼接不成功
 
-                    if (strstr((const char *)data_u0, "\n") != NULL || strstr((const char *)data_u0, "\r") != NULL)
+                    if ((data_u0[all_read_len - 1] == '\r') || (data_u0[all_read_len - 1] == '\n'))
                     {
                         ESP_LOGI(TAG, "uart0 recv,  len:%d,%s", strlen((const char *)data_u0), data_u0);
                         ParseTcpUartCmd((char *)data_u0);

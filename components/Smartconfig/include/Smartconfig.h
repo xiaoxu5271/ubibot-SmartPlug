@@ -3,7 +3,7 @@
 
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "Bluetooth.h"
+// #include "Bluetooth.h"
 #include "esp_wifi.h"
 
 void init_wifi(void);
@@ -11,12 +11,17 @@ void start_user_wifi(void);
 void stop_user_wifi(void);
 void Net_Switch(void);
 void Scan_Wifi(void);
+void start_softap(void);
+int Tcp_Send(int sock, char *Send_Buff);
+bool Check_Wifi(uint8_t *ssid, int8_t *rssi);
 
 extern uint8_t wifi_connect_sta; //wifi连接状态
 // extern uint8_t wifi_work_sta;    //wifi开启状态
 extern uint8_t start_AP;
 extern uint16_t Net_ErrCode; //
 extern bool WIFI_STA;
+
+#define TCP_PORT 5001
 
 EventGroupHandle_t Net_sta_group;
 #define CONNECTED_BIT (1 << 0)      //网络连接
@@ -44,11 +49,5 @@ EventGroupHandle_t Net_sta_group;
 // static const int CONNECTED_BIT = BIT0;
 // static const int AP_STACONNECTED_BIT = BIT0;
 // extern TaskHandle_t my_tcp_connect_Handle;
-
-//server
-//AP热点模式的配置信息
-#define SOFT_AP_SSID "CloudForce-SP1" //账号
-#define SOFT_AP_PAS ""                //密码，可以为空
-#define SOFT_AP_MAX_CONNECT 2         //最多的连接点
 
 #endif

@@ -6,7 +6,7 @@
 void initialise_mqtt(void);
 void Start_W_Mqtt(void);
 void Stop_W_Mqtt(void);
-uint8_t Send_Mqtt(uint8_t *data_buff, uint16_t data_len);
+void Send_Mqtt_Buff(char *buff);
 // extern esp_mqtt_client_handle_t client;
 extern char topic_p[100];
 

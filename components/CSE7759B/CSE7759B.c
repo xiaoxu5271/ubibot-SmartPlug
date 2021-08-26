@@ -191,7 +191,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(voltage_a, voltage_t);
                 }
             }
-            ESP_LOGD(TAG, "voltage:%ld,%ld,%ld\r\n", voltage_a[0], voltage_a[1], voltage_a[2]);
+            // ESP_LOGD(TAG, "voltage:%ld,%ld,%ld\r\n", voltage_a[0], voltage_a[1], voltage_a[2]);
             voltage_t = getVIPvalue(voltage_a);
 
             if (voltage_t == 0)
@@ -203,7 +203,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 voltage = voltage_k * 100 / voltage_t; //电压10mV值，避免溢出
                 voltage = voltage * 10;                //电压mV值
             }
-            ESP_LOGD(TAG, "11Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
+            // ESP_LOGD(TAG, "11Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
             // mqtt_json_s.mqtt_Voltage = voltage / 1000;
         }
         else
@@ -228,7 +228,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(electricity_a, electricity_t);
                 }
             }
-            ESP_LOGD(TAG, "electricity:%ld,%ld,%ld\r\n", electricity_a[0], electricity_a[1], electricity_a[2]);
+            // ESP_LOGD(TAG, "electricity:%ld,%ld,%ld\r\n", electricity_a[0], electricity_a[1], electricity_a[2]);
             electricity_t = getVIPvalue(electricity_a);
 
             if (electricity_t == 0)
@@ -246,7 +246,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 electricity >>= 1;
 #endif
             }
-            ESP_LOGD(TAG, "11Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
+            // ESP_LOGD(TAG, "11Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
             // mqtt_json_s.mqtt_Current = electricity / 1000.0;
         }
         else
@@ -276,7 +276,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     updataVIPvalue(power_a, power_t);
                 }
             }
-            ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
+            // ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
             power_t = getVIPvalue(power_a);
 
             if (power_t == 0)
@@ -294,7 +294,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 power >>= 1;
 #endif
             }
-            ESP_LOGD(TAG, "11Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+            // ESP_LOGD(TAG, "11Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
             // mqtt_json_s.mqtt_Power = power / 1000.0;
         }
         else if (powerNewFlag == 0)
@@ -311,7 +311,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     }
                 }
             }
-            ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
+            // ESP_LOGD(TAG, "power:%ld,%ld,%ld\r\n", power_a[0], power_a[1], power_a[2]);
             power_t = getVIPvalue(power_a);
 
             if (power_t == 0)
@@ -329,7 +329,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                 power >>= 1;
 #endif
             }
-            ESP_LOGD(TAG, "22Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+            // ESP_LOGD(TAG, "22Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
             // mqtt_json_s.mqtt_Power = power / 1000.0;
         }
 
@@ -403,7 +403,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
             power = 0;
             runingInf.electricity = 0; //获取到的电流以0.01A为单位
             electricity = 0;
-            ESP_LOGD(TAG, "Power Error\r\n");
+            // ESP_LOGD(TAG, "Power Error\r\n");
         }
         else
         {
@@ -443,7 +443,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     power >>= 1;
 #endif
                 }
-                ESP_LOGD(TAG, "33Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+                // ESP_LOGD(TAG, "33Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
                 // mqtt_json_s.mqtt_Power = power / 1000.0;
             }
             else if (powerNewFlag == 0)
@@ -478,7 +478,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     power >>= 1;
 #endif
                 }
-                ESP_LOGD(TAG, "44Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
+                // ESP_LOGD(TAG, "44Pk = %ld,Pt = %ld,P = %ld\r\n", power_k, power_t, power);
                 // mqtt_json_s.mqtt_Power = power / 1000.0;
             }
         }
@@ -525,12 +525,12 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     electricity >>= 1;
 #endif
                 }
-                ESP_LOGD(TAG, "22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
+                // ESP_LOGD(TAG, "22Ik = %ld,It = %ld,I = %ld\r\n", electricity_k, electricity_t, electricity);
                 // mqtt_json_s.mqtt_Current = electricity / 1000.0;
             }
             else
             {
-                ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
+                // ESP_LOGD(TAG, "%s(%d):I Flag Error\r\n", __func__, __LINE__);
                 return -1;
             }
         }
@@ -571,7 +571,7 @@ int DealUartInf(unsigned char *inDataBuffer, int recvlen)
                     voltage = voltage_k * 100 / voltage_t; //电压10mV值，避免溢出
                     voltage = voltage * 10;                //电压mV值
                 }
-                ESP_LOGD(TAG, "22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
+                // ESP_LOGD(TAG, "22Vk = %ld,Vt = %ld,v = %ld\r\n", voltage_k, voltage_t, voltage);
                 // mqtt_json_s.mqtt_Voltage = voltage / 1000;
             }
             else
@@ -673,7 +673,7 @@ void CSE7759B_Read_Task(void *arg)
         {
             CSE_FLAG = false;
             xEventGroupClearBits(Net_sta_group, CSE_CHECK_BIT);
-            ESP_LOGE(TAG, "%d", __LINE__);
+            // ESP_LOGE(TAG, "%d", __LINE__);
         }
 
         vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -695,31 +695,46 @@ void Energy_Read_Task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, -1);
         if ((xEventGroupWaitBits(Net_sta_group, CSE_CHECK_BIT, true, true, 1000 / portTICK_RATE_MS) & CSE_CHECK_BIT) == CSE_CHECK_BIT)
         {
-            if (((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT) && (mqtt_json_s.mqtt_switch_status == 1))
+            if (((xEventGroupGetBits(Net_sta_group) & TIME_CAL_BIT) == TIME_CAL_BIT))
             {
+
                 filed_buff = (char *)malloc(9);
                 time_buff = (char *)malloc(24);
                 Server_Timer_SEND(time_buff);
                 pJsonRoot = cJSON_CreateObject();
                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                 // cJSON_AddItemToObject(pJsonRoot, "field1", cJSON_CreateNumber(mqtt_json_s.mqtt_switch_status));
-                snprintf(filed_buff, 9, "field%d", sw_v_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_v_f_num, sw_v_val)));
-                snprintf(filed_buff, 9, "field%d", sw_c_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_c_f_num, sw_c_val)));
-                snprintf(filed_buff, 9, "field%d", sw_p_f_num);
-                cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_p_f_num, sw_p_val)));
+
+                if (mqtt_json_s.mqtt_switch_status == 1)
+                {
+                    snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_v_f_num, sw_v_val)));
+                    snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_c_f_num, sw_c_val)));
+                    snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_p_f_num, sw_p_val)));
+                }
+                else
+                {
+                    snprintf(filed_buff, 9, "field%d", sw_v_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(0));
+                    snprintf(filed_buff, 9, "field%d", sw_c_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(0));
+                    snprintf(filed_buff, 9, "field%d", sw_p_f_num);
+                    cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(0));
+                }
 
                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                cJSON_Delete(pJsonRoot);                       //delete cjson root
-                len = strlen(OutBuffer);
-                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                // SaveBuffer = (uint8_t *)malloc(len);
-                // memcpy(SaveBuffer, OutBuffer, len);
-                xSemaphoreTake(Cache_muxtex, -1);
-                DataSave((uint8_t *)OutBuffer, len);
-                xSemaphoreGive(Cache_muxtex);
-                free(OutBuffer);
+                if (OutBuffer != NULL)
+                {
+                    len = strlen(OutBuffer);
+                    ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                    xSemaphoreTake(Cache_muxtex, -1);
+                    DataSave((uint8_t *)OutBuffer, len);
+                    xSemaphoreGive(Cache_muxtex);
+                    cJSON_free(OutBuffer);
+                }
+                cJSON_Delete(pJsonRoot); //delete cjson root
                 free(filed_buff);
                 free(time_buff);
             }
@@ -757,15 +772,18 @@ void Ele_quan_Task(void *pvParameters)
             snprintf(filed_buff, 9, "field%d", sw_pc_f_num);
             cJSON_AddItemToObject(pJsonRoot, filed_buff, cJSON_CreateNumber(Cali_filed(sw_pc_f_num, sw_pc_val)));
             OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-            cJSON_Delete(pJsonRoot);                       //delete cjson root
-            len = strlen(OutBuffer);
-            ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-            // SaveBuffer = (uint8_t *)malloc(len);
-            // memcpy(SaveBuffer, OutBuffer, len);
-            xSemaphoreTake(Cache_muxtex, -1);
-            DataSave((uint8_t *)OutBuffer, len);
-            xSemaphoreGive(Cache_muxtex);
-            free(OutBuffer);
+
+            if (OutBuffer != NULL)
+            {
+                len = strlen(OutBuffer);
+                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                xSemaphoreTake(Cache_muxtex, -1);
+                DataSave((uint8_t *)OutBuffer, len);
+                xSemaphoreGive(Cache_muxtex);
+                cJSON_free(OutBuffer);
+            }
+
+            cJSON_Delete(pJsonRoot); //delete cjson root
             free(filed_buff);
             free(time_buff);
         }

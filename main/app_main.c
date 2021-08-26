@@ -13,7 +13,7 @@
 
 #include "Smartconfig.h"
 #include "Http.h"
-#include "Mqtt.h"
+#include "My_Mqtt.h"
 #include "Bluetooth.h"
 #include "Json_parse.h"
 #include "esp_log.h"
@@ -40,6 +40,15 @@ void app_main(void)
 		ota_back();
 	}
 
+	esp_err_t ret;
+	ret = nvs_flash_init();
+	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+	{
+		ESP_ERROR_CHECK(nvs_flash_erase());
+		ret = nvs_flash_init();
+	}
+	ESP_ERROR_CHECK(ret);
+
 	Cache_muxtex = xSemaphoreCreateMutex();
 	xMutex_Http_Send = xSemaphoreCreateMutex(); //创建HTTP发送互斥信号
 	EC20_muxtex = xSemaphoreCreateMutex();
@@ -55,15 +64,6 @@ void app_main(void)
 	SPI_FLASH_Init();
 	Uart_Init();
 	user_app_key_init();
-
-	esp_err_t ret;
-	ret = nvs_flash_init();
-	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-	{
-		ESP_ERROR_CHECK(nvs_flash_erase());
-		ret = nvs_flash_init();
-	}
-	ESP_ERROR_CHECK(ret);
 
 	ble_app_init();
 	init_wifi();

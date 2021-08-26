@@ -12,7 +12,7 @@
 #include <esp_log.h>
 // #include "tcp_bsp.h"
 #include "Smartconfig.h"
-#include "Mqtt.h"
+#include "My_Mqtt.h"
 // #include "w5500_driver.h"
 #include "ota.h"
 #include "Bluetooth.h"
@@ -57,7 +57,7 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
             // vTaskNotifyGiveFromISR(User_Key_handle, NULL);
             break;
         case 2:
-
+            // printf("SD 2/0=%d", 2 / 0);
             // ble_app_start();
             // ESP_LOGI("short_pressed_cb", "double press!!!\n");
             // Task_key_num = 2;
@@ -67,9 +67,10 @@ void short_pressed_cb(uint8_t key_num, uint8_t *short_pressed_counts)
 
             if (Cnof_net_flag == true)
             {
-                Set_defaul_flag = true;
+
                 E2prom_set_defaul(true);
-                vTaskDelay(5000 / portTICK_PERIOD_MS);
+                Set_defaul_flag = true;
+                vTaskDelay(2000 / portTICK_PERIOD_MS);
                 esp_restart();
             }
 
@@ -108,7 +109,16 @@ void long_pressed_cb(uint8_t key_num, uint8_t *long_pressed_counts)
     {
     case BOARD_BUTTON:
         ESP_LOGI("long_pressed_cb", "long press!!!\n");
-        ble_app_start();
+        if (Cnof_net_flag)
+        {
+            ble_app_stop();
+            start_user_wifi();
+        }
+        else
+        {
+            ble_app_start();
+            start_softap();
+        }
         break;
     default:
         break;

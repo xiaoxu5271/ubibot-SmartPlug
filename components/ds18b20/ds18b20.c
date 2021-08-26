@@ -195,6 +195,7 @@ int8_t ds18b20_get_temp(void)
 
     for (uint8_t i = 0; i < Cla_Num; i++)
     {
+        vTaskSuspendAll();
         DS18B20_TEM = 0.0;
         ds18b20_start(); //ds18b20 start convert
         if (ds18b20_reset() == 0)
@@ -203,6 +204,7 @@ int8_t ds18b20_get_temp(void)
             ds18b20_write_byte(0xbe);     //read data
             data_l = ds18b20_read_byte(); //LSB
             data_h = ds18b20_read_byte(); //MSB
+            xTaskResumeAll();
 
             if (data_h > 7) //temperature value<0
             {
@@ -227,11 +229,13 @@ int8_t ds18b20_get_temp(void)
         }
         else
         {
+            xTaskResumeAll();
             DS18b20_status = false;
             // free(temp_arr);
             // printf("18b20 err\n");
             return -1;
         }
+
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     //进行中间滤波处理
@@ -266,13 +270,17 @@ void get_ds18b20_task(void *org)
                 cJSON_AddStringToObject(pJsonRoot, "created_at", (const char *)time_buff);
                 cJSON_AddItemToObject(pJsonRoot, Field_e1_t, cJSON_CreateNumber(Cali_filed(e1_t_f_num, DS18B20_TEM)));
                 OutBuffer = cJSON_PrintUnformatted(pJsonRoot); //cJSON_Print(Root)
-                cJSON_Delete(pJsonRoot);                       //delete cjson root
-                len = strlen(OutBuffer);
-                ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
-                xSemaphoreTake(Cache_muxtex, -1);
-                DataSave((uint8_t *)OutBuffer, len);
-                xSemaphoreGive(Cache_muxtex);
-                free(OutBuffer);
+                if (OutBuffer != NULL)
+                {
+                    len = strlen(OutBuffer);
+                    ESP_LOGI(TAG, "len:%d\n%s\n", len, OutBuffer);
+                    xSemaphoreTake(Cache_muxtex, -1);
+                    DataSave((uint8_t *)OutBuffer, len);
+                    xSemaphoreGive(Cache_muxtex);
+                    cJSON_free(OutBuffer);
+                }
+                cJSON_Delete(pJsonRoot); //delete cjson root
+
                 free(Field_e1_t);
                 free(time_buff);
             }
@@ -286,6 +294,8 @@ void get_ds18b20_task(void *org)
 
 void start_ds18b20(void)
 {
+    ds18b20_io_out();
+    DATA_IO_ON();
     xTaskCreate(get_ds18b20_task, "get_ds18b20_task", 4096, NULL, 3, &Binary_ext);
 }
 

@@ -10,6 +10,9 @@
 //单次最大发送的数据条数
 #define MAX_READ_NUM 2000
 
+#define CACHE_START "START"
+#define CACHE_USED "USED"
+
 extern SemaphoreHandle_t Cache_muxtex;
 
 extern uint32_t flash_used_num; //数据缓存的截至地址

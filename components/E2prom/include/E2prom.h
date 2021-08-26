@@ -25,15 +25,12 @@
 #define ACK_VAL 0x0       /*!< I2C ack value */
 #define NACK_VAL 0x1      /*!< I2C nack value */
 
-#define FM24
-//Device Address
-#ifdef FM24
-#define E2P_SIZE 8 * 1024
-#define DEV_ADD 0XAE
-#else
-#define E2P_SIZE 1024
-#define DEV_ADD 0XA8
-#endif
+#define FE_E2P_SIZE 2 * 1024
+#define FE_DEV_ADD 0XAE
+
+#define AT_E2P_SIZE 1024
+#define at24c08_addr0 0X57
+#define AT_DEV_ADD 0XA8
 
 #define PRODUCT_ID_LEN 32
 #define SERISE_NUM_LEN 16
@@ -146,7 +143,11 @@
 #define F20_A_ADDR F19_B_ADDR + 4 + 1
 #define F20_B_ADDR F20_A_ADDR + 4 + 1
 
-#define E2P_USAGED F20_B_ADDR
+#define FN_485_IS_ADDR F20_B_ADDR + 4 + 1
+#define R1_IS_C2H4_F_NUM_ADDR FN_485_IS_ADDR + 4 + 1
+#define R1_IS_O2_F_NUM_ADDR R1_IS_C2H4_F_NUM_ADDR + 1 + 1
+
+#define E2P_USAGED R1_IS_O2_F_NUM_ADDR + 5
 
 void E2prom_Init(void);
 esp_err_t E2P_WriteOneByte(uint16_t reg_addr, uint8_t dat);
@@ -157,5 +158,9 @@ void E2P_Read(uint16_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead);
 void E2P_Write(uint16_t WriteAddr, uint8_t *pBuffer, uint16_t NumToWrite);
 void E2prom_empty_all(bool flag);
 void E2prom_set_defaul(bool flag);
+void E2prom_set_0XFF(void);
+
+esp_err_t Nvs_Write_32(const char *Key, uint32_t dat);
+uint32_t Nvs_Read_32(const char *Key);
 
 #endif
